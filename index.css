@@ -116,8 +116,12 @@ a:hover{text-decoration:underline}
 .site-header .brand img{width:36px;height:36px}
 @media (max-width:480px){
   .site-header .brand img{width:28px;height:28px}
-  .top-actions{gap:6px;flex-wrap:wrap}
-  .top-actions .top-link{font-size:.95rem}
+  .site-header{white-space:nowrap}
+  .brand{flex:0 0 auto}
+  .top-actions{gap:6px;flex-wrap:nowrap;min-width:0;justify-content:flex-end}
+  .top-actions .top-link{font-size:.9rem;white-space:nowrap}
+  .top-actions a[href^="mailto:"]{max-width:40vw;overflow:hidden;text-overflow:ellipsis;display:inline-block}
+  .lang-toggle{white-space:nowrap}
 }
 
 /* Square wordmark image inside CTA buttons/links */
@@ -128,7 +132,8 @@ a:hover{text-decoration:underline}
 /* Extra-narrow safety adjustments */
 @media (max-width:360px){
   .site-header{padding:8px 12px}
-  .top-actions .top-link{font-size:.9rem}
+  .top-actions{gap:4px}
+  .top-actions .top-link{font-size:.85rem}
   .lang-toggle{padding:.3rem .5rem}
 }
 /* Reserve space so sticky CTA doesn’t overlap footer copy */
