@@ -1,0 +1,5 @@
+# boomboxcar.com/robots.txt
+User-agent: *
+Allow: /
+
+Sitemap: https://boomboxcar.com/sitemap.xml
