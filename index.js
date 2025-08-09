@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindTrackedLink(document.getElementById('contactEmail'), 'click_email_contact');
   bindTrackedLink(document.getElementById('instagramLink'), 'click_instagram');
 
-  // ---- CTA impressions ----
+  // ---- CTA impressions & visibility ----
   const heroCta = document.querySelector('.hero [data-gtag="book_on_square_click"]');
   if (heroCta && 'IntersectionObserver' in window) {
     const io = new IntersectionObserver(entries => {
@@ -81,6 +81,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { threshold: 0.5 });
     io.observe(heroCta);
   }
-  // Sticky CTA is visible by design; count one impression on load
-  fireGA('cta_impression', { cta_position: 'sticky' });
+
+  // Show sticky CTA only after user scrolls a bit
+  let stickySeen = false;
+  function updateStickyVisibility(){
+    if (window.scrollY > 20) {
+      document.body.classList.add('cta-visible');
+      if (!stickySeen) { fireGA('cta_impression', { cta_position: 'sticky' }); stickySeen = true; }
+    } else {
+      document.body.classList.remove('cta-visible');
+    }
+  }
+  updateStickyVisibility();
+  window.addEventListener('scroll', updateStickyVisibility, { passive: true });
+  window.addEventListener('resize', updateStickyVisibility, { passive: true });
 });
