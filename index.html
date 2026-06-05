@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>BoomBoxCar – Mobile Venue & Entertainment Service</title>
+  <title>BoomBoxCar | Mobile DJ, Karaoke & Event Entertainment in the DMV</title>
 
   <!-- Canonical & Robots -->
   <link rel="canonical" href="https://boomboxcar.com/" />
@@ -13,32 +13,39 @@
   <link rel="alternate" hreflang="x-default" href="https://boomboxcar.com/" />
 
   <!-- Favicon & Touch -->
-  <link rel="icon" href="/favicon.png" type="image/png" sizes="64x64" />
-  <link rel="apple-touch-icon" href="/logol.jpeg" />
+  <link rel="icon" href="images/favicon.png" type="image/png" sizes="64x64" />
+  <link rel="apple-touch-icon" href="images/logol.jpeg" />
   <meta name="theme-color" content="#a7a98d" />
 
   <!-- Description -->
-  <meta name="description" content="BoomBoxCar is a fully licensed mobile venue serving the DC–Maryland–Virginia area. We bring pro audio, shade awning, bubbles by day, and at night high-power lighting, lasers, and haze. Starting at $249." />
+  <meta name="description" content="Book BoomBoxCar for mobile DJ entertainment, karaoke, pro audio, lighting, bubbles, and pop-up event service in DC, Maryland, and Virginia. Based in Silver Spring. Starting at $249." />
+  <meta name="geo.region" content="US-MD" />
+  <meta name="geo.placename" content="Silver Spring" />
 
   <!-- Open Graph -->
-  <meta property="og:title" content="BoomBoxCar – Mobile Venue & Entertainment Service" />
-  <meta property="og:description" content="The easiest way to amplify any event. Fully licensed mobile venue for markets, birthdays, brand activations, and more." />
-  <meta property="og:image" content="/wpl.jpeg" />
+  <meta property="og:title" content="BoomBoxCar | Mobile DJ, Karaoke & Event Entertainment in the DMV" />
+  <meta property="og:description" content="Fully licensed mobile entertainment for markets, birthdays, brand activations, block parties, and private events across DC, Maryland, and Virginia." />
+  <meta property="og:image" content="https://boomboxcar.com/images/wpl.jpeg" />
+  <meta property="og:image:alt" content="BoomBoxCar mobile entertainment setup with awning, speakers, and event lighting" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://boomboxcar.com/" />
+  <meta property="og:site_name" content="BoomBoxCar" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:locale:alternate" content="es_US" />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="BoomBoxCar – Mobile Venue & Entertainment Service" />
-  <meta name="twitter:description" content="Book BoomBoxCar for farmers markets, pop-ups, and private parties across the DMV." />
-  <meta name="twitter:image" content="/wpl.jpeg" />
+  <meta name="twitter:title" content="BoomBoxCar | Mobile DJ, Karaoke & Event Entertainment in the DMV" />
+  <meta name="twitter:description" content="Book BoomBoxCar for markets, pop-ups, brand activations, birthdays, and private parties across the DMV." />
+  <meta name="twitter:image" content="https://boomboxcar.com/images/wpl.jpeg" />
+  <meta name="twitter:image:alt" content="BoomBoxCar mobile entertainment setup with awning, speakers, and event lighting" />
 
   <!-- Performance -->
   <link rel="preconnect" href="https://app.squareup.com" crossorigin />
-  <link rel="preload" href="/wpm.jpeg" as="image" imagesrcset="/wps.jpeg 640w, /wpm.jpeg 1280w, /wpl.jpeg 1920w" imagesizes="100vw" />
+  <link rel="preload" href="images/wpm.jpeg" as="image" imagesrcset="images/wps.jpeg 640w, images/wpm.jpeg 1280w, images/wpl.jpeg 1920w" imagesizes="100vw" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="/index.css" />
+  <link rel="stylesheet" href="index.css" />
 
   <!-- Google Analytics (unchanged) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
@@ -54,28 +61,35 @@
   {
     "@context": "https://schema.org",
     "@type": "EntertainmentBusiness",
+    "@id": "https://boomboxcar.com/#business",
     "name": "BoomBoxCar",
     "url": "https://boomboxcar.com/",
     "telephone": "+1-404-906-8831",
     "email": "booking@boomboxcar.com",
-    "logo": "https://boomboxcar.com/logol.jpeg",
+    "logo": "https://boomboxcar.com/images/logol.jpeg",
     "image": [
-      "https://boomboxcar.com/wpl.jpeg",
-      "https://boomboxcar.com/1l.jpeg",
-      "https://boomboxcar.com/2l.jpeg",
-      "https://boomboxcar.com/3l.jpeg",
-      "https://boomboxcar.com/4l.jpeg",
-      "https://boomboxcar.com/5l.jpeg"
+      "https://boomboxcar.com/images/wpl.jpeg",
+      "https://boomboxcar.com/images/1l.jpeg",
+      "https://boomboxcar.com/images/2l.jpeg",
+      "https://boomboxcar.com/images/3l.jpeg",
+      "https://boomboxcar.com/images/4l.jpeg",
+      "https://boomboxcar.com/images/5l.jpeg"
     ],
-    "description": "A fully licensed mobile venue offering professional audio, shade awning, bubbles by day, and at night high-power lighting, lasers, and haze. Starting at $249.",
+    "description": "A fully licensed mobile event entertainment service offering DJ-style music, professional audio, shade awning, bubbles by day, and at night high-power lighting, lasers, and haze. Starting at $249.",
     "address": {
       "@type": "PostalAddress",
       "addressLocality": "Silver Spring",
       "addressRegion": "MD",
       "addressCountry": "US"
     },
-    "areaServed": "DC–Maryland–Virginia (DMV)",
+    "areaServed": [
+      { "@type": "Place", "name": "Washington, DC" },
+      { "@type": "State", "name": "Maryland" },
+      { "@type": "State", "name": "Virginia" },
+      { "@type": "Place", "name": "Silver Spring, MD" }
+    ],
     "sameAs": ["https://www.instagram.com/boomboxcar/"],
+    "availableLanguage": ["English", "Spanish"],
     "openingHoursSpecification": [{
       "@type": "OpeningHoursSpecification",
       "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
@@ -83,16 +97,27 @@
       "closes": "22:00"
     }],
     "priceRange": "$$",
-    "geo": { "latitude": 39.0, "longitude": -77.0 }
+    "geo": { "@type": "GeoCoordinates", "latitude": 39.0, "longitude": -77.0 },
+    "makesOffer": [
+      { "@type": "Offer", "priceCurrency": "USD", "price": "249", "availability": "https://schema.org/InStock", "itemOffered": { "@type": "Service", "name": "Mobile event entertainment" } },
+      { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Licensed karaoke add-on" } },
+      { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Night lighting, lasers, and haze package" } }
+    ]
   }
   </script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "Service",
-    "name": "Mobile Venue & Entertainment Service",
-    "provider": { "@type": "Organization", "name": "BoomBoxCar", "logo": "https://boomboxcar.com/logol.jpeg" },
-    "areaServed": "DC–Maryland–Virginia (DMV)",
+    "@id": "https://boomboxcar.com/#mobile-entertainment-service",
+    "name": "Mobile DJ, Karaoke & Event Entertainment Service",
+    "serviceType": "Mobile event entertainment",
+    "provider": { "@id": "https://boomboxcar.com/#business" },
+    "areaServed": [
+      { "@type": "Place", "name": "Washington, DC" },
+      { "@type": "State", "name": "Maryland" },
+      { "@type": "State", "name": "Virginia" }
+    ],
     "offers": { "@type": "Offer", "priceCurrency": "USD", "price": "249", "description": "Starting price; add-ons available; outside DMV custom pricing." }
   }
   </script>
@@ -105,7 +130,8 @@
       {"@type":"Question","name":"Do you play licensed music?","acceptedAnswer":{"@type":"Answer","text":"Yes. We partner with Soundtrack Your Brand to provide fully licensed music so artists get paid."}},
       {"@type":"Question","name":"Do you speak Spanish?","acceptedAnswer":{"@type":"Answer","text":"¡Sí! Podemos atender completamente en español."}},
       {"@type":"Question","name":"Do you offer karaoke? Are performance rights included?","acceptedAnswer":{"@type":"Answer","text":"Yes and yes. We partner with KaraFun to provide fully licensed karaoke on our 42\" OLED monitor—ask about add-ons."}},
-      {"@type":"Question","name":"What if it rains?","acceptedAnswer":{"@type":"Answer","text":"With our awnings and covered speakers we can party (light) rain or shine. If heavy rain is expected, rescheduling is allowed."}}
+      {"@type":"Question","name":"What if it rains?","acceptedAnswer":{"@type":"Answer","text":"With our awnings and covered speakers we can party (light) rain or shine. If heavy rain is expected, rescheduling is allowed."}},
+      {"@type":"Question","name":"What’s your cancellation policy?","acceptedAnswer":{"@type":"Answer","text":"50% non-refundable deposit after appointment is set. Rescheduling can be accommodated up to 2 days in advance."}}
     ]
   }
   </script>
@@ -117,34 +143,34 @@
   <!-- Header -->
   <header class="site-header">
     <a class="brand" href="#top">
-      <img src="/logos.jpeg" srcset="/logos.jpeg 1x, /logom.jpeg 2x, /logol.jpeg 3x" width="36" height="36" alt="BoomBoxCar logo" decoding="async" />
+      <img src="images/logos.jpeg" srcset="images/logos.jpeg 1x, images/logom.jpeg 2x, images/logol.jpeg 3x" width="36" height="36" alt="BoomBoxCar logo" decoding="async" />
     </a>
 
     <nav class="top-actions">
       <a id="telLink" href="tel:+14049068831" class="top-link">404.906.8831</a>
       <a id="emailLink" href="mailto:booking@boomboxcar.com" class="top-link">booking@boomboxcar.com</a>
-      <a class="lang-toggle" href="/es/" hreflang="es" aria-label="View in Spanish">ES</a>
+      <a class="lang-toggle" href="es/" hreflang="es" aria-label="View in Spanish">ES</a>
     </nav>
   </header>
 
   <!-- Sticky CTA (always visible) -->
   <a id="ctaBook" class="cta-sticky" href="https://app.squareup.com/appointments/book/pz9p8fdxiu4g9w/LX5ZE0BPJR0HS/start" data-gtag="book_on_square_click" aria-label="Book on Square">
-    Book on <span class="btn-label"></span><img class="sqmark" src="/square-logo-s.png" alt="" aria-hidden="true" decoding="async" />
+    Book on <span class="btn-label"></span><img class="sqmark" src="images/square-logo-s.png" alt="" aria-hidden="true" decoding="async" />
   </a>
 
   <main id="top">
     <!-- Hero -->
     <section class="hero">
       <picture>
-        <source srcset="/wpl.jpeg" media="(min-width:1200px)" />
-        <source srcset="/wpm.jpeg" media="(min-width:640px)" />
-        <img src="/wps.jpeg" alt="BoomBoxCar mobile venue setup" loading="eager" decoding="async" />
+        <source srcset="images/wpl.jpeg" media="(min-width:1200px)" />
+        <source srcset="images/wpm.jpeg" media="(min-width:640px)" />
+        <img src="images/wps.jpeg" alt="BoomBoxCar mobile venue setup" loading="eager" decoding="async" />
       </picture>
       <div class="hero-copy">
-        <h1 data-i18n="hero_title">BoomBoxCar – Mobile Venue & Entertainment Service</h1>
+        <h1 data-i18n="hero_title">Mobile DJ, Karaoke & Event Entertainment in the DMV</h1>
         <p class="tagline" data-i18n="hero_tagline">The Easiest Way to Amplify Any Event</p>
         <div class="hero-cta">
-          <a class="btn btn-primary" href="https://app.squareup.com/appointments/book/pz9p8fdxiu4g9w/LX5ZE0BPJR0HS/start" data-gtag="book_on_square_click" aria-label="Book on Square">Book on <span class="btn-label"></span><img class="sqmark" src="/square-logo-s.png" alt="" aria-hidden="true" decoding="async" /></a>
+          <a class="btn btn-primary" href="https://app.squareup.com/appointments/book/pz9p8fdxiu4g9w/LX5ZE0BPJR0HS/start" data-gtag="book_on_square_click" aria-label="Book on Square">Book on <span class="btn-label"></span><img class="sqmark" src="images/square-logo-s.png" alt="" aria-hidden="true" decoding="async" /></a>
         </div>
       </div>
     </section>
@@ -174,6 +200,16 @@
       </p>
     </section>
 
+    <!-- Events -->
+    <section class="events">
+      <h2>Events We Serve</h2>
+      <p>
+        BoomBoxCar brings mobile entertainment to farmers markets, pop-ups, block parties,
+        birthday parties, school events, neighborhood gatherings, private parties, and brand activations
+        across Silver Spring, Washington DC, Maryland, and Virginia.
+      </p>
+    </section>
+
     <!-- Gallery -->
     <section class="gallery">
       <h2 data-i18n="gallery_title">Gallery</h2>
@@ -181,37 +217,37 @@
         <!-- Use your numbered images; add/remove as needed -->
         <figure>
           <picture>
-            <source srcset="/1l.jpeg" media="(min-width:1200px)" />
-            <source srcset="/1m.jpeg" media="(min-width:640px)" />
-            <img src="/1s.jpeg" alt="BoomBoxCar at a community event" loading="lazy" decoding="async" />
+            <source srcset="images/1l.jpeg" media="(min-width:1200px)" />
+            <source srcset="images/1m.jpeg" media="(min-width:640px)" />
+            <img src="images/1s.jpeg" alt="BoomBoxCar at a community event" loading="lazy" decoding="async" />
           </picture>
         </figure>
         <figure>
           <picture>
-            <source srcset="/2l.jpeg" media="(min-width:1200px)" />
-            <source srcset="/2m.jpeg" media="(min-width:640px)" />
-            <img src="/2s.jpeg" alt="Night setup with lighting and lasers" loading="lazy" decoding="async" />
+            <source srcset="images/2l.jpeg" media="(min-width:1200px)" />
+            <source srcset="images/2m.jpeg" media="(min-width:640px)" />
+            <img src="images/2s.jpeg" alt="Night setup with lighting and lasers" loading="lazy" decoding="async" />
           </picture>
         </figure>
         <figure>
           <picture>
-            <source srcset="/3l.jpeg" media="(min-width:1200px)" />
-            <source srcset="/3m.jpeg" media="(min-width:640px)" />
-            <img src="/3s.jpeg" alt="Daytime awning and bubbles" loading="lazy" decoding="async" />
+            <source srcset="images/3l.jpeg" media="(min-width:1200px)" />
+            <source srcset="images/3m.jpeg" media="(min-width:640px)" />
+            <img src="images/3s.jpeg" alt="Daytime awning and bubbles" loading="lazy" decoding="async" />
           </picture>
         </figure>
         <figure>
           <picture>
-            <source srcset="/4l.jpeg" media="(min-width:1200px)" />
-            <source srcset="/4m.jpeg" media="(min-width:640px)" />
-            <img src="/4s.jpeg" alt="Market activation with BoomBoxCar" loading="lazy" decoding="async" />
+            <source srcset="images/4l.jpeg" media="(min-width:1200px)" />
+            <source srcset="images/4m.jpeg" media="(min-width:640px)" />
+            <img src="images/4s.jpeg" alt="Market activation with BoomBoxCar" loading="lazy" decoding="async" />
           </picture>
         </figure>
         <figure>
           <picture>
-            <source srcset="/5l.jpeg" media="(min-width:1200px)" />
-            <source srcset="/5m.jpeg" media="(min-width:640px)" />
-            <img src="/5s.jpeg" alt="Outdoor party scene" loading="lazy" decoding="async" />
+            <source srcset="images/5l.jpeg" media="(min-width:1200px)" />
+            <source srcset="images/5m.jpeg" media="(min-width:640px)" />
+            <img src="images/5s.jpeg" alt="Outdoor party scene" loading="lazy" decoding="async" />
           </picture>
         </figure>
       </div>
@@ -268,6 +304,6 @@
     <small>© <span id="year"></span> BoomBoxCar. All rights reserved.</small>
   </footer>
 
-  <script src="/index.js" defer></script>
+  <script src="index.js" defer></script>
 </body>
 </html>

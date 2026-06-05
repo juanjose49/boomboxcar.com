@@ -70,9 +70,10 @@ a:hover{text-decoration:underline}
 .btn-primary:hover{filter:brightness(.95); text-decoration:none}
 
 /* Sections */
-.features,.pricing,.gallery,.faqs,.contact{padding:24px 16px}
+.features,.pricing,.events,.gallery,.faqs,.contact{padding:24px 16px}
 .features>.feature-list{display:grid; gap:.6rem; list-style:none; padding:0; max-width:1000px; margin:0 auto}
 .pricing p{max-width:1000px; margin:0 auto 8px}
+.events p{max-width:1000px; margin:0 auto 8px}
 
 /* Gallery */
 .gallery .grid{
