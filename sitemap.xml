@@ -15,26 +15,32 @@
     <image:image>
       <image:loc>https://boomboxcar.com/images/wpl.jpeg</image:loc>
       <image:title>BoomBoxCar mobile entertainment setup</image:title>
+      <image:caption>Mobile DJ, karaoke, and event entertainment setup serving Silver Spring and the DMV.</image:caption>
     </image:image>
     <image:image>
       <image:loc>https://boomboxcar.com/images/1l.jpeg</image:loc>
       <image:title>BoomBoxCar community event setup</image:title>
+      <image:caption>BoomBoxCar setup for outdoor community events, pop-ups, and private parties.</image:caption>
     </image:image>
     <image:image>
       <image:loc>https://boomboxcar.com/images/2l.jpeg</image:loc>
       <image:title>BoomBoxCar night lighting and lasers</image:title>
+      <image:caption>Night event lighting, lasers, haze, and mobile entertainment.</image:caption>
     </image:image>
     <image:image>
       <image:loc>https://boomboxcar.com/images/3l.jpeg</image:loc>
       <image:title>BoomBoxCar daytime awning and bubbles</image:title>
+      <image:caption>Daytime mobile entertainment with shade awning, bubbles, and pro audio.</image:caption>
     </image:image>
     <image:image>
       <image:loc>https://boomboxcar.com/images/4l.jpeg</image:loc>
       <image:title>BoomBoxCar event activation</image:title>
+      <image:caption>Mobile entertainment for markets, brand activations, and public events.</image:caption>
     </image:image>
     <image:image>
       <image:loc>https://boomboxcar.com/images/5l.jpeg</image:loc>
       <image:title>BoomBoxCar outdoor party entertainment</image:title>
+      <image:caption>Outdoor party entertainment with music, lighting, and event support.</image:caption>
     </image:image>
   </url>
 
@@ -50,6 +56,7 @@
     <image:image>
       <image:loc>https://boomboxcar.com/images/wpl.jpeg</image:loc>
       <image:title>Montaje movil de entretenimiento BoomBoxCar</image:title>
+      <image:caption>DJ movil, karaoke y entretenimiento para eventos en Silver Spring y el DMV.</image:caption>
     </image:image>
   </url>
 </urlset>

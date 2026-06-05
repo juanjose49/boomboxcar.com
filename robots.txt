@@ -1,5 +1,7 @@
 # boomboxcar.com/robots.txt
 User-agent: *
 Allow: /
+Allow: /es/
+Allow: /images/
 
 Sitemap: https://boomboxcar.com/sitemap.xml
