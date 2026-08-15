@@ -79,6 +79,7 @@
   let customerDraftExpiryTimer = null;
   const customerDraftKey = 'boomboxcarCustomerDraft.v1';
   const customerDraftTtlMs = 60 * 60 * 1000;
+  let minimumNoticeHours = 18;
   const customerDraftFields = [
     'addressLine1', 'addressLine2', 'locality', 'administrativeDistrictLevel1', 'postalCode',
     'givenName', 'familyName', 'email', 'phone'
@@ -100,7 +101,27 @@
     return `${year}-${month}-${day}`;
   }
 
-  dateInput.min = localDateValue(new Date());
+  function eventDateParts(date) {
+    return Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(date).filter(part => part.type !== 'literal').map(part => [part.type, Number(part.value)]));
+  }
+
+  function eventDateValue(date) {
+    const { year, month, day } = eventDateParts(date);
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  function nextEligibleSaturday(noticeHours = minimumNoticeHours) {
+    const earliest = new Date(Date.now() + noticeHours * 60 * 60 * 1000);
+    const { year, month, day } = eventDateParts(earliest);
+    const candidate = new Date(Date.UTC(year, month - 1, day, 12));
+    candidate.setUTCDate(candidate.getUTCDate() + ((6 - candidate.getUTCDay() + 7) % 7));
+    return localDateValue(new Date(candidate.getUTCFullYear(), candidate.getUTCMonth(), candidate.getUTCDate()));
+  }
+
+  dateInput.min = eventDateValue(new Date());
+  if (!dateInput.value) dateInput.value = nextEligibleSaturday();
 
   function selectedDuration() {
     return form.querySelector('input[name="duration"]:checked');
@@ -349,7 +370,7 @@
     if (!selectedDuration()) return setTimeOptions([], copy.chooseDurationFirst);
     if (!dateInput.value) return setTimeOptions([], copy.chooseDateFirst);
     const options = [];
-    const earliest = Date.now() + 18 * 60 * 60 * 1000;
+    const earliest = Date.now() + minimumNoticeHours * 60 * 60 * 1000;
     for (let minutes = 9 * 60; minutes <= 22 * 60; minutes += 30) {
       const hour = Math.floor(minutes / 60);
       const minute = minutes % 60;
@@ -472,7 +493,7 @@
     timeInput.setCustomValidity('');
     if (!dateInput.value || !timeInput.value || selectedStartAt()) return;
     const eventDate = new Date(`${dateInput.value}T${timeInput.value}`);
-    if (eventDate < new Date(Date.now() + 18 * 60 * 60 * 1000)) timeInput.setCustomValidity(copy.notice);
+    if (eventDate < new Date(Date.now() + minimumNoticeHours * 60 * 60 * 1000)) timeInput.setCustomValidity(copy.notice);
   }
 
   function buildDraft() {
@@ -541,6 +562,7 @@
       const response = await fetch(`${apiBase}/config`, { headers: { Accept: 'application/json' } });
       const config = await response.json();
       backendReady = response.ok && config.ready === true;
+      if (Number.isFinite(Number(config.minimumNoticeHours))) minimumNoticeHours = Number(config.minimumNoticeHours);
     } catch (_) { backendReady = false; }
     await loadPackagePricing();
     const duration = selectedDuration();
