@@ -16,7 +16,7 @@
     eventType: 'Tipo de evento', setting: 'Entorno', attendance: 'Asistencia esperada', requests: 'Solicitudes especiales',
     estimatedTotal: 'Total estimado', customQuote: 'cotización personalizada', chooseDateFirst: 'Elige una fecha primero',
     chooseTime: 'Elige una hora de llegada', loading: 'Consultando la disponibilidad de Square…',
-    liveReady: 'Estas horas están disponibles actualmente en Square.', noSlots: 'No hay horas disponibles para esta fecha y duración.',
+    noSlots: 'No hay horas disponibles para esta fecha y duración.',
     fallback: 'La API aún no está disponible. Elige una hora y confirmarás la disponibilidad en el programador de Square.',
     apiSubmit: 'Continuar al pago de Square', fallbackSubmit: 'Copiar detalles y continuar a Square',
     apiHandoff: 'La dirección del evento se guardará como el lugar de la cita. Square completará tus datos de contacto para el pago. Completa el pago en 30 minutos para conservar la hora.',
@@ -40,7 +40,7 @@
     eventType: 'Event type', setting: 'Setting', attendance: 'Expected attendance', requests: 'Special requests',
     estimatedTotal: 'Estimated total', customQuote: 'custom quote', chooseDateFirst: 'Choose a date first',
     chooseTime: 'Choose an arrival time', loading: 'Checking live Square availability…',
-    liveReady: 'These times are currently available in Square.', noSlots: 'No arrival times are available for this date and duration.',
+    noSlots: 'No arrival times are available for this date and duration.',
     fallback: 'The API is not available yet. Choose a time and confirm availability in the hosted Square scheduler.',
     apiSubmit: 'Continue to Square Checkout', fallbackSubmit: 'Copy details & continue to Square',
     apiHandoff: 'Your event address will be saved as the appointment location. Square will prefill your contact details for payment. Complete payment within 30 minutes to keep the time.',
@@ -413,6 +413,7 @@
       options.push(option);
     }
     setTimeOptions(options, copy.chooseTime, preferredSelection);
+    availabilityStatus.hidden = false;
     availabilityStatus.textContent = copy.fallback;
     availabilityStatus.dataset.state = 'fallback';
     submitButton.textContent = copy.fallbackSubmit;
@@ -422,6 +423,7 @@
 
   async function loadAvailability({ preserveSelection = false, preferredSelection = null } = {}) {
     timeInput.setCustomValidity('');
+    availabilityStatus.hidden = false;
     if (!selectedDuration()) {
       dateInput.disabled = true;
       setTimeOptions([], copy.chooseDurationFirst);
@@ -467,7 +469,8 @@
         return option;
       });
       setTimeOptions(options, options.length ? copy.chooseTime : copy.noSlots, selectionToRestore);
-      availabilityStatus.textContent = options.length ? copy.liveReady : copy.noSlots;
+      availabilityStatus.textContent = options.length ? '' : copy.noSlots;
+      availabilityStatus.hidden = options.length > 0;
       availabilityStatus.dataset.state = options.length ? 'ready' : 'empty';
       submitButton.textContent = copy.apiSubmit;
       handoffNote.textContent = copy.apiHandoff;

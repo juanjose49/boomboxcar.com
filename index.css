@@ -311,6 +311,7 @@ main > .contact{order:8}
   border-color:var(--brand);
 }
 .availability-status{margin:11px 0 0;padding:9px 11px;border-radius:8px;color:#d8d8d8;background:rgba(255,255,255,.08);font-size:.86rem}
+.availability-status[hidden]{display:none}
 .availability-status[data-state="ready"]{color:#dff6e6;background:rgba(61,161,91,.18)}
 .availability-status[data-state="empty"]{color:#ffe1dc;background:rgba(190,70,50,.18)}
 .availability-status[data-state="fallback"]{color:#ffe8c9;background:rgba(255,148,59,.16)}
