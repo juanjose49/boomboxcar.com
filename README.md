@@ -17,9 +17,14 @@ Useful routes:
 ```text
 GET  /api/health
 GET  /api/config
+GET  /api/modifiers?durationHours=1
 POST /api/availability
 POST /api/reservations
 ```
+
+The modifier endpoint reads the modifier sets already attached to each configured Square service. The backend uses Square Catalog names, prices, selection rules, and IDs instead of duplicating them in environment variables. A completed reservation creates a Square Booking and then a linked Square Order. The readable modifier summary remains in the booking note, and the Order receives the actual Catalog modifier IDs. If Square accepts the booking but rejects the order, the reservation is preserved with an order warning for review instead of risking a duplicate appointment.
+
+The Square access token must permit Catalog reads, booking/customer operations, and order creation. For OAuth applications, this means the applicable `ITEMS_READ`, `APPOINTMENTS_WRITE`, `CUSTOMERS_READ`, `CUSTOMERS_WRITE`, and `ORDERS_WRITE` permissions.
 
 Reservation records are appended to `data/reservations.jsonl` with owner-only permissions. The directory is ignored by Git and must remain outside `public_html` in production.
 
