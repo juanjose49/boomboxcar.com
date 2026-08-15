@@ -68,7 +68,7 @@ function bindTrackedLink(el, eventName) {
     const params = {
       link_url: href,
       link_text: (el.textContent || '').trim(),
-      cta_position: el.id === 'ctaBook' ? 'sticky' : (el.closest('.hero') ? 'hero' : 'body'),
+      cta_position: el.closest('.hero') ? 'hero' : 'body',
       lang: document.documentElement.lang || 'en'
     };
 
@@ -104,12 +104,15 @@ function bindTrackedLink(el, eventName) {
 // ---- DOM Ready: footer year, bindings, impressions ----
 document.addEventListener('DOMContentLoaded', () => {
   bindThemeToggle();
+  const bookingSection = document.querySelector('main > .booking');
+  const faqSection = document.querySelector('main > .faqs');
+  if (bookingSection && faqSection) faqSection.before(bookingSection);
+
   // Year in footer
   const y = document.getElementById('year');
   if (y) y.textContent = new Date().getFullYear();
 
   // Attach tracking
-  bindTrackedLink(document.getElementById('ctaBook'), 'booking_builder_click');
   document.querySelectorAll('[data-gtag="booking_builder_click"]').forEach(a => bindTrackedLink(a, 'booking_builder_click'));
   bindTrackedLink(document.getElementById('emailLink'), 'click_email_header');
   bindTrackedLink(document.getElementById('contactEmail'), 'click_email_contact');
@@ -128,18 +131,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { threshold: 0.5 });
     io.observe(heroCta);
   }
-
-  // Show sticky CTA only after user scrolls a bit
-  let stickySeen = false;
-  function updateStickyVisibility(){
-    if (window.scrollY > 20) {
-      document.body.classList.add('cta-visible');
-      if (!stickySeen) { fireGA('cta_impression', { cta_position: 'sticky' }); stickySeen = true; }
-    } else {
-      document.body.classList.remove('cta-visible');
-    }
-  }
-  updateStickyVisibility();
-  window.addEventListener('scroll', updateStickyVisibility, { passive: true });
-  window.addEventListener('resize', updateStickyVisibility, { passive: true });
 });

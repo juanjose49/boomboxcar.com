@@ -59,7 +59,7 @@
   <link rel="preload" href="images/wpm.jpeg" as="image" imagesrcset="images/wps.jpeg 640w, images/wpm.jpeg 1280w, images/wpl.jpeg 1920w" imagesizes="100vw" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="index.css?v=20260815-inclusions" />
+  <link rel="stylesheet" href="index.css?v=20260815-layout" />
 
   <!-- Google Analytics (unchanged) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
@@ -161,11 +161,6 @@
     </nav>
   </header>
 
-  <!-- Sticky CTA (always visible) -->
-  <a id="ctaBook" class="cta-sticky" href="#book" data-gtag="booking_builder_click" aria-label="Book BoomBoxCar">
-    Book BoomBoxCar
-  </a>
-
   <main id="top">
     <!-- Hero -->
     <section class="hero">
@@ -231,7 +226,7 @@
             <div class="field-grid">
               <label class="field-wide"><span>Event address</span><input name="address" type="text" autocomplete="street-address" placeholder="Street address, city, state, ZIP" required /></label>
               <label><span>Event type</span><select name="eventType" required><option value="">Choose one</option><option>Birthday</option><option>Community event</option><option>School event</option><option>Market or pop-up</option><option>Private party</option><option>Brand activation</option><option>Other</option></select></label>
-              <label><span>Setting</span><select name="setting" required><option value="">Choose one</option><option>Outdoor</option><option>Indoor</option><option>Both indoor and outdoor</option></select></label>
+              <label><span>Setting</span><select name="setting" required><option value="Outdoor" selected>Outdoor</option><option value="Indoor/Outdoor">Indoor/Outdoor</option></select></label>
               <label><span>Expected attendance</span><input name="attendance" type="number" min="1" inputmode="numeric" placeholder="Approximate guest count" required /></label>
               <label class="field-wide"><span>Special requests <small>(optional)</small></span><textarea name="requests" rows="4" placeholder="Music, setup, access, or anything else we should know"></textarea></label>
             </div>
@@ -400,7 +395,7 @@
     <small>© <span id="year"></span> BoomBoxCar. All rights reserved.</small>
   </footer>
 
-  <script src="index.js?v=20260815-modifiers" defer></script>
+  <script src="index.js?v=20260815-layout" defer></script>
   <script src="booking.js?v=20260815-inclusions" defer></script>
 </body>
 </html>

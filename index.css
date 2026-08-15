@@ -100,7 +100,6 @@ a:hover{text-decoration:underline}
 :root[data-theme="dark"] .theme-icon-sun{display:block}
 .lang-toggle:focus{outline:2px solid var(--brand); outline-offset:2px}
 .btn:focus-visible,
-.cta-sticky:focus-visible,
 .top-link:focus-visible,
 .theme-toggle:focus-visible,
 .lang-toggle:focus-visible{
@@ -110,6 +109,15 @@ a:hover{text-decoration:underline}
 }
 
 /* Hero */
+main{display:flex;flex-direction:column}
+main > .hero{order:1}
+main > .features{order:2}
+main > .pricing{order:3}
+main > .events{order:4}
+main > .gallery{order:5}
+main > .booking{order:6}
+main > .faqs{order:7}
+main > .contact{order:8}
 .hero{position:relative; display:grid; min-height:56vh; overflow:hidden}
 .hero::after{
   content:"";
@@ -398,28 +406,6 @@ a:hover{text-decoration:underline}
 /* Footer */
 .site-footer{padding:24px 16px; text-align:center; color:var(--muted); border-top:1px solid var(--ring)}
 
-/* Sticky CTA */
-.cta-sticky{
-  position:fixed; left:50%; transform: translate(-50%, 150%);
-  display:inline-flex; align-items:center; justify-content:center;
-  gap:.35em;
-  bottom: calc(14px + env(safe-area-inset-bottom)); z-index:50;
-  padding:.9rem 1.2rem; border-radius:999px; font-weight:800;
-  background:var(--brand); color:#fff; text-decoration:none; box-shadow:0 8px 20px rgba(0,0,0,.25);
-  white-space: nowrap;
-  opacity:0; visibility:hidden; pointer-events:none;
-  transition: transform .25s ease, opacity .25s ease;
-  will-change: transform;
-}
-.cta-sticky:hover{text-decoration:none; filter:brightness(.95)}
-
-body.cta-visible .cta-sticky{ transform: translate(-50%, 0); opacity:1; visibility:visible; pointer-events:auto }
-
-@media (prefers-reduced-motion: reduce){
-  .cta-sticky{ transition:none }
-}
-.cta-sticky:hover{text-decoration:none; filter:brightness(.95)}
-
 /* NoScript */
 .noscript{padding:10px; text-align:center; background:#fff7d6; border-bottom:1px solid var(--ring)}
 
@@ -439,7 +425,6 @@ body.cta-visible .cta-sticky{ transform: translate(-50%, 0); opacity:1; visibili
 /* Square wordmark image inside CTA buttons/links */
 .sqmark{height:1em;width:auto;vertical-align:-0.15em;margin-left:.35em}
 .btn .sqmark{height:1em}
-.cta-sticky .sqmark{height:1em}
 
 /* Extra-narrow safety adjustments */
 @media (max-width:360px){
@@ -448,16 +433,12 @@ body.cta-visible .cta-sticky{ transform: translate(-50%, 0); opacity:1; visibili
   .top-actions .top-link{font-size:.85rem}
   .lang-toggle{padding:.3rem .5rem}
 }
-/* Reserve space so sticky CTA doesn’t overlap footer copy */
-:root{ --cta-bottom-safe: calc(64px + env(safe-area-inset-bottom)); }
-.site-footer{ padding-bottom: calc(24px + var(--cta-bottom-safe)); }
-
 @media (min-width:760px){
   .site-header .brand img{width:44px;height:44px}
   .faqs details{max-width:var(--max); padding:16px 18px}
   .contact p{max-width:var(--max)}
   .site-footer{
     padding-top:30px;
-    padding-bottom:calc(30px + var(--cta-bottom-safe));
+    padding-bottom:30px;
   }
 }

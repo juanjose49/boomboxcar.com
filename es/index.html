@@ -61,7 +61,7 @@
   <link rel="preload" href="../images/wpm.jpeg" as="image" imagesrcset="../images/wps.jpeg 640w, ../images/wpm.jpeg 1280w, ../images/wpl.jpeg 1920w" imagesizes="100vw" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="../index.css?v=20260815-inclusions" />
+  <link rel="stylesheet" href="../index.css?v=20260815-layout" />
 
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
@@ -163,11 +163,6 @@
     </nav>
   </header>
 
-  <!-- CTA fija (siempre visible) -->
-  <a id="ctaBook" class="cta-sticky" href="#book" data-gtag="booking_builder_click" aria-label="Reservar BoomBoxCar">
-    Reservar BoomBoxCar
-  </a>
-
   <main id="top">
     <!-- Hero -->
     <section class="hero">
@@ -227,7 +222,7 @@
             <div class="field-grid">
               <label class="field-wide"><span>Dirección del evento</span><input name="address" type="text" autocomplete="street-address" placeholder="Dirección, ciudad, estado, código postal" required /></label>
               <label><span>Tipo de evento</span><select name="eventType" required><option value="">Elige uno</option><option>Cumpleaños</option><option>Evento comunitario</option><option>Evento escolar</option><option>Mercado o pop-up</option><option>Fiesta privada</option><option>Activación de marca</option><option>Otro</option></select></label>
-              <label><span>Entorno</span><select name="setting" required><option value="">Elige uno</option><option>Exterior</option><option>Interior</option><option>Interior y exterior</option></select></label>
+              <label><span>Entorno</span><select name="setting" required><option value="Outdoor" selected>Exterior</option><option value="Indoor/Outdoor">Interior/Exterior</option></select></label>
               <label><span>Asistencia esperada</span><input name="attendance" type="number" min="1" inputmode="numeric" placeholder="Número aproximado de invitados" required /></label>
               <label class="field-wide"><span>Solicitudes especiales <small>(opcional)</small></span><textarea name="requests" rows="4" placeholder="Música, montaje, acceso o cualquier otra información"></textarea></label>
             </div>
@@ -389,7 +384,7 @@
     <small>© <span id="year"></span> BoomBoxCar. Todos los derechos reservados.</small>
   </footer>
 
-  <script src="../index.js?v=20260815-modifiers" defer></script>
+  <script src="../index.js?v=20260815-layout" defer></script>
   <script src="../booking.js?v=20260815-inclusions" defer></script>
 </body>
 </html>
