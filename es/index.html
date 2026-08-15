@@ -17,7 +17,21 @@
   <!-- Favicon & Touch -->
   <link rel="icon" href="../images/favicon.png" type="image/png" sizes="64x64" />
   <link rel="apple-touch-icon" href="../images/logol.jpeg" />
-  <meta name="theme-color" content="#a7a98d" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#101214" media="(prefers-color-scheme: dark)" />
+  <script>
+    (() => {
+      const key = 'boomboxcar-theme';
+      let saved = null;
+      try { saved = localStorage.getItem(key); } catch (_) {}
+      const theme = saved === 'dark' || saved === 'light'
+        ? saved
+        : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+    })();
+  </script>
 
   <!-- Descripción -->
   <meta name="description" content="Reserva BoomBoxCar para DJ móvil, karaoke, audio profesional, iluminación, burbujas y entretenimiento para eventos en DC, Maryland y Virginia. Desde $249." />
@@ -47,7 +61,7 @@
   <link rel="preload" href="../images/wpm.jpeg" as="image" imagesrcset="../images/wps.jpeg 640w, ../images/wpm.jpeg 1280w, ../images/wpl.jpeg 1920w" imagesizes="100vw" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="../index.css?v=20260815-booking" />
+  <link rel="stylesheet" href="../index.css?v=20260815-backend" />
 
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
@@ -145,6 +159,7 @@
     <nav class="top-actions">
       <a id="telLink" href="tel:+14049068831" class="top-link">404.906.8831</a>
       <a id="emailLink" href="mailto:booking@boomboxcar.com" class="top-link">booking@boomboxcar.com</a>
+      <button class="theme-toggle" type="button" aria-label="Cambiar al modo oscuro" aria-pressed="false" title="Cambiar al modo oscuro"><span class="theme-icon theme-icon-moon" aria-hidden="true">☾</span><span class="theme-icon theme-icon-sun" aria-hidden="true">☀</span></button>
       <a class="lang-toggle" href="../" hreflang="en" aria-label="View in English">EN</a>
     </nav>
   </header>
@@ -185,9 +200,10 @@
             <legend><span>1</span> ¿Cuándo es tu evento?</legend>
             <div class="field-grid field-grid-date">
               <label><span>Fecha</span><input id="eventDate" name="eventDate" type="date" required /></label>
-              <label><span>Hora de llegada</span><input id="eventTime" name="eventTime" type="time" required /></label>
+              <label><span>Hora de llegada</span><select id="eventTime" name="eventTime" required disabled><option value="">Elige una fecha primero</option></select></label>
             </div>
-            <p class="field-note">Square confirma la disponibilidad final. Las reservas en línea requieren al menos 18 horas de antelación.</p>
+            <p class="availability-status" id="availabilityStatus" role="status">Elige una fecha y duración para ver las horas de llegada.</p>
+            <p class="field-note">La disponibilidad viene directamente de Square. Las reservas en línea requieren al menos 18 horas de antelación.</p>
           </fieldset>
 
           <fieldset class="booking-step">
@@ -204,11 +220,11 @@
           <fieldset class="booking-step">
             <legend><span>3</span> Hazlo tuyo</legend>
             <div class="choice-grid addon-grid">
-              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Paquete nocturno" data-price="125" /><span><strong>Paquete nocturno</strong><small>Luces, láseres y niebla · +$125</small></span></label>
-              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Karaoke" data-price="100" /><span><strong>Karaoke</strong><small>KaraFun con licencia y OLED de 42″ · +$100</small></span></label>
-              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Burbujas" data-price="50" /><span><strong>Burbujas</strong><small>Para celebraciones de día · +$50</small></span></label>
-              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Micrófono adicional" data-quote="true" /><span><strong>Micrófono adicional</strong><small>Cotización personalizada</small></span></label>
-              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Activación de marca / gráficos personalizados" data-quote="true" /><span><strong>Activación de marca / gráficos personalizados</strong><small>Cotización personalizada</small></span></label>
+              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Paquete nocturno" data-addon-key="night" data-price="125" /><span><strong>Paquete nocturno</strong><small>Luces, láseres y niebla · +$125</small></span></label>
+              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Karaoke" data-addon-key="karaoke" data-price="100" /><span><strong>Karaoke</strong><small>KaraFun con licencia y OLED de 42″ · +$100</small></span></label>
+              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Burbujas" data-addon-key="bubbles" data-price="50" /><span><strong>Burbujas</strong><small>Para celebraciones de día · +$50</small></span></label>
+              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Micrófono adicional" data-addon-key="microphone" data-quote="true" /><span><strong>Micrófono adicional</strong><small>Cotización personalizada</small></span></label>
+              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Activación de marca / gráficos personalizados" data-addon-key="branding" data-quote="true" /><span><strong>Activación de marca / gráficos personalizados</strong><small>Cotización personalizada</small></span></label>
             </div>
           </fieldset>
 
@@ -222,6 +238,16 @@
               <label class="field-wide"><span>Solicitudes especiales <small>(opcional)</small></span><textarea name="requests" rows="4" placeholder="Música, montaje, acceso o cualquier otra información"></textarea></label>
             </div>
           </fieldset>
+
+          <fieldset class="booking-step">
+            <legend><span>5</span> Tus datos de contacto</legend>
+            <div class="field-grid">
+              <label><span>Nombre</span><input name="givenName" type="text" autocomplete="given-name" required /></label>
+              <label><span>Apellido</span><input name="familyName" type="text" autocomplete="family-name" required /></label>
+              <label><span>Correo electrónico</span><input name="email" type="email" autocomplete="email" required /></label>
+              <label><span>Teléfono móvil</span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="Incluye el código de área" required /></label>
+            </div>
+          </fieldset>
         </div>
 
         <aside class="booking-summary" aria-live="polite">
@@ -231,8 +257,9 @@
           <div class="summary-lines" id="summaryLines"></div>
           <div class="summary-total"><span>Total estimado</span><strong id="summaryTotal">$549</strong></div>
           <p class="quote-note" id="quoteNote" hidden>Las opciones con cotización personalizada se cobrarán antes de confirmar la reserva.</p>
-          <button class="btn btn-primary booking-submit" type="submit">Copiar detalles y continuar a Square</button>
-          <p class="handoff-note">Se copiarán los detalles del evento. Pégalos en el campo de notas de la cita en Square para que cada extra quede guardado con tu reserva.</p>
+          <button class="btn btn-primary booking-submit" id="bookingSubmit" type="submit">Reservar BoomBoxCar</button>
+          <p class="handoff-note" id="handoffNote">Conectando con la disponibilidad de Square. Si la API aún no está lista, se copiarán tus detalles para el programador alojado de Square.</p>
+          <div class="booking-result" id="bookingResult" role="status" hidden></div>
           <p class="secure-note"><img src="../images/square-logo-s.png" alt="" aria-hidden="true" /> Programación segura a través de Square</p>
         </aside>
       </form>
@@ -366,7 +393,7 @@
     <small>© <span id="year"></span> BoomBoxCar. Todos los derechos reservados.</small>
   </footer>
 
-  <script src="../index.js?v=20260815-booking" defer></script>
-  <script src="../booking.js?v=20260815-booking" defer></script>
+  <script src="../index.js?v=20260815-backend" defer></script>
+  <script src="../booking.js?v=20260815-backend" defer></script>
 </body>
 </html>

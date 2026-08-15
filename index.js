@@ -9,6 +9,54 @@ function fireGA(eventName, params = {}) {
   } catch (_) {}
 }
 
+const themeStorageKey = 'boomboxcar-theme';
+const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+function getStoredTheme() {
+  try {
+    const theme = localStorage.getItem(themeStorageKey);
+    return theme === 'dark' || theme === 'light' ? theme : null;
+  } catch (_) { return null; }
+}
+
+function applyTheme(theme) {
+  const isDark = theme === 'dark';
+  const isSpanish = document.documentElement.lang.startsWith('es');
+  const label = isSpanish
+    ? (isDark ? 'Cambiar al modo claro' : 'Cambiar al modo oscuro')
+    : (isDark ? 'Switch to light mode' : 'Switch to dark mode');
+  const toggle = document.querySelector('.theme-toggle');
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+  document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
+    meta.content = isDark ? '#101214' : '#ffffff';
+  });
+  if (toggle) {
+    toggle.setAttribute('aria-label', label);
+    toggle.setAttribute('aria-pressed', String(isDark));
+    toggle.title = label;
+  }
+}
+
+function bindThemeToggle() {
+  const toggle = document.querySelector('.theme-toggle');
+  if (!toggle) return;
+  applyTheme(getStoredTheme() || (systemTheme.matches ? 'dark' : 'light'));
+  toggle.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem(themeStorageKey, next); } catch (_) {}
+    applyTheme(next);
+  });
+  const syncSystemTheme = event => {
+    if (!getStoredTheme()) applyTheme(event.matches ? 'dark' : 'light');
+  };
+  if (typeof systemTheme.addEventListener === 'function') systemTheme.addEventListener('change', syncSystemTheme);
+  else systemTheme.addListener(syncSystemTheme);
+  window.addEventListener('storage', event => {
+    if (event.key === themeStorageKey) applyTheme(getStoredTheme() || (systemTheme.matches ? 'dark' : 'light'));
+  });
+}
+
 // ---- Ensure GA event sends before same-tab navigation (best-effort) ----
 function bindTrackedLink(el, eventName) {
   if (!el || el.dataset.gaBound === '1') return;
@@ -55,6 +103,7 @@ function bindTrackedLink(el, eventName) {
 
 // ---- DOM Ready: footer year, bindings, impressions ----
 document.addEventListener('DOMContentLoaded', () => {
+  bindThemeToggle();
   // Year in footer
   const y = document.getElementById('year');
   if (y) y.textContent = new Date().getFullYear();

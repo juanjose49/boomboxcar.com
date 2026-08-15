@@ -2,45 +2,39 @@
   const form = document.getElementById('bookingBuilder');
   if (!form) return;
 
+  const apiBase = '/api';
   const squareBookingUrl = 'https://app.squareup.com/appointments/book/pz9p8fdxiu4g9w/LX5ZE0BPJR0HS/start';
   const isSpanish = (form.dataset.locale || document.documentElement.lang).toLowerCase().startsWith('es');
   const locale = isSpanish ? 'es-US' : 'en-US';
+  const apiLocale = isSpanish ? 'es' : 'en';
   const copy = isSpanish ? {
-    chooseDate: 'Elige una fecha y hora de llegada',
-    hour: 'hora',
-    hours: 'horas',
-    base: 'Servicio base',
-    notice: 'La fecha y hora deben tener al menos 18 horas de antelación.',
-    noteTitle: 'DETALLES DE BOOMBOXCAR',
-    date: 'Fecha y hora',
-    duration: 'Duración',
-    addons: 'Extras',
-    none: 'Ninguno',
-    address: 'Dirección',
-    eventType: 'Tipo de evento',
-    setting: 'Entorno',
-    attendance: 'Asistencia esperada',
-    requests: 'Solicitudes especiales',
-    estimatedTotal: 'Total estimado',
-    customQuote: 'cotización personalizada'
+    chooseDate: 'Elige una fecha y hora de llegada', hour: 'hora', hours: 'horas', base: 'Servicio base',
+    notice: 'La fecha y hora deben tener al menos 18 horas de antelación.', noteTitle: 'DETALLES DE BOOMBOXCAR',
+    date: 'Fecha y hora', duration: 'Duración', addons: 'Extras', none: 'Ninguno', address: 'Dirección',
+    eventType: 'Tipo de evento', setting: 'Entorno', attendance: 'Asistencia esperada', requests: 'Solicitudes especiales',
+    estimatedTotal: 'Total estimado', customQuote: 'cotización personalizada', chooseDateFirst: 'Elige una fecha primero',
+    chooseTime: 'Elige una hora de llegada', loading: 'Consultando la disponibilidad de Square…',
+    liveReady: 'Estas horas están disponibles actualmente en Square.', noSlots: 'No hay horas disponibles para esta fecha y duración.',
+    fallback: 'La API aún no está disponible. Elige una hora y confirmarás la disponibilidad en el programador de Square.',
+    apiSubmit: 'Reservar BoomBoxCar', fallbackSubmit: 'Copiar detalles y continuar a Square',
+    apiHandoff: 'Tu reserva se creará directamente en Square con todos los extras y detalles.',
+    fallbackHandoff: 'Tus detalles se copiarán. Pégalos en las notas de la cita en Square para conservar todos los extras.',
+    submitting: 'Creando tu reserva segura…', successTitle: 'Reserva creada', successBody: 'Tu número de reserva es',
+    error: 'No pudimos crear la reserva. Revisa los datos o elige otra hora.'
   } : {
-    chooseDate: 'Choose a date and arrival time',
-    hour: 'hour',
-    hours: 'hours',
-    base: 'Base service',
-    notice: 'Date and time must be at least 18 hours from now.',
-    noteTitle: 'BOOMBOXCAR EVENT DETAILS',
-    date: 'Date and time',
-    duration: 'Duration',
-    addons: 'Add-ons',
-    none: 'None',
-    address: 'Address',
-    eventType: 'Event type',
-    setting: 'Setting',
-    attendance: 'Expected attendance',
-    requests: 'Special requests',
-    estimatedTotal: 'Estimated total',
-    customQuote: 'custom quote'
+    chooseDate: 'Choose a date and arrival time', hour: 'hour', hours: 'hours', base: 'Base service',
+    notice: 'Date and time must be at least 18 hours from now.', noteTitle: 'BOOMBOXCAR EVENT DETAILS',
+    date: 'Date and time', duration: 'Duration', addons: 'Add-ons', none: 'None', address: 'Address',
+    eventType: 'Event type', setting: 'Setting', attendance: 'Expected attendance', requests: 'Special requests',
+    estimatedTotal: 'Estimated total', customQuote: 'custom quote', chooseDateFirst: 'Choose a date first',
+    chooseTime: 'Choose an arrival time', loading: 'Checking live Square availability…',
+    liveReady: 'These times are currently available in Square.', noSlots: 'No arrival times are available for this date and duration.',
+    fallback: 'The API is not available yet. Choose a time and confirm availability in the hosted Square scheduler.',
+    apiSubmit: 'Reserve BoomBoxCar', fallbackSubmit: 'Copy details & continue to Square',
+    apiHandoff: 'Your reservation will be created directly in Square with every add-on and event detail.',
+    fallbackHandoff: 'Your details will be copied. Paste them into Square’s appointment notes to preserve every add-on.',
+    submitting: 'Creating your secure reservation…', successTitle: 'Reservation created', successBody: 'Your reservation number is',
+    error: 'We could not create the reservation. Check the details or choose another time.'
   };
 
   const dateInput = form.elements.eventDate;
@@ -50,7 +44,13 @@
   const linesOutput = document.getElementById('summaryLines');
   const totalOutput = document.getElementById('summaryTotal');
   const quoteNote = document.getElementById('quoteNote');
+  const availabilityStatus = document.getElementById('availabilityStatus');
+  const submitButton = document.getElementById('bookingSubmit');
+  const handoffNote = document.getElementById('handoffNote');
+  const bookingResult = document.getElementById('bookingResult');
   const money = new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  let backendReady = false;
+  let availabilityController = null;
 
   function localDateValue(date) {
     const year = date.getFullYear();
@@ -65,6 +65,86 @@
     return form.querySelector('input[name="duration"]:checked');
   }
 
+  function selectedStartAt() {
+    return timeInput.selectedOptions[0]?.dataset.startAt || '';
+  }
+
+  function setTimeOptions(options, placeholder) {
+    const first = document.createElement('option');
+    first.value = '';
+    first.textContent = placeholder;
+    timeInput.replaceChildren(first, ...options);
+    timeInput.disabled = options.length === 0;
+  }
+
+  function fallbackTimeOptions() {
+    if (!dateInput.value) return setTimeOptions([], copy.chooseDateFirst);
+    const options = [];
+    const earliest = Date.now() + 18 * 60 * 60 * 1000;
+    for (let minutes = 9 * 60; minutes <= 22 * 60; minutes += 30) {
+      const hour = Math.floor(minutes / 60);
+      const minute = minutes % 60;
+      const value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      const date = new Date(`${dateInput.value}T${value}`);
+      if (date.getTime() < earliest) continue;
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(date);
+      options.push(option);
+    }
+    setTimeOptions(options, copy.chooseTime);
+    availabilityStatus.textContent = copy.fallback;
+    availabilityStatus.dataset.state = 'fallback';
+    submitButton.textContent = copy.fallbackSubmit;
+    handoffNote.textContent = copy.fallbackHandoff;
+  }
+
+  async function loadAvailability() {
+    timeInput.setCustomValidity('');
+    if (!dateInput.value) {
+      setTimeOptions([], copy.chooseDateFirst);
+      return;
+    }
+    if (!backendReady) return fallbackTimeOptions();
+
+    availabilityController?.abort();
+    availabilityController = new AbortController();
+    setTimeOptions([], copy.loading);
+    availabilityStatus.textContent = copy.loading;
+    availabilityStatus.dataset.state = 'loading';
+    try {
+      const response = await fetch(`${apiBase}/availability`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: dateInput.value,
+          durationHours: Number(selectedDuration().value),
+          locale: apiLocale
+        }),
+        signal: availabilityController.signal
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message || 'Availability request failed.');
+      const options = payload.slots.map(slot => {
+        const option = document.createElement('option');
+        option.value = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false
+        }).format(new Date(slot.startAt));
+        option.textContent = slot.label;
+        option.dataset.startAt = slot.startAt;
+        return option;
+      });
+      setTimeOptions(options, options.length ? copy.chooseTime : copy.noSlots);
+      availabilityStatus.textContent = options.length ? copy.liveReady : copy.noSlots;
+      availabilityStatus.dataset.state = options.length ? 'ready' : 'empty';
+      submitButton.textContent = copy.apiSubmit;
+      handoffNote.textContent = copy.apiHandoff;
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      fallbackTimeOptions();
+    }
+  }
+
   function updateSummary() {
     const duration = selectedDuration();
     const hours = Number(duration.value);
@@ -77,7 +157,6 @@
     packageOutput.textContent = `${hours} ${hours === 1 ? copy.hour : copy.hours}`;
     totalOutput.textContent = money.format(total);
     quoteNote.hidden = !hasQuoteItems;
-
     const lines = [{ label: copy.base, price: basePrice }, ...pricedAddons.map(addon => ({ label: addon.value, price: Number(addon.dataset.price) }))];
     linesOutput.replaceChildren(...lines.map(line => {
       const row = document.createElement('div');
@@ -91,56 +170,66 @@
     }));
 
     if (dateInput.value && timeInput.value) {
-      const date = new Date(`${dateInput.value}T${timeInput.value}`);
+      const startAt = selectedStartAt();
+      const date = startAt ? new Date(startAt) : new Date(`${dateInput.value}T${timeInput.value}`);
       dateOutput.textContent = new Intl.DateTimeFormat(locale, {
-        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-        hour: 'numeric', minute: '2-digit'
+        timeZone: startAt ? 'America/New_York' : undefined,
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
       }).format(date);
-    } else {
-      dateOutput.textContent = copy.chooseDate;
-    }
+    } else dateOutput.textContent = copy.chooseDate;
   }
 
   function validateNotice() {
-    dateInput.setCustomValidity('');
     timeInput.setCustomValidity('');
-    if (!dateInput.value || !timeInput.value) return;
+    if (!dateInput.value || !timeInput.value || selectedStartAt()) return;
     const eventDate = new Date(`${dateInput.value}T${timeInput.value}`);
-    const earliest = new Date(Date.now() + 18 * 60 * 60 * 1000);
-    if (eventDate < earliest) timeInput.setCustomValidity(copy.notice);
+    if (eventDate < new Date(Date.now() + 18 * 60 * 60 * 1000)) timeInput.setCustomValidity(copy.notice);
+  }
+
+  function buildDraft() {
+    const duration = selectedDuration();
+    return {
+      locale: apiLocale,
+      eventDate: dateInput.value,
+      eventTime: timeInput.value,
+      startAt: selectedStartAt(),
+      durationHours: Number(duration.value),
+      basePrice: Number(duration.dataset.price),
+      addons: [...form.querySelectorAll('input[name="addons"]:checked')].map(addon => ({
+        key: addon.dataset.addonKey,
+        name: addon.value,
+        price: addon.dataset.price ? Number(addon.dataset.price) : null
+      })),
+      address: form.elements.address.value.trim(),
+      eventType: form.elements.eventType.value,
+      setting: form.elements.setting.value,
+      attendance: Number(form.elements.attendance.value),
+      requests: form.elements.requests.value.trim(),
+      customer: {
+        givenName: form.elements.givenName.value.trim(),
+        familyName: form.elements.familyName.value.trim(),
+        email: form.elements.email.value.trim(),
+        phone: form.elements.phone.value.trim()
+      }
+    };
   }
 
   function buildSquareNote(draft) {
-    const date = new Date(`${draft.eventDate}T${draft.eventTime}`);
+    const date = draft.startAt ? new Date(draft.startAt) : new Date(`${draft.eventDate}T${draft.eventTime}`);
     const formattedDate = new Intl.DateTimeFormat(locale, {
-      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-      hour: 'numeric', minute: '2-digit'
+      timeZone: draft.startAt ? 'America/New_York' : undefined,
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
     }).format(date);
     const addonTotal = draft.addons.reduce((sum, addon) => sum + (addon.price || 0), 0);
     const addonLines = draft.addons.length
       ? draft.addons.map(addon => `- ${addon.name}: ${addon.price === null ? copy.customQuote : `+${money.format(addon.price)}`}`).join('\n')
       : `- ${copy.none}`;
-
-    return [
-      copy.noteTitle,
-      `${copy.date}: ${formattedDate}`,
-      `${copy.duration}: ${draft.durationHours} ${draft.durationHours === 1 ? copy.hour : copy.hours} (${money.format(draft.basePrice)})`,
-      `${copy.addons}:`,
-      addonLines,
-      `${copy.estimatedTotal}: ${money.format(draft.basePrice + addonTotal)}`,
-      `${copy.address}: ${draft.address}`,
-      `${copy.eventType}: ${draft.eventType}`,
-      `${copy.setting}: ${draft.setting}`,
-      `${copy.attendance}: ${draft.attendance}`,
-      `${copy.requests}: ${draft.requests || copy.none}`
-    ].join('\n');
+    return [copy.noteTitle, `${copy.date}: ${formattedDate}`, `${copy.duration}: ${draft.durationHours} ${draft.durationHours === 1 ? copy.hour : copy.hours} (${money.format(draft.basePrice)})`, `${copy.addons}:`, addonLines, `${copy.estimatedTotal}: ${money.format(draft.basePrice + addonTotal)}`, `${copy.address}: ${draft.address}`, `${copy.eventType}: ${draft.eventType}`, `${copy.setting}: ${draft.setting}`, `${copy.attendance}: ${draft.attendance}`, `${copy.requests}: ${draft.requests || copy.none}`].join('\n');
   }
 
   async function copyText(text) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch (_) {
+    try { await navigator.clipboard.writeText(text); return true; }
+    catch (_) {
       const textarea = document.createElement('textarea');
       textarea.value = text;
       textarea.setAttribute('readonly', '');
@@ -154,53 +243,85 @@
     }
   }
 
-  form.addEventListener('input', () => {
-    validateNotice();
-    updateSummary();
-  });
+  async function initializeBackend() {
+    try {
+      const response = await fetch(`${apiBase}/config`, { headers: { Accept: 'application/json' } });
+      const config = await response.json();
+      backendReady = response.ok && config.ready === true;
+    } catch (_) { backendReady = false; }
+    if (dateInput.value) loadAvailability();
+    else {
+      availabilityStatus.textContent = backendReady ? copy.chooseDate : copy.fallback;
+      submitButton.textContent = backendReady ? copy.apiSubmit : copy.fallbackSubmit;
+      handoffNote.textContent = backendReady ? copy.apiHandoff : copy.fallbackHandoff;
+    }
+  }
 
-  form.addEventListener('change', () => {
+  form.addEventListener('input', event => {
     validateNotice();
     updateSummary();
+    if (event.target === dateInput) loadAvailability();
+  });
+  form.addEventListener('change', event => {
+    validateNotice();
+    updateSummary();
+    if (event.target === dateInput || event.target.name === 'duration') loadAvailability();
   });
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
     validateNotice();
     if (!form.reportValidity()) return;
-
-    const duration = selectedDuration();
-    const draft = {
-      eventDate: dateInput.value,
-      eventTime: timeInput.value,
-      durationHours: Number(duration.value),
-      basePrice: Number(duration.dataset.price),
-      addons: [...form.querySelectorAll('input[name="addons"]:checked')].map(addon => ({
-        name: addon.value,
-        price: addon.dataset.price ? Number(addon.dataset.price) : null
-      })),
-      address: form.elements.address.value.trim(),
-      eventType: form.elements.eventType.value,
-      setting: form.elements.setting.value,
-      attendance: Number(form.elements.attendance.value),
-      requests: form.elements.requests.value.trim()
-    };
-
+    const draft = buildDraft();
     const squareNote = buildSquareNote(draft);
-    let detailsCopied = false;
     try { sessionStorage.setItem('boomboxcarBookingDraft', JSON.stringify({ ...draft, squareNote })); } catch (_) {}
-    detailsCopied = await copyText(squareNote);
-    if (typeof fireGA === 'function') {
-      fireGA('square_availability_handoff', {
-        duration_hours: draft.durationHours,
-        addon_count: draft.addons.length,
-        event_type: draft.eventType,
-        details_copied: detailsCopied,
-        lang: document.documentElement.lang || 'en'
-      });
+
+    if (!backendReady || !draft.startAt) {
+      const detailsCopied = await copyText(squareNote);
+      if (typeof fireGA === 'function') fireGA('square_availability_handoff', { duration_hours: draft.durationHours, addon_count: draft.addons.length, event_type: draft.eventType, details_copied: detailsCopied, lang: document.documentElement.lang || 'en' });
+      window.location.href = squareBookingUrl;
+      return;
     }
-    window.location.href = squareBookingUrl;
+
+    submitButton.disabled = true;
+    submitButton.textContent = copy.submitting;
+    bookingResult.hidden = true;
+    try {
+      const response = await fetch(`${apiBase}/reservations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          locale: draft.locale,
+          eventDate: draft.eventDate,
+          startAt: draft.startAt,
+          durationHours: draft.durationHours,
+          addons: draft.addons.map(addon => addon.key),
+          address: draft.address,
+          eventType: draft.eventType,
+          setting: draft.setting,
+          attendance: draft.attendance,
+          requests: draft.requests,
+          customer: draft.customer
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || copy.error);
+      bookingResult.textContent = `${copy.successTitle}. ${copy.successBody} ${result.reservationId}.`;
+      bookingResult.dataset.state = 'success';
+      bookingResult.hidden = false;
+      handoffNote.hidden = true;
+      form.querySelectorAll('fieldset').forEach(fieldset => { fieldset.disabled = true; });
+      if (typeof fireGA === 'function') fireGA('booking_created', { reservation_id: result.reservationId, duration_hours: draft.durationHours, addon_count: draft.addons.length, lang: document.documentElement.lang || 'en' });
+    } catch (error) {
+      bookingResult.textContent = error.message || copy.error;
+      bookingResult.dataset.state = 'error';
+      bookingResult.hidden = false;
+      submitButton.disabled = false;
+      submitButton.textContent = copy.apiSubmit;
+      loadAvailability();
+    }
   });
 
   updateSummary();
+  initializeBackend();
 })();

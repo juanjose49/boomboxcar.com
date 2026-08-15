@@ -1,0 +1,16 @@
+{
+  "name": "boomboxcar-com",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development PORT=3100 node server.js",
+    "test": "node --test",
+    "build:cpanel": "node scripts/build-cpanel.mjs",
+    "deploy:cpanel": "npm run build:cpanel && ./scripts/deploy-cpanel.sh"
+  }
+}
