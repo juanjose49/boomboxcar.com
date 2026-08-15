@@ -25,14 +25,10 @@ function checkoutPhoneNumber(value) {
   return String(value || '').trim().slice(0, 17);
 }
 
-function checkoutAddress(value, customer) {
+function appointmentAddress(value) {
   const parts = String(value || '').split(',').map(part => part.trim()).filter(Boolean);
   const stateAndZip = parts.at(-1)?.match(/^([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)$/);
-  const address = {
-    first_name: customer.givenName,
-    last_name: customer.familyName,
-    country: 'US'
-  };
+  const address = { country: 'US' };
   if (parts.length >= 3 && stateAndZip) {
     address.address_line_1 = parts.slice(0, -2).join(', ');
     address.locality = parts.at(-2);
@@ -204,7 +200,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     return created.customer;
   }
 
-  async function createBooking({ customerId, slot, customerNote }) {
+  async function createBooking({ customerId, slot, customerNote, eventAddress }) {
     const appointmentSegments = (slot.appointmentSegments || []).map(segment => ({
       duration_minutes: segment.duration_minutes,
       service_variation_id: segment.service_variation_id,
@@ -219,6 +215,8 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
           customer_id: customerId,
           start_at: slot.startAt,
           location_id: slot.locationId,
+          location_type: 'CUSTOMER_LOCATION',
+          address: appointmentAddress(eventAddress),
           customer_note: customerNote.slice(0, 4096),
           appointment_segments: appointmentSegments
         }
@@ -262,7 +260,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
         },
         checkout_options: {
           allow_tipping: false,
-          ask_for_shipping_address: true,
+          ask_for_shipping_address: false,
           redirect_url: confirmationUrl.toString(),
           merchant_support_email: 'booking@boomboxcar.com',
           accepted_payment_methods: {
@@ -274,8 +272,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
         },
         pre_populated_data: {
           buyer_email: customer.email,
-          buyer_phone_number: checkoutPhoneNumber(customer.phone),
-          buyer_address: checkoutAddress(eventAddress, customer)
+          buyer_phone_number: checkoutPhoneNumber(customer.phone)
         },
         payment_note: `BoomBoxCar ${reservationId}; Square booking ${bookingId}`
       }

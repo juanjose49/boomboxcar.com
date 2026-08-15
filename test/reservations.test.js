@@ -29,6 +29,15 @@ test('validates and normalizes Square modifier selections', () => {
   assert.equal(reservation.customer.email, 'test@example.com');
 });
 
+test('splits a customer name at the first space and preserves the remaining last name', () => {
+  const reservation = validateReservation({
+    ...validInput,
+    customer: { ...validInput.customer, givenName: 'Juan San', familyName: 'Emeterio' }
+  });
+  assert.equal(reservation.customer.givenName, 'Juan');
+  assert.equal(reservation.customer.familyName, 'San Emeterio');
+});
+
 test('rejects duplicate or malformed modifier selections', () => {
   assert.throws(() => validateReservation({
     ...validInput,

@@ -68,12 +68,18 @@ test('Square booking keeps modifiers in the customer note', async () => {
         team_member_id: 'TEAM-1'
       }]
     },
-    customerNote: 'Add-ons:\n- Night package: +$125\n- Karaoke: +$100'
+    customerNote: 'Add-ons:\n- Night package: +$125\n- Karaoke: +$100',
+    eventAddress: '123 Test Street, Silver Spring, MD 20910'
   });
 
   assert.match(bookingBody.booking.customer_note, /Night package: \+\$125/);
   assert.match(bookingBody.booking.customer_note, /Karaoke: \+\$100/);
   assert.equal(bookingBody.booking.appointment_segments[0].service_variation_id, 'SERVICE-4H');
+  assert.equal(bookingBody.booking.location_type, 'CUSTOMER_LOCATION');
+  assert.deepEqual(bookingBody.booking.address, {
+    country: 'US', address_line_1: '123 Test Street', locality: 'Silver Spring',
+    administrative_district_level_1: 'MD', postal_code: '20910'
+  });
 });
 
 test('Square Catalog resolves package-specific modifier names, prices, and rules', async () => {
@@ -157,14 +163,10 @@ test('Square checkout references the booking package and selected Catalog modifi
   assert.equal(checkoutRequest.body.checkout_options.redirect_url, 'http://localhost:3100/?checkout=complete&reservation=BBC-2099-ABC123#book');
   assert.equal(checkoutRequest.body.checkout_options.accepted_payment_methods.apple_pay, true);
   assert.equal(checkoutRequest.body.checkout_options.allow_tipping, false);
-  assert.equal(checkoutRequest.body.checkout_options.ask_for_shipping_address, true);
+  assert.equal(checkoutRequest.body.checkout_options.ask_for_shipping_address, false);
   assert.equal(checkoutRequest.body.pre_populated_data.buyer_email, 'buyer@example.com');
   assert.equal(checkoutRequest.body.pre_populated_data.buyer_phone_number, '+13015550199');
-  assert.deepEqual(checkoutRequest.body.pre_populated_data.buyer_address, {
-    first_name: 'Test', last_name: 'Customer', country: 'US',
-    address_line_1: '123 Test Street', locality: 'Silver Spring',
-    administrative_district_level_1: 'MD', postal_code: '20910'
-  });
+  assert.equal(checkoutRequest.body.pre_populated_data.buyer_address, undefined);
   assert.match(checkoutRequest.body.order.line_items[0].note, /Event contact: Test Customer/);
   assert.match(checkoutRequest.body.order.line_items[0].note, /Phone: \(301\) 555-0199/);
   assert.match(checkoutRequest.body.order.line_items[0].note, /Event address: 123 Test Street/);

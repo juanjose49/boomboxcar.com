@@ -16,6 +16,17 @@ function validPhone(value) {
   return /^\+?[0-9 ()-]{9,20}$/.test(value);
 }
 
+function normalizeCustomerName(givenName, familyName) {
+  const parts = `${cleanString(givenName, 100)} ${cleanString(familyName, 100)}`
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return {
+    givenName: parts[0] || '',
+    familyName: parts.slice(1).join(' ')
+  };
+}
+
 export function validateReservation(input) {
   const durationHours = Number(input.durationHours);
   if (!PACKAGES[durationHours]) throw new AppError(400, 'INVALID_DURATION', 'Choose a valid duration.');
@@ -33,9 +44,9 @@ export function validateReservation(input) {
     return { id, quantity };
   }) : [];
 
+  const customerName = normalizeCustomerName(input.customer?.givenName, input.customer?.familyName);
   const customer = {
-    givenName: cleanString(input.customer?.givenName, 100),
-    familyName: cleanString(input.customer?.familyName, 100),
+    ...customerName,
     email: cleanString(input.customer?.email, 254).toLowerCase(),
     phone: cleanString(input.customer?.phone, 24)
   };

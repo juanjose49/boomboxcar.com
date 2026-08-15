@@ -180,7 +180,12 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         const reservationId = createReservationId();
         const customerNote = buildCustomerNote({ reservationId, reservation, pricing });
         const customer = await square.findOrCreateCustomer(reservation.customer, reservationId);
-        const booking = await square.createBooking({ customerId: customer.id, slot, customerNote });
+        const booking = await square.createBooking({
+          customerId: customer.id,
+          slot,
+          customerNote,
+          eventAddress: reservation.details.address
+        });
         let paymentLink;
         try {
           paymentLink = await square.createPaymentLink({
