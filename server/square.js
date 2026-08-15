@@ -192,6 +192,10 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     return value;
   }
 
+  async function getPackages() {
+    return Promise.all(Object.keys(config.packages).map(hours => getPackage(Number(hours))));
+  }
+
   async function findOrCreateCustomer(customer, reservationId) {
     const search = await request('/v2/customers/search', {
       method: 'POST',
@@ -331,7 +335,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
   }
 
   return {
-    searchAvailability, getPackage, findOrCreateCustomer, createBooking,
+    searchAvailability, getPackage, getPackages, findOrCreateCustomer, createBooking,
     createPaymentLink, cancelBooking, retrieveOrder, deletePaymentLink
   };
 }

@@ -269,6 +269,27 @@
     return true;
   }
 
+  async function loadPackagePricing() {
+    if (!backendReady) return;
+    try {
+      const response = await fetch(`${apiBase}/packages`, { headers: { Accept: 'application/json' } });
+      const payload = await response.json();
+      if (!response.ok || !Array.isArray(payload.packages)) throw new Error(payload.error?.message || 'Package request failed.');
+      payload.packages.forEach(pkg => {
+        const hours = Number(pkg.durationHours);
+        const price = Number(pkg.basePrice);
+        if (!Number.isInteger(hours) || !Number.isFinite(price) || price < 0) return;
+        const duration = form.querySelector(`input[name="duration"][value="${hours}"]`);
+        if (!duration) return;
+        duration.dataset.price = String(price);
+        duration.closest('.choice-card')?.querySelector('small')?.replaceChildren(money.format(price));
+      });
+      updateSummary();
+    } catch (_) {
+      // The selected package is fetched again below, so a bulk-pricing failure does not block booking.
+    }
+  }
+
   async function loadModifiers() {
     modifierController?.abort();
     currentPackage = null;
@@ -292,6 +313,7 @@
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || 'Catalog request failed.');
+      if (selectedDuration() !== duration) return;
       currentPackage = payload;
       duration.dataset.price = payload.basePrice;
       duration.closest('.choice-card').querySelector('small').textContent = money.format(payload.basePrice);
@@ -520,6 +542,7 @@
       const config = await response.json();
       backendReady = response.ok && config.ready === true;
     } catch (_) { backendReady = false; }
+    await loadPackagePricing();
     const duration = selectedDuration();
     dateInput.disabled = !duration;
     loadModifiers();

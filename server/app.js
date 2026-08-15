@@ -130,6 +130,19 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
       if (request.method === 'GET' && pathname === '/config') {
         return sendJson(response, 200, publicConfig(config), corsHeaders);
       }
+      if (request.method === 'GET' && pathname === '/packages') {
+        if (!allowRequest(`${ip}:packages`, 60)) throw new AppError(429, 'RATE_LIMITED', 'Too many package requests.');
+        if (!config.squareConfigured) throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square Sandbox credentials are not configured yet.');
+        const packages = await square.getPackages();
+        return sendJson(response, 200, {
+          packages: packages.map(pkg => ({
+            durationHours: pkg.durationHours,
+            itemName: pkg.itemName,
+            basePrice: pkg.basePrice,
+            currency: pkg.currency
+          }))
+        }, corsHeaders);
+      }
       const confirmationMatch = pathname.match(/^\/confirmations\/(BBC-\d{4}-[A-F0-9]{6})$/);
       if (request.method === 'GET' && confirmationMatch) {
         if (!allowRequest(`${ip}:confirmation`, 60)) throw new AppError(429, 'RATE_LIMITED', 'Too many confirmation requests.');

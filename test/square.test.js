@@ -132,6 +132,41 @@ test('Square Catalog resolves package-specific modifier names, prices, and rules
   ]);
 });
 
+test('Square Catalog supplies live prices for every booking duration', async () => {
+  const requests = [];
+  const prices = { 1: 25100, 2: 40200, 3: 55300, 4: 70400, 8: 130800 };
+  const fakeFetch = async url => {
+    requests.push(url);
+    const id = decodeURIComponent(url.match(/\/v2\/catalog\/object\/([^?]+)/)[1]);
+    const hours = Number(id.match(/(\d+)H$/)?.[1]);
+    const variation = {
+      type: 'ITEM_VARIATION', id: `SERVICE-${hours}H`,
+      item_variation_data: {
+        item_id: `ITEM-${hours}H`, name: `${hours} hours`,
+        price_money: { amount: prices[hours], currency: 'USD' }
+      }
+    };
+    const item = {
+      type: 'ITEM', id: `ITEM-${hours}H`,
+      item_data: { name: `${hours} Hour Rental`, variations: [variation], modifier_list_info: [] }
+    };
+    const payload = id.startsWith('SERVICE-')
+      ? { object: variation, related_objects: [item] }
+      : { object: item, related_objects: [] };
+    return new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  const service = createSquareService(loadConfig(env), fakeFetch);
+  const packages = await service.getPackages();
+  const cachedPackages = await service.getPackages();
+
+  assert.equal(requests.length, 10);
+  assert.deepEqual(packages.map(pkg => [pkg.durationHours, pkg.basePrice]), [
+    [1, 251], [2, 402], [3, 553], [4, 704], [8, 1308]
+  ]);
+  assert.deepEqual(cachedPackages, packages);
+});
+
 test('Square checkout references the booking package and selected Catalog modifiers', async () => {
   let checkoutRequest;
   const fakeFetch = async (url, options) => {
