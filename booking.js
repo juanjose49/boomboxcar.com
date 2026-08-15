@@ -16,16 +16,16 @@
     chooseTime: 'Elige una hora de llegada', loading: 'Consultando la disponibilidad de Square…',
     liveReady: 'Estas horas están disponibles actualmente en Square.', noSlots: 'No hay horas disponibles para esta fecha y duración.',
     fallback: 'La API aún no está disponible. Elige una hora y confirmarás la disponibilidad en el programador de Square.',
-    apiSubmit: 'Reservar BoomBoxCar', fallbackSubmit: 'Copiar detalles y continuar a Square',
-    apiHandoff: 'Tu reserva se creará directamente en Square con todos los extras y detalles.',
+    apiSubmit: 'Reservar y pagar con Square', fallbackSubmit: 'Copiar detalles y continuar a Square',
+    apiHandoff: 'Tu reserva se creará en Square y continuarás al pago seguro. Completa el pago en 30 minutos para conservar la hora.',
     fallbackHandoff: 'Tus detalles se copiarán. Pégalos en las notas de la cita en Square para conservar todos los extras.',
-    submitting: 'Creando tu reserva segura…', successTitle: 'Reserva creada', successBody: 'Tu número de reserva es',
+    submitting: 'Creando tu reserva y pago seguro…', checkoutReady: 'Reserva creada. Abriendo el pago seguro de Square…',
+    checkoutReturn: 'Square Checkout te regresó a BoomBoxCar para la reserva',
     error: 'No pudimos crear la reserva. Revisa los datos o elige otra hora.',
     modifiersLoading: 'Cargando los extras configurados en Square…', noModifiers: 'No hay extras disponibles para este paquete.',
     modifiersUnavailable: 'Los extras se seleccionarán en el programador de Square.', optional: 'Opcional',
     required: 'Requerido', upTo: 'Hasta', selections: 'selecciones', quantity: 'Cantidad',
     invalidModifiers: 'Revisa la cantidad de extras seleccionados.',
-    orderWarning: 'La cita está confirmada, pero el pedido detallado de Square necesita revisión.',
     includedLabel: 'Incluido en cada reserva',
     includedItems: 'Dos bocinas potentes, el BoomBox inflable, dos micrófonos inalámbricos y música ambiental con licencia a través de Soundtrack Your Brand.',
     staffScope: 'El personal instala y opera el sistema de sonido. Los servicios de DJ y maestro de ceremonias no están incluidos; tu equipo controla los anuncios, la programación y el mensaje del evento.'
@@ -38,16 +38,16 @@
     chooseTime: 'Choose an arrival time', loading: 'Checking live Square availability…',
     liveReady: 'These times are currently available in Square.', noSlots: 'No arrival times are available for this date and duration.',
     fallback: 'The API is not available yet. Choose a time and confirm availability in the hosted Square scheduler.',
-    apiSubmit: 'Reserve BoomBoxCar', fallbackSubmit: 'Copy details & continue to Square',
-    apiHandoff: 'Your reservation will be created directly in Square with every add-on and event detail.',
+    apiSubmit: 'Reserve & pay with Square', fallbackSubmit: 'Copy details & continue to Square',
+    apiHandoff: 'Your reservation will be created in Square, then you will continue to secure payment. Complete payment within 30 minutes to keep the time.',
     fallbackHandoff: 'Your details will be copied. Paste them into Square’s appointment notes to preserve every add-on.',
-    submitting: 'Creating your secure reservation…', successTitle: 'Reservation created', successBody: 'Your reservation number is',
+    submitting: 'Creating your reservation and secure checkout…', checkoutReady: 'Reservation created. Opening secure Square checkout…',
+    checkoutReturn: 'Square Checkout returned you to BoomBoxCar for reservation',
     error: 'We could not create the reservation. Check the details or choose another time.',
     modifiersLoading: 'Loading your Square add-ons…', noModifiers: 'No add-ons are available for this package.',
     modifiersUnavailable: 'Add-ons will be selected in the hosted Square scheduler.', optional: 'Optional',
     required: 'Required', upTo: 'Up to', selections: 'selections', quantity: 'Quantity',
     invalidModifiers: 'Review the number of add-ons selected.',
-    orderWarning: 'The appointment is confirmed, but its itemized Square order needs review.',
     includedLabel: 'Included with every booking',
     includedItems: 'Two powerful speakers, the inflatable BoomBox, two wireless microphones, and licensed background music through Soundtrack Your Brand.',
     staffScope: 'Staff set up and operate the sound system. DJ and MC services are not included; your team controls announcements, programming, and the event message.'
@@ -71,6 +71,14 @@
   let availabilityController = null;
   let modifierController = null;
   let currentPackage = null;
+
+  const checkoutParams = new URLSearchParams(window.location.search);
+  const returnedReservationId = checkoutParams.get('reservation') || '';
+  if (checkoutParams.get('checkout') === 'complete' && /^BBC-\d{4}-[A-F0-9]{6}$/.test(returnedReservationId)) {
+    bookingResult.textContent = `${copy.checkoutReturn} ${returnedReservationId}.`;
+    bookingResult.dataset.state = 'success';
+    bookingResult.hidden = false;
+  }
 
   function localDateValue(date) {
     const year = date.getFullYear();
@@ -469,12 +477,14 @@
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error?.message || copy.error);
-      bookingResult.textContent = `${copy.successTitle}. ${copy.successBody} ${result.reservationId}.${result.orderWarning ? ` ${copy.orderWarning}` : ''}`;
+      const checkoutUrl = new URL(result.checkoutUrl);
+      if (checkoutUrl.protocol !== 'https:' || checkoutUrl.hostname !== 'square.link') throw new Error(copy.error);
+      bookingResult.textContent = copy.checkoutReady;
       bookingResult.dataset.state = 'success';
       bookingResult.hidden = false;
       handoffNote.hidden = true;
-      form.querySelectorAll('fieldset').forEach(fieldset => { fieldset.disabled = true; });
       if (typeof fireGA === 'function') fireGA('booking_created', { reservation_id: result.reservationId, duration_hours: draft.durationHours, addon_count: draft.modifiers.length, order_id: result.orderId || '', lang: document.documentElement.lang || 'en' });
+      window.location.assign(checkoutUrl.href);
     } catch (error) {
       bookingResult.textContent = error.message || copy.error;
       bookingResult.dataset.state = 'error';

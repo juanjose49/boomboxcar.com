@@ -2,7 +2,7 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MINIMUM_NOTICE_HOURS, PACKAGES, loadConfig } from './config.js';
+import { MINIMUM_NOTICE_HOURS, PACKAGES, PAYMENT_TTL_MINUTES, loadConfig } from './config.js';
 import { AppError } from './errors.js';
 import { createSquareService } from './square.js';
 import {
@@ -13,6 +13,7 @@ import {
   persistReservation,
   validateReservation
 } from './reservations.js';
+import { paymentEventRecord, verifySquareWebhook } from './webhooks.js';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const contentTypes = {
@@ -32,14 +33,22 @@ function sendJson(response, status, payload, extraHeaders = {}) {
   response.end(body);
 }
 
-async function readJson(request) {
+async function readBody(request) {
   let body = '';
   for await (const chunk of request) {
     body += chunk;
     if (Buffer.byteLength(body) > 64 * 1024) throw new AppError(413, 'BODY_TOO_LARGE', 'Request body is too large.');
   }
+  return body;
+}
+
+function parseJson(body) {
   try { return body ? JSON.parse(body) : {}; }
   catch (_) { throw new AppError(400, 'INVALID_JSON', 'Request body must be valid JSON.'); }
+}
+
+async function readJson(request) {
+  return parseJson(await readBody(request));
 }
 
 function publicConfig(config) {
@@ -49,6 +58,7 @@ function publicConfig(config) {
     applicationId: config.squareApplicationId,
     locationId: config.squareLocationId,
     minimumNoticeHours: MINIMUM_NOTICE_HOURS,
+    paymentTtlMinutes: PAYMENT_TTL_MINUTES,
     packages: Object.values(PACKAGES).map(pkg => ({ hours: pkg.hours, price: pkg.price }))
   };
 }
@@ -108,10 +118,32 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
 
     try {
       if (request.method === 'GET' && pathname === '/health') {
-        return sendJson(response, 200, { ok: true, squareConfigured: config.squareConfigured, environment: config.squareEnvironment }, corsHeaders);
+        return sendJson(response, 200, {
+          ok: true,
+          squareConfigured: config.squareConfigured,
+          squareWebhookConfigured: config.squareWebhookConfigured,
+          environment: config.squareEnvironment
+        }, corsHeaders);
       }
       if (request.method === 'GET' && pathname === '/config') {
         return sendJson(response, 200, publicConfig(config), corsHeaders);
+      }
+      if (request.method === 'POST' && pathname === '/webhooks/square') {
+        if (!allowRequest(`${ip}:square-webhook`, 240)) throw new AppError(429, 'RATE_LIMITED', 'Too many webhook requests.');
+        if (!config.squareWebhookConfigured) throw new AppError(503, 'SQUARE_WEBHOOK_NOT_CONFIGURED', 'Square webhook verification is not configured.');
+        const body = await readBody(request);
+        const signature = String(request.headers['x-square-hmacsha256-signature'] || '');
+        const verified = verifySquareWebhook({
+          body,
+          notificationUrl: config.squareWebhookNotificationUrl,
+          signature,
+          signatureKey: config.squareWebhookSignatureKey
+        });
+        if (!verified) throw new AppError(403, 'INVALID_WEBHOOK_SIGNATURE', 'Webhook signature is invalid.');
+        const event = parseJson(body);
+        const paymentRecord = paymentEventRecord(event);
+        if (paymentRecord) await persistReservation(config.dataDir, paymentRecord);
+        return sendJson(response, 200, { received: true, recorded: Boolean(paymentRecord) });
       }
       if (request.method === 'GET' && pathname === '/modifiers') {
         if (!allowRequest(`${ip}:catalog`, 120)) throw new AppError(429, 'RATE_LIMITED', 'Too many catalog requests.');
@@ -149,36 +181,67 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         const customerNote = buildCustomerNote({ reservationId, reservation, pricing });
         const customer = await square.findOrCreateCustomer(reservation.customer, reservationId);
         const booking = await square.createBooking({ customerId: customer.id, slot, customerNote });
-        let order = null;
-        let orderError = null;
+        let paymentLink;
         try {
-          order = await square.createOrder({
+          paymentLink = await square.createPaymentLink({
+            customer: reservation.customer,
             customerId: customer.id,
+            bookingId: booking.id,
             reservationId,
             packageDetails,
             modifiers: pricing.modifiers
           });
-        } catch (error) {
-          orderError = { code: error.code || 'ORDER_CREATION_FAILED', message: error.message };
-          console.error('[boomboxcar-api] order', orderError.code, orderError.message);
+        } catch (checkoutError) {
+          let canceledBooking = null;
+          let cancellationError = null;
+          try {
+            canceledBooking = await square.cancelBooking(booking);
+          } catch (error) {
+            cancellationError = { code: error.code || 'BOOKING_CANCELLATION_FAILED', message: error.message };
+            console.error('[boomboxcar-api] checkout rollback', cancellationError.code, cancellationError.message);
+          }
+          await persistReservation(config.dataDir, {
+            reservationId,
+            createdAt: new Date().toISOString(),
+            squareEnvironment: config.squareEnvironment,
+            squareBookingId: booking.id,
+            squareCustomerId: customer.id,
+            bookingStatus: canceledBooking?.status || booking.status,
+            paymentStatus: 'CHECKOUT_CREATION_FAILED',
+            checkoutError: { code: checkoutError.code || 'PAYMENT_SETUP_FAILED', message: checkoutError.message },
+            cancellationError,
+            reservation,
+            pricing
+          });
+          if (cancellationError) {
+            throw new AppError(502, 'PAYMENT_SETUP_FAILED_REVIEW_REQUIRED', 'The appointment was created, but payment setup failed. Contact booking@boomboxcar.com before trying again.');
+          }
+          throw new AppError(checkoutError.status || 502, 'PAYMENT_SETUP_FAILED', 'Square checkout could not be started. The appointment was canceled, so you can safely try again.');
         }
+        const paymentExpiresAt = new Date(Date.now() + PAYMENT_TTL_MINUTES * 60 * 1000).toISOString();
         await persistReservation(config.dataDir, {
           reservationId,
           createdAt: new Date().toISOString(),
+          expiresAt: paymentExpiresAt,
           squareEnvironment: config.squareEnvironment,
           squareBookingId: booking.id,
-          squareOrderId: order?.id || null,
-          squareOrderError: orderError,
+          bookingVersion: booking.version,
+          squarePaymentLinkId: paymentLink.id,
+          squareOrderId: paymentLink.order_id,
           squareCustomerId: customer.id,
           bookingStatus: booking.status,
+          paymentStatus: 'PENDING',
           reservation,
           pricing
         });
         return sendJson(response, 201, {
           reservationId,
           bookingId: booking.id,
-          orderId: order?.id || null,
-          orderWarning: order ? null : 'The appointment was created, but its itemized Square order needs review.',
+          paymentLinkId: paymentLink.id,
+          orderId: paymentLink.order_id,
+          checkoutUrl: paymentLink.url,
+          paymentStatus: 'PENDING',
+          paymentExpiresAt,
           status: booking.status,
           startAt: booking.start_at,
           pricing

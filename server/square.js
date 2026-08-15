@@ -201,7 +201,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     return payload.booking;
   }
 
-  async function createOrder({ customerId, reservationId, packageDetails, modifiers }) {
+  async function createPaymentLink({ customer, customerId, bookingId, reservationId, packageDetails, modifiers }) {
     const lineItem = {
       catalog_object_id: packageDetails.serviceVariationId,
       quantity: '1'
@@ -212,20 +212,71 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
         quantity: String(modifier.quantity)
       }));
     }
-    const payload = await request('/v2/orders', {
+    const confirmationUrl = new URL(config.appBaseUrl);
+    confirmationUrl.searchParams.set('checkout', 'complete');
+    confirmationUrl.searchParams.set('reservation', reservationId);
+    confirmationUrl.hash = 'book';
+    const payload = await request('/v2/online-checkout/payment-links', {
       method: 'POST',
       body: {
         idempotency_key: randomUUID(),
+        description: `BoomBoxCar reservation ${reservationId}`,
         order: {
           location_id: config.squareLocationId,
           reference_id: reservationId,
           customer_id: customerId,
           line_items: [lineItem]
-        }
+        },
+        checkout_options: {
+          allow_tipping: false,
+          redirect_url: confirmationUrl.toString(),
+          merchant_support_email: 'booking@boomboxcar.com',
+          accepted_payment_methods: {
+            apple_pay: true,
+            google_pay: true,
+            cash_app_pay: true,
+            afterpay_clearpay: false
+          }
+        },
+        pre_populated_data: {
+          buyer_email: customer.email
+        },
+        payment_note: `BoomBoxCar ${reservationId}; Square booking ${bookingId}`
       }
     });
+    const paymentLink = payload.payment_link;
+    let checkoutUrl;
+    try { checkoutUrl = new URL(paymentLink?.url); } catch (_) {}
+    if (!paymentLink?.id || !paymentLink?.order_id || checkoutUrl?.protocol !== 'https:' || checkoutUrl.hostname !== 'square.link') {
+      throw new AppError(502, 'INVALID_PAYMENT_LINK_RESPONSE', 'Square did not return a usable checkout link.');
+    }
+    return paymentLink;
+  }
+
+  async function cancelBooking(booking) {
+    const payload = await request(`/v2/bookings/${encodeURIComponent(booking.id)}/cancel`, {
+      method: 'POST',
+      body: {
+        idempotency_key: randomUUID(),
+        booking_version: booking.version
+      }
+    });
+    return payload.booking;
+  }
+
+  async function retrieveOrder(orderId) {
+    const payload = await request(`/v2/orders/${encodeURIComponent(orderId)}`);
     return payload.order;
   }
 
-  return { searchAvailability, getPackage, findOrCreateCustomer, createBooking, createOrder };
+  async function deletePaymentLink(paymentLinkId) {
+    return request(`/v2/online-checkout/payment-links/${encodeURIComponent(paymentLinkId)}`, {
+      method: 'DELETE'
+    });
+  }
+
+  return {
+    searchAvailability, getPackage, findOrCreateCustomer, createBooking,
+    createPaymentLink, cancelBooking, retrieveOrder, deletePaymentLink
+  };
 }

@@ -10,6 +10,7 @@
     "start": "node server.js",
     "dev": "NODE_ENV=development PORT=3100 node server.js",
     "test": "node --test",
+    "expire:reservations": "node expire-reservations.js",
     "build:cpanel": "node scripts/build-cpanel.mjs",
     "deploy:cpanel": "npm run build:cpanel && ./scripts/deploy-cpanel.sh"
   }

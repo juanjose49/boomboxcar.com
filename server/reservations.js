@@ -1,4 +1,4 @@
-import { mkdir, appendFile, chmod } from 'node:fs/promises';
+import { mkdir, appendFile, chmod, readFile } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { PACKAGES } from './config.js';
@@ -131,4 +131,16 @@ export async function persistReservation(dataDir, reservation) {
   const file = path.join(dataDir, 'reservations.jsonl');
   await appendFile(file, `${JSON.stringify(reservation)}\n`, { encoding: 'utf8', mode: 0o600 });
   await chmod(file, 0o600);
+}
+
+export async function readReservationRecords(dataDir) {
+  try {
+    const contents = await readFile(path.join(dataDir, 'reservations.jsonl'), 'utf8');
+    return contents.split('\n').filter(Boolean).flatMap(line => {
+      try { return [JSON.parse(line)]; } catch (_) { return []; }
+    });
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
 }

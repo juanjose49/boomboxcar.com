@@ -185,7 +185,7 @@
       <div class="booking-intro">
         <p class="eyebrow">Tu evento. Tu BoomBoxCar.</p>
         <h2 id="booking-title">Crea tu evento</h2>
-        <p>Elige la hora, el paquete y los extras. Revisarás todo aquí antes de completar la programación segura a través de Square.</p>
+        <p>Elige la hora, el paquete y los extras. Revisarás todo aquí antes de completar la reserva y el pago seguro a través de Square.</p>
       </div>
 
       <form class="booking-builder" id="bookingBuilder" data-locale="es-US" novalidate>
@@ -247,10 +247,10 @@
           <div class="summary-total"><span>Total estimado</span><strong id="summaryTotal">$549</strong></div>
           <div class="booking-includes"><strong>Cada reserva incluye</strong><span>Dos bocinas potentes, el BoomBox inflable, dos micrófonos inalámbricos y música ambiental con licencia a través de Soundtrack Your Brand.</span></div>
           <p class="quote-note" id="quoteNote" hidden>Las opciones con cotización personalizada se cobrarán antes de confirmar la reserva.</p>
-          <button class="btn btn-primary booking-submit" id="bookingSubmit" type="submit">Reservar BoomBoxCar</button>
-          <p class="handoff-note" id="handoffNote">Conectando con la disponibilidad de Square. Si la API aún no está lista, se copiarán tus detalles para el programador alojado de Square.</p>
+          <button class="btn btn-primary booking-submit" id="bookingSubmit" type="submit">Reservar y pagar con Square</button>
+          <p class="handoff-note" id="handoffNote">Tu reserva se creará en Square y luego continuarás al pago seguro. Completa el pago en 30 minutos para conservar la hora.</p>
           <div class="booking-result" id="bookingResult" role="status" hidden></div>
-          <p class="secure-note"><img src="../images/square-logo-s.png" alt="" aria-hidden="true" /> Programación segura a través de Square</p>
+          <p class="secure-note"><img src="../images/square-logo-s.png" alt="" aria-hidden="true" /> Reserva y pago seguros a través de Square</p>
         </aside>
       </form>
     </section>
@@ -385,6 +385,6 @@
   </footer>
 
   <script src="../index.js?v=20260815-layout" defer></script>
-  <script src="../booking.js?v=20260815-inclusions" defer></script>
+  <script src="../booking.js?v=20260815-payment-ttl" defer></script>
 </body>
 </html>

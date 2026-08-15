@@ -1,6 +1,6 @@
 # BoomBoxCar.com
 
-BoomBoxCar is a bilingual static website with a dependency-free Node API for Square availability and booking creation.
+BoomBoxCar is a bilingual static website with a dependency-free Node API for Square availability, booking creation, and hosted payment checkout.
 
 ## Local development
 
@@ -20,13 +20,38 @@ GET  /api/config
 GET  /api/modifiers?durationHours=1
 POST /api/availability
 POST /api/reservations
+POST /api/webhooks/square
 ```
 
-The modifier endpoint reads the modifier sets already attached to each configured Square service. The backend uses Square Catalog names, prices, selection rules, and IDs instead of duplicating them in environment variables. A completed reservation creates a Square Booking and then a linked Square Order. The readable modifier summary remains in the booking note, and the Order receives the actual Catalog modifier IDs. If Square accepts the booking but rejects the order, the reservation is preserved with an order warning for review instead of risking a duplicate appointment.
+The modifier endpoint reads the modifier sets already attached to each configured Square service. The backend uses Square Catalog names, prices, selection rules, and IDs instead of duplicating them in environment variables. A reservation creates a Square Booking and then a Square-hosted payment link whose order contains the actual package and Catalog modifier IDs. The customer is redirected to Square Checkout, where supported production devices can offer Apple Pay. Until checkout completes, the local reservation record is marked `PENDING` with a 30-minute expiration time. If Square accepts the booking but cannot create checkout, the backend cancels the booking so the customer can safely retry. A cancellation failure is persisted and returned as a manual-review error.
 
-The Square access token must permit Catalog reads, booking/customer operations, and order creation. For OAuth applications, this means the applicable `ITEMS_READ`, `APPOINTMENTS_WRITE`, `CUSTOMERS_READ`, `CUSTOMERS_WRITE`, and `ORDERS_WRITE` permissions.
+The Square access token must permit Catalog reads, booking/customer operations, checkout order creation, and payments. For OAuth applications, this means the applicable `ITEMS_READ`, `APPOINTMENTS_WRITE`, `CUSTOMERS_READ`, `CUSTOMERS_WRITE`, `ORDERS_READ`, `ORDERS_WRITE`, and `PAYMENTS_WRITE` permissions. Seller-level booking writes also require Square Appointments Plus or Premium.
+
+Square Checkout creates the order and payment link together. Do not restore the old standalone Orders API call because Square cannot attach a new payment link to an existing order. Apple Pay is not available in Square Sandbox; use a production checkout on a compatible Safari device to verify it.
 
 Reservation records are appended to `data/reservations.jsonl` with owner-only permissions. The directory is ignored by Git and must remain outside `public_html` in production.
+
+## Square payment webhooks
+
+In the Square Developer Console, create a production webhook subscription using this exact notification URL:
+
+```text
+https://boomboxcar.com/api/webhooks/square
+```
+
+Subscribe to `payment.created` and `payment.updated`, then copy the subscription signature key into `SQUARE_WEBHOOK_SIGNATURE_KEY`. Keep `SQUARE_WEBHOOK_NOTIFICATION_URL` identical to the URL entered in Square because it is part of signature verification. Payment events are verified against the raw request body and appended to the private reservation log. A `COMPLETED` event is the authoritative payment result; the browser redirect alone is not treated as proof of payment.
+
+## Unpaid reservation expiration
+
+The Node process checks pending reservations at startup and once per minute. After 30 minutes it retrieves the Square order before taking action. A completed order is preserved and reconciled as paid. An unpaid order has its payment link deleted, which cancels the checkout order, and its Square appointment is then canceled to release the arrival time. Expiration results and retryable errors are appended to `data/reservations.jsonl`, so the process is restart-safe.
+
+For a reliable 30-minute TTL even when cPanel Passenger stops an idle application, add a cPanel Cron Job that runs every minute using the Node executable from the application environment:
+
+```text
+cd /home/boomwowp/dist/app && npm run expire:reservations
+```
+
+If `npm` is not on the Cron Job PATH, use the full Node executable path shown by cPanel and run `/home/boomwowp/dist/app/expire-reservations.js` directly. The in-process worker remains as a fallback, but the cron job provides wall-clock enforcement while the website is idle.
 
 ## cPanel application
 

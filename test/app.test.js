@@ -33,6 +33,7 @@ test('health and public config never expose the access token', async () => {
     assert.equal(health.squareConfigured, false);
     const config = await fetch(`${baseUrl}/api/config`).then(response => response.json());
     assert.equal(config.ready, false);
+    assert.equal(config.paymentTtlMinutes, 30);
     assert.equal(JSON.stringify(config).includes('ACCESS_TOKEN'), false);
   });
 });

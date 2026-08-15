@@ -1,5 +1,6 @@
 export const EVENT_TIME_ZONE = 'America/New_York';
 export const MINIMUM_NOTICE_HOURS = 18;
+export const PAYMENT_TTL_MINUTES = 30;
 
 export const PACKAGES = Object.freeze({
   1: { hours: 1, price: 249, envKey: 'SQUARE_SERVICE_VARIATION_1H' },
@@ -45,6 +46,9 @@ export function loadConfig(env = process.env) {
     appBaseUrl: env.APP_BASE_URL || 'http://localhost:3100',
     allowedOrigin: env.ALLOWED_ORIGIN || 'http://localhost:3100',
     dataDir: env.DATA_DIR || `${process.cwd()}/data`,
+    squareWebhookSignatureKey: env.SQUARE_WEBHOOK_SIGNATURE_KEY || '',
+    squareWebhookNotificationUrl: env.SQUARE_WEBHOOK_NOTIFICATION_URL || '',
+    squareWebhookConfigured: configured(env.SQUARE_WEBHOOK_SIGNATURE_KEY) && configured(env.SQUARE_WEBHOOK_NOTIFICATION_URL),
     squareConfigured: requiredValues.length >= 8 && requiredValues.every(configured)
   };
 }

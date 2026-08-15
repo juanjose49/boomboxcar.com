@@ -123,27 +123,74 @@ test('Square Catalog resolves package-specific modifier names, prices, and rules
   ]);
 });
 
-test('Square order references the booking package and selected Catalog modifiers', async () => {
-  let orderBody;
+test('Square checkout references the booking package and selected Catalog modifiers', async () => {
+  let checkoutRequest;
   const fakeFetch = async (url, options) => {
-    orderBody = JSON.parse(options.body);
-    return new Response(JSON.stringify({ order: { id: 'ORDER-1', state: 'OPEN' } }), {
+    checkoutRequest = { url, body: JSON.parse(options.body) };
+    return new Response(JSON.stringify({
+      payment_link: { id: 'LINK-1', order_id: 'ORDER-1', url: 'https://square.link/u/TEST' }
+    }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
     });
   };
   const service = createSquareService(loadConfig(env), fakeFetch);
-  const order = await service.createOrder({
+  const paymentLink = await service.createPaymentLink({
+    customer: { email: 'buyer@example.com' },
     customerId: 'CUSTOMER-1', reservationId: 'BBC-2099-ABC123',
+    bookingId: 'BOOKING-1',
     packageDetails: { serviceVariationId: 'SERVICE-1H' },
     modifiers: [{ id: 'BUBBLE', quantity: 1 }, { id: 'LASER', quantity: 2 }]
   });
 
-  assert.equal(order.id, 'ORDER-1');
-  assert.equal(orderBody.order.reference_id, 'BBC-2099-ABC123');
-  assert.equal(orderBody.order.customer_id, 'CUSTOMER-1');
-  assert.equal(orderBody.order.line_items[0].catalog_object_id, 'SERVICE-1H');
-  assert.deepEqual(orderBody.order.line_items[0].modifiers, [
+  assert.equal(paymentLink.order_id, 'ORDER-1');
+  assert.equal(checkoutRequest.url, 'https://connect.squareupsandbox.com/v2/online-checkout/payment-links');
+  assert.equal(checkoutRequest.body.order.reference_id, 'BBC-2099-ABC123');
+  assert.equal(checkoutRequest.body.order.customer_id, 'CUSTOMER-1');
+  assert.equal(checkoutRequest.body.order.line_items[0].catalog_object_id, 'SERVICE-1H');
+  assert.deepEqual(checkoutRequest.body.order.line_items[0].modifiers, [
     { catalog_object_id: 'BUBBLE', quantity: '1' },
     { catalog_object_id: 'LASER', quantity: '2' }
+  ]);
+  assert.equal(checkoutRequest.body.checkout_options.redirect_url, 'http://localhost:3100/?checkout=complete&reservation=BBC-2099-ABC123#book');
+  assert.equal(checkoutRequest.body.checkout_options.accepted_payment_methods.apple_pay, true);
+  assert.equal(checkoutRequest.body.checkout_options.allow_tipping, false);
+  assert.equal(checkoutRequest.body.pre_populated_data.buyer_email, 'buyer@example.com');
+  assert.match(checkoutRequest.body.payment_note, /BOOKING-1/);
+});
+
+test('Square booking cancellation rolls back a reservation when checkout fails', async () => {
+  let cancellationRequest;
+  const fakeFetch = async (url, options) => {
+    cancellationRequest = { url, body: JSON.parse(options.body) };
+    return new Response(JSON.stringify({ booking: { id: 'BOOKING-1', status: 'CANCELLED_BY_SELLER' } }), {
+      status: 200, headers: { 'Content-Type': 'application/json' }
+    });
+  };
+  const service = createSquareService(loadConfig(env), fakeFetch);
+  const booking = await service.cancelBooking({ id: 'BOOKING-1', version: 3 });
+
+  assert.equal(booking.status, 'CANCELLED_BY_SELLER');
+  assert.equal(cancellationRequest.url, 'https://connect.squareupsandbox.com/v2/bookings/BOOKING-1/cancel');
+  assert.equal(cancellationRequest.body.booking_version, 3);
+});
+
+test('Square expiration helpers inspect the order before deleting checkout', async () => {
+  const requests = [];
+  const fakeFetch = async (url, options = {}) => {
+    requests.push({ url, method: options.method || 'GET' });
+    const payload = options.method === 'DELETE'
+      ? { id: 'LINK-1', cancelled_order_id: 'ORDER-1' }
+      : { order: { id: 'ORDER-1', state: 'OPEN' } };
+    return new Response(JSON.stringify(payload), {
+      status: 200, headers: { 'Content-Type': 'application/json' }
+    });
+  };
+  const service = createSquareService(loadConfig(env), fakeFetch);
+
+  assert.equal((await service.retrieveOrder('ORDER-1')).state, 'OPEN');
+  assert.equal((await service.deletePaymentLink('LINK-1')).cancelled_order_id, 'ORDER-1');
+  assert.deepEqual(requests, [
+    { url: 'https://connect.squareupsandbox.com/v2/orders/ORDER-1', method: 'GET' },
+    { url: 'https://connect.squareupsandbox.com/v2/online-checkout/payment-links/LINK-1', method: 'DELETE' }
   ]);
 });
