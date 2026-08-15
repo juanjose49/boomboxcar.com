@@ -111,9 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Attach tracking
   bindTrackedLink(document.getElementById('ctaBook'), 'booking_builder_click');
   document.querySelectorAll('[data-gtag="booking_builder_click"]').forEach(a => bindTrackedLink(a, 'booking_builder_click'));
-  bindTrackedLink(document.getElementById('telLink'), 'click_phone_header');
   bindTrackedLink(document.getElementById('emailLink'), 'click_email_header');
-  bindTrackedLink(document.getElementById('contactPhone'), 'click_phone_contact');
   bindTrackedLink(document.getElementById('contactEmail'), 'click_email_contact');
   bindTrackedLink(document.getElementById('instagramLink'), 'click_instagram');
 

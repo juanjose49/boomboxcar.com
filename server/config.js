@@ -9,14 +9,6 @@ export const PACKAGES = Object.freeze({
   8: { hours: 8, price: 1299, envKey: 'SQUARE_SERVICE_VARIATION_8H' }
 });
 
-export const ADDONS = Object.freeze({
-  night: { name: 'Night package', price: 125 },
-  karaoke: { name: 'Karaoke', price: 100 },
-  bubbles: { name: 'Bubbles', price: 50 },
-  microphone: { name: 'Additional microphone', price: null },
-  branding: { name: 'Brand activation / custom graphics', price: null }
-});
-
 function configured(value) {
   return Boolean(value && !String(value).startsWith('REPLACE_WITH_'));
 }

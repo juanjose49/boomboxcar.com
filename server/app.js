@@ -2,13 +2,14 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ADDONS, MINIMUM_NOTICE_HOURS, PACKAGES, loadConfig } from './config.js';
+import { MINIMUM_NOTICE_HOURS, PACKAGES, loadConfig } from './config.js';
 import { AppError } from './errors.js';
 import { createSquareService } from './square.js';
 import {
   buildCustomerNote,
   calculatePricing,
   createReservationId,
+  findAvailableSlot,
   persistReservation,
   validateReservation
 } from './reservations.js';
@@ -48,8 +49,7 @@ function publicConfig(config) {
     applicationId: config.squareApplicationId,
     locationId: config.squareLocationId,
     minimumNoticeHours: MINIMUM_NOTICE_HOURS,
-    packages: Object.values(PACKAGES).map(pkg => ({ hours: pkg.hours, price: pkg.price })),
-    addons: Object.entries(ADDONS).map(([key, addon]) => ({ key, name: addon.name, price: addon.price }))
+    packages: Object.values(PACKAGES).map(pkg => ({ hours: pkg.hours, price: pkg.price }))
   };
 }
 
@@ -113,6 +113,14 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
       if (request.method === 'GET' && pathname === '/config') {
         return sendJson(response, 200, publicConfig(config), corsHeaders);
       }
+      if (request.method === 'GET' && pathname === '/modifiers') {
+        if (!allowRequest(`${ip}:catalog`, 120)) throw new AppError(429, 'RATE_LIMITED', 'Too many catalog requests.');
+        if (!config.squareConfigured) throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square Sandbox credentials are not configured yet.');
+        const durationHours = Number(url.searchParams.get('durationHours'));
+        if (!PACKAGES[durationHours]) throw new AppError(400, 'INVALID_DURATION', 'Choose a valid duration.');
+        const packageDetails = await square.getPackage(durationHours);
+        return sendJson(response, 200, packageDetails, corsHeaders);
+      }
       if (request.method === 'POST' && pathname === '/availability') {
         if (!allowRequest(`${ip}:availability`, 60)) throw new AppError(429, 'RATE_LIMITED', 'Too many availability requests.');
         if (!config.squareConfigured) throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square Sandbox credentials are not configured yet.');
@@ -127,24 +135,40 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         if (!allowRequest(`${ip}:reservations`, 10)) throw new AppError(429, 'RATE_LIMITED', 'Too many reservation attempts.');
         if (!config.squareConfigured) throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square Sandbox credentials are not configured yet.');
         const reservation = validateReservation(await readJson(request));
+        const packageDetails = await square.getPackage(reservation.durationHours);
+        const pricing = calculatePricing(packageDetails, reservation.modifiers);
         const availableSlots = await square.searchAvailability({
           date: reservation.eventDate,
           durationHours: reservation.durationHours,
           locale: reservation.locale
         });
-        const slot = availableSlots.find(candidate => candidate.startAt === reservation.startAt);
+        const slot = findAvailableSlot(availableSlots, reservation.startAt);
         if (!slot) throw new AppError(409, 'SLOT_NO_LONGER_AVAILABLE', 'That arrival time is no longer available. Choose another time.');
 
         const reservationId = createReservationId();
-        const pricing = calculatePricing(reservation.durationHours, reservation.addonKeys);
         const customerNote = buildCustomerNote({ reservationId, reservation, pricing });
         const customer = await square.findOrCreateCustomer(reservation.customer, reservationId);
         const booking = await square.createBooking({ customerId: customer.id, slot, customerNote });
+        let order = null;
+        let orderError = null;
+        try {
+          order = await square.createOrder({
+            customerId: customer.id,
+            reservationId,
+            packageDetails,
+            modifiers: pricing.modifiers
+          });
+        } catch (error) {
+          orderError = { code: error.code || 'ORDER_CREATION_FAILED', message: error.message };
+          console.error('[boomboxcar-api] order', orderError.code, orderError.message);
+        }
         await persistReservation(config.dataDir, {
           reservationId,
           createdAt: new Date().toISOString(),
           squareEnvironment: config.squareEnvironment,
           squareBookingId: booking.id,
+          squareOrderId: order?.id || null,
+          squareOrderError: orderError,
           squareCustomerId: customer.id,
           bookingStatus: booking.status,
           reservation,
@@ -153,6 +177,8 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         return sendJson(response, 201, {
           reservationId,
           bookingId: booking.id,
+          orderId: order?.id || null,
+          orderWarning: order ? null : 'The appointment was created, but its itemized Square order needs review.',
           status: booking.status,
           startAt: booking.start_at,
           pricing

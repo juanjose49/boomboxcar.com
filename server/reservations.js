@@ -1,7 +1,7 @@
 import { mkdir, appendFile, chmod } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import path from 'node:path';
-import { ADDONS, PACKAGES } from './config.js';
+import { PACKAGES } from './config.js';
 import { AppError } from './errors.js';
 
 function cleanString(value, max = 500) {
@@ -22,8 +22,16 @@ export function validateReservation(input) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.eventDate || '')) throw new AppError(400, 'INVALID_DATE', 'Choose a valid event date.');
   if (!input.startAt || !Number.isFinite(Date.parse(input.startAt))) throw new AppError(400, 'INVALID_TIME', 'Choose an available arrival time.');
 
-  const addonKeys = Array.isArray(input.addons) ? [...new Set(input.addons)] : [];
-  if (addonKeys.some(key => !ADDONS[key])) throw new AppError(400, 'INVALID_ADDON', 'One or more add-ons are invalid.');
+  const modifierIds = new Set();
+  const modifiers = Array.isArray(input.modifiers) ? input.modifiers.map(entry => {
+    const id = cleanString(entry?.id, 100);
+    const quantity = Number(entry?.quantity || 1);
+    if (!id || modifierIds.has(id) || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+      throw new AppError(400, 'INVALID_MODIFIER', 'One or more modifiers are invalid.');
+    }
+    modifierIds.add(id);
+    return { id, quantity };
+  }) : [];
 
   const customer = {
     givenName: cleanString(input.customer?.givenName, 100),
@@ -52,7 +60,7 @@ export function validateReservation(input) {
     eventDate: input.eventDate,
     startAt: new Date(input.startAt).toISOString(),
     durationHours,
-    addonKeys,
+    modifiers,
     customer,
     details
   };
@@ -62,24 +70,54 @@ export function createReservationId(now = new Date()) {
   return `BBC-${now.getUTCFullYear()}-${randomBytes(3).toString('hex').toUpperCase()}`;
 }
 
-export function calculatePricing(durationHours, addonKeys) {
-  const basePrice = PACKAGES[durationHours].price;
-  const addons = addonKeys.map(key => ({ key, ...ADDONS[key] }));
-  const total = addons.reduce((sum, addon) => sum + (addon.price || 0), basePrice);
-  return { basePrice, addons, total, hasCustomQuote: addons.some(addon => addon.price === null) };
+export function findAvailableSlot(slots, startAt) {
+  const selectedTime = Date.parse(startAt);
+  return slots.find(slot => Date.parse(slot.startAt) === selectedTime);
+}
+
+export function calculatePricing(packageDetails, selections) {
+  const selectedById = new Map(selections.map(selection => [selection.id, selection]));
+  const modifiers = [];
+  for (const group of packageDetails.modifierGroups) {
+    const groupSelections = group.modifiers
+      .filter(modifier => selectedById.has(modifier.id))
+      .map(modifier => ({ ...modifier, quantity: selectedById.get(modifier.id).quantity }));
+    const selectionCount = groupSelections.reduce((sum, modifier) => sum + modifier.quantity, 0);
+    if (selectionCount < group.minSelections || (group.maxSelections > 0 && selectionCount > group.maxSelections)) {
+      throw new AppError(400, 'INVALID_MODIFIER_SELECTION', `Choose a valid number of options from ${group.name}.`);
+    }
+    if (!group.allowQuantities && groupSelections.some(modifier => modifier.quantity !== 1)) {
+      throw new AppError(400, 'INVALID_MODIFIER_QUANTITY', `${group.name} does not allow multiple quantities.`);
+    }
+    modifiers.push(...groupSelections.map(modifier => ({
+      id: modifier.id,
+      groupId: group.id,
+      name: modifier.name,
+      quantity: modifier.quantity,
+      unitPrice: modifier.price,
+      price: modifier.price * modifier.quantity
+    })));
+  }
+  if (modifiers.length !== selections.length) {
+    throw new AppError(400, 'INVALID_MODIFIER', 'One or more modifiers are not available for this package.');
+  }
+  const total = modifiers.reduce((sum, modifier) => sum + modifier.price, packageDetails.basePrice);
+  return { basePrice: packageDetails.basePrice, modifiers, total, currency: packageDetails.currency };
 }
 
 export function buildCustomerNote({ reservationId, reservation, pricing }) {
   const money = value => `$${value.toLocaleString('en-US')}`;
-  const addonLines = pricing.addons.length
-    ? pricing.addons.map(addon => `- ${addon.name}: ${addon.price === null ? 'custom quote' : `+${money(addon.price)}`}`)
+  const addonLines = pricing.modifiers.length
+    ? pricing.modifiers.map(modifier => `- ${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}: +${money(modifier.price)}`)
     : ['- None'];
   return [
     `BOOMBOXCAR RESERVATION ${reservationId}`,
     `Duration: ${reservation.durationHours} hour${reservation.durationHours === 1 ? '' : 's'} (${money(pricing.basePrice)})`,
+    'Included with every booking: Two powerful speakers, the inflatable BoomBox, two wireless microphones, and licensed background music through Soundtrack Your Brand.',
+    'Staff scope: Sound-system setup and operation only. DJ and MC services are not included; the client team controls announcements, programming, and the event message.',
     'Add-ons:',
     ...addonLines,
-    `Estimated total: ${money(pricing.total)}${pricing.hasCustomQuote ? ' plus custom-quote items' : ''}`,
+    `Estimated total: ${money(pricing.total)}`,
     `Event address: ${reservation.details.address}`,
     `Event type: ${reservation.details.eventType}`,
     `Setting: ${reservation.details.setting}`,

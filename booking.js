@@ -20,7 +20,15 @@
     apiHandoff: 'Tu reserva se creará directamente en Square con todos los extras y detalles.',
     fallbackHandoff: 'Tus detalles se copiarán. Pégalos en las notas de la cita en Square para conservar todos los extras.',
     submitting: 'Creando tu reserva segura…', successTitle: 'Reserva creada', successBody: 'Tu número de reserva es',
-    error: 'No pudimos crear la reserva. Revisa los datos o elige otra hora.'
+    error: 'No pudimos crear la reserva. Revisa los datos o elige otra hora.',
+    modifiersLoading: 'Cargando los extras configurados en Square…', noModifiers: 'No hay extras disponibles para este paquete.',
+    modifiersUnavailable: 'Los extras se seleccionarán en el programador de Square.', optional: 'Opcional',
+    required: 'Requerido', upTo: 'Hasta', selections: 'selecciones', quantity: 'Cantidad',
+    invalidModifiers: 'Revisa la cantidad de extras seleccionados.',
+    orderWarning: 'La cita está confirmada, pero el pedido detallado de Square necesita revisión.',
+    includedLabel: 'Incluido en cada reserva',
+    includedItems: 'Dos bocinas potentes, el BoomBox inflable, dos micrófonos inalámbricos y música ambiental con licencia a través de Soundtrack Your Brand.',
+    staffScope: 'El personal instala y opera el sistema de sonido. Los servicios de DJ y maestro de ceremonias no están incluidos; tu equipo controla los anuncios, la programación y el mensaje del evento.'
   } : {
     chooseDate: 'Choose a date and arrival time', hour: 'hour', hours: 'hours', base: 'Base service',
     notice: 'Date and time must be at least 18 hours from now.', noteTitle: 'BOOMBOXCAR EVENT DETAILS',
@@ -34,7 +42,15 @@
     apiHandoff: 'Your reservation will be created directly in Square with every add-on and event detail.',
     fallbackHandoff: 'Your details will be copied. Paste them into Square’s appointment notes to preserve every add-on.',
     submitting: 'Creating your secure reservation…', successTitle: 'Reservation created', successBody: 'Your reservation number is',
-    error: 'We could not create the reservation. Check the details or choose another time.'
+    error: 'We could not create the reservation. Check the details or choose another time.',
+    modifiersLoading: 'Loading your Square add-ons…', noModifiers: 'No add-ons are available for this package.',
+    modifiersUnavailable: 'Add-ons will be selected in the hosted Square scheduler.', optional: 'Optional',
+    required: 'Required', upTo: 'Up to', selections: 'selections', quantity: 'Quantity',
+    invalidModifiers: 'Review the number of add-ons selected.',
+    orderWarning: 'The appointment is confirmed, but its itemized Square order needs review.',
+    includedLabel: 'Included with every booking',
+    includedItems: 'Two powerful speakers, the inflatable BoomBox, two wireless microphones, and licensed background music through Soundtrack Your Brand.',
+    staffScope: 'Staff set up and operate the sound system. DJ and MC services are not included; your team controls announcements, programming, and the event message.'
   };
 
   const dateInput = form.elements.eventDate;
@@ -48,9 +64,13 @@
   const submitButton = document.getElementById('bookingSubmit');
   const handoffNote = document.getElementById('handoffNote');
   const bookingResult = document.getElementById('bookingResult');
+  const modifierGroups = document.getElementById('modifierGroups');
+  const modifierStatus = document.getElementById('modifierStatus');
   const money = new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
   let backendReady = false;
   let availabilityController = null;
+  let modifierController = null;
+  let currentPackage = null;
 
   function localDateValue(date) {
     const year = date.getFullYear();
@@ -67,6 +87,144 @@
 
   function selectedStartAt() {
     return timeInput.selectedOptions[0]?.dataset.startAt || '';
+  }
+
+  function selectedModifiers() {
+    return [...form.querySelectorAll('input[name="modifiers"]:checked')].map(input => {
+      const quantityInput = input.closest('.choice-card')?.querySelector('input[data-modifier-quantity]');
+      return {
+        id: input.value,
+        name: input.dataset.name,
+        price: Number(input.dataset.price),
+        quantity: quantityInput ? Number(quantityInput.value || 1) : 1
+      };
+    });
+  }
+
+  function modifierRuleLabel(group) {
+    if (group.minSelections > 0 && group.maxSelections > 0) return `${copy.required}: ${group.minSelections}–${group.maxSelections}`;
+    if (group.minSelections > 0) return `${copy.required}: ${group.minSelections}+`;
+    if (group.maxSelections > 0) return `${copy.upTo} ${group.maxSelections} ${copy.selections}`;
+    return copy.optional;
+  }
+
+  function renderModifierGroups(packageDetails) {
+    modifierGroups.replaceChildren();
+    if (!packageDetails.modifierGroups.length) {
+      const empty = document.createElement('p');
+      empty.className = 'modifier-empty';
+      empty.textContent = copy.noModifiers;
+      modifierGroups.append(empty);
+      modifierStatus.textContent = '';
+      return;
+    }
+    packageDetails.modifierGroups.forEach(group => {
+      const section = document.createElement('section');
+      section.className = 'modifier-group';
+      section.dataset.minSelections = group.minSelections;
+      section.dataset.maxSelections = group.maxSelections;
+      const title = document.createElement('h4');
+      title.className = 'modifier-group-title';
+      const titleText = document.createElement('span');
+      titleText.textContent = group.name;
+      const rule = document.createElement('small');
+      rule.textContent = modifierRuleLabel(group);
+      title.append(titleText, rule);
+      const grid = document.createElement('div');
+      grid.className = 'choice-grid addon-grid';
+      group.modifiers.forEach(modifier => {
+        const label = document.createElement('label');
+        label.className = 'choice-card choice-addon';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.name = 'modifiers';
+        input.value = modifier.id;
+        input.dataset.name = modifier.name;
+        input.dataset.price = modifier.price;
+        input.checked = modifier.preselected;
+        const card = document.createElement('span');
+        const name = document.createElement('strong');
+        name.textContent = modifier.name;
+        const price = document.createElement('small');
+        price.textContent = modifier.price ? `+${money.format(modifier.price)}` : money.format(0);
+        card.append(name, price);
+        if (group.allowQuantities) {
+          const quantityLabel = document.createElement('div');
+          quantityLabel.className = 'modifier-quantity';
+          quantityLabel.textContent = copy.quantity;
+          const quantity = document.createElement('input');
+          quantity.type = 'number';
+          quantity.min = '1';
+          quantity.max = '99';
+          quantity.value = '1';
+          quantity.dataset.modifierQuantity = 'true';
+          quantity.setAttribute('aria-label', `${copy.quantity}: ${modifier.name}`);
+          quantity.disabled = !input.checked;
+          quantityLabel.append(quantity);
+          card.append(quantityLabel);
+          input.addEventListener('change', () => { quantity.disabled = !input.checked; });
+        }
+        label.append(input, card);
+        grid.append(label);
+      });
+      section.append(title, grid);
+      modifierGroups.append(section);
+    });
+    modifierStatus.textContent = '';
+  }
+
+  function validateModifierRules() {
+    for (const group of modifierGroups.querySelectorAll('.modifier-group')) {
+      const count = [...group.querySelectorAll('input[name="modifiers"]:checked')].reduce((sum, input) => {
+        const quantity = input.closest('.choice-card')?.querySelector('input[data-modifier-quantity]');
+        return sum + (quantity ? Number(quantity.value || 1) : 1);
+      }, 0);
+      const minimum = Number(group.dataset.minSelections || 0);
+      const maximum = Number(group.dataset.maxSelections || 0);
+      if (count < minimum || (maximum > 0 && count > maximum)) {
+        modifierStatus.textContent = copy.invalidModifiers;
+        modifierStatus.dataset.state = 'error';
+        group.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+      }
+    }
+    modifierStatus.dataset.state = '';
+    return true;
+  }
+
+  async function loadModifiers() {
+    modifierController?.abort();
+    currentPackage = null;
+    modifierGroups.replaceChildren();
+    if (!backendReady) {
+      modifierStatus.textContent = copy.modifiersUnavailable;
+      updateSummary();
+      return;
+    }
+    modifierController = new AbortController();
+    modifierStatus.textContent = copy.modifiersLoading;
+    try {
+      const duration = selectedDuration();
+      const response = await fetch(`${apiBase}/modifiers?durationHours=${encodeURIComponent(duration.value)}`, {
+        headers: { Accept: 'application/json' }, signal: modifierController.signal
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message || 'Catalog request failed.');
+      currentPackage = payload;
+      duration.dataset.price = payload.basePrice;
+      duration.closest('.choice-card').querySelector('small').textContent = money.format(payload.basePrice);
+      renderModifierGroups(payload);
+      updateSummary();
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      backendReady = false;
+      modifierGroups.replaceChildren();
+      modifierStatus.textContent = copy.modifiersUnavailable;
+      if (dateInput.value) fallbackTimeOptions();
+      submitButton.textContent = copy.fallbackSubmit;
+      handoffNote.textContent = copy.fallbackHandoff;
+      updateSummary();
+    }
   }
 
   function setTimeOptions(options, placeholder) {
@@ -149,15 +307,16 @@
     const duration = selectedDuration();
     const hours = Number(duration.value);
     const basePrice = Number(duration.dataset.price);
-    const selectedAddons = [...form.querySelectorAll('input[name="addons"]:checked')];
-    const pricedAddons = selectedAddons.filter(addon => addon.dataset.price);
-    const hasQuoteItems = selectedAddons.some(addon => addon.dataset.quote === 'true');
-    const total = pricedAddons.reduce((sum, addon) => sum + Number(addon.dataset.price), basePrice);
+    const modifiers = selectedModifiers();
+    const total = modifiers.reduce((sum, modifier) => sum + modifier.price * modifier.quantity, basePrice);
 
     packageOutput.textContent = `${hours} ${hours === 1 ? copy.hour : copy.hours}`;
     totalOutput.textContent = money.format(total);
-    quoteNote.hidden = !hasQuoteItems;
-    const lines = [{ label: copy.base, price: basePrice }, ...pricedAddons.map(addon => ({ label: addon.value, price: Number(addon.dataset.price) }))];
+    quoteNote.hidden = true;
+    const lines = [{ label: copy.base, price: basePrice }, ...modifiers.map(modifier => ({
+      label: `${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}`,
+      price: modifier.price * modifier.quantity
+    }))];
     linesOutput.replaceChildren(...lines.map(line => {
       const row = document.createElement('div');
       row.className = 'summary-line';
@@ -195,11 +354,7 @@
       startAt: selectedStartAt(),
       durationHours: Number(duration.value),
       basePrice: Number(duration.dataset.price),
-      addons: [...form.querySelectorAll('input[name="addons"]:checked')].map(addon => ({
-        key: addon.dataset.addonKey,
-        name: addon.value,
-        price: addon.dataset.price ? Number(addon.dataset.price) : null
-      })),
+      modifiers: selectedModifiers(),
       address: form.elements.address.value.trim(),
       eventType: form.elements.eventType.value,
       setting: form.elements.setting.value,
@@ -220,11 +375,11 @@
       timeZone: draft.startAt ? 'America/New_York' : undefined,
       weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
     }).format(date);
-    const addonTotal = draft.addons.reduce((sum, addon) => sum + (addon.price || 0), 0);
-    const addonLines = draft.addons.length
-      ? draft.addons.map(addon => `- ${addon.name}: ${addon.price === null ? copy.customQuote : `+${money.format(addon.price)}`}`).join('\n')
+    const addonTotal = draft.modifiers.reduce((sum, modifier) => sum + modifier.price * modifier.quantity, 0);
+    const addonLines = draft.modifiers.length
+      ? draft.modifiers.map(modifier => `- ${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}: +${money.format(modifier.price * modifier.quantity)}`).join('\n')
       : `- ${copy.none}`;
-    return [copy.noteTitle, `${copy.date}: ${formattedDate}`, `${copy.duration}: ${draft.durationHours} ${draft.durationHours === 1 ? copy.hour : copy.hours} (${money.format(draft.basePrice)})`, `${copy.addons}:`, addonLines, `${copy.estimatedTotal}: ${money.format(draft.basePrice + addonTotal)}`, `${copy.address}: ${draft.address}`, `${copy.eventType}: ${draft.eventType}`, `${copy.setting}: ${draft.setting}`, `${copy.attendance}: ${draft.attendance}`, `${copy.requests}: ${draft.requests || copy.none}`].join('\n');
+    return [copy.noteTitle, `${copy.date}: ${formattedDate}`, `${copy.duration}: ${draft.durationHours} ${draft.durationHours === 1 ? copy.hour : copy.hours} (${money.format(draft.basePrice)})`, `${copy.includedLabel}: ${copy.includedItems}`, copy.staffScope, `${copy.addons}:`, addonLines, `${copy.estimatedTotal}: ${money.format(draft.basePrice + addonTotal)}`, `${copy.address}: ${draft.address}`, `${copy.eventType}: ${draft.eventType}`, `${copy.setting}: ${draft.setting}`, `${copy.attendance}: ${draft.attendance}`, `${copy.requests}: ${draft.requests || copy.none}`].join('\n');
   }
 
   async function copyText(text) {
@@ -249,6 +404,7 @@
       const config = await response.json();
       backendReady = response.ok && config.ready === true;
     } catch (_) { backendReady = false; }
+    loadModifiers();
     if (dateInput.value) loadAvailability();
     else {
       availabilityStatus.textContent = backendReady ? copy.chooseDate : copy.fallback;
@@ -258,6 +414,7 @@
   }
 
   form.addEventListener('input', event => {
+    if (event.target.name === 'modifiers' || event.target.dataset.modifierQuantity) modifierStatus.dataset.state = '';
     validateNotice();
     updateSummary();
     if (event.target === dateInput) loadAvailability();
@@ -266,11 +423,17 @@
     validateNotice();
     updateSummary();
     if (event.target === dateInput || event.target.name === 'duration') loadAvailability();
+    if (event.target.name === 'duration') loadModifiers();
   });
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
     validateNotice();
+    if (backendReady && !currentPackage) {
+      modifierStatus.textContent = copy.modifiersLoading;
+      return;
+    }
+    if (!validateModifierRules()) return;
     if (!form.reportValidity()) return;
     const draft = buildDraft();
     const squareNote = buildSquareNote(draft);
@@ -278,7 +441,7 @@
 
     if (!backendReady || !draft.startAt) {
       const detailsCopied = await copyText(squareNote);
-      if (typeof fireGA === 'function') fireGA('square_availability_handoff', { duration_hours: draft.durationHours, addon_count: draft.addons.length, event_type: draft.eventType, details_copied: detailsCopied, lang: document.documentElement.lang || 'en' });
+      if (typeof fireGA === 'function') fireGA('square_availability_handoff', { duration_hours: draft.durationHours, addon_count: draft.modifiers.length, event_type: draft.eventType, details_copied: detailsCopied, lang: document.documentElement.lang || 'en' });
       window.location.href = squareBookingUrl;
       return;
     }
@@ -295,7 +458,7 @@
           eventDate: draft.eventDate,
           startAt: draft.startAt,
           durationHours: draft.durationHours,
-          addons: draft.addons.map(addon => addon.key),
+          modifiers: draft.modifiers.map(modifier => ({ id: modifier.id, quantity: modifier.quantity })),
           address: draft.address,
           eventType: draft.eventType,
           setting: draft.setting,
@@ -306,12 +469,12 @@
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error?.message || copy.error);
-      bookingResult.textContent = `${copy.successTitle}. ${copy.successBody} ${result.reservationId}.`;
+      bookingResult.textContent = `${copy.successTitle}. ${copy.successBody} ${result.reservationId}.${result.orderWarning ? ` ${copy.orderWarning}` : ''}`;
       bookingResult.dataset.state = 'success';
       bookingResult.hidden = false;
       handoffNote.hidden = true;
       form.querySelectorAll('fieldset').forEach(fieldset => { fieldset.disabled = true; });
-      if (typeof fireGA === 'function') fireGA('booking_created', { reservation_id: result.reservationId, duration_hours: draft.durationHours, addon_count: draft.addons.length, lang: document.documentElement.lang || 'en' });
+      if (typeof fireGA === 'function') fireGA('booking_created', { reservation_id: result.reservationId, duration_hours: draft.durationHours, addon_count: draft.modifiers.length, order_id: result.orderId || '', lang: document.documentElement.lang || 'en' });
     } catch (error) {
       bookingResult.textContent = error.message || copy.error;
       bookingResult.dataset.state = 'error';
