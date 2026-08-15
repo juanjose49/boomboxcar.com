@@ -75,16 +75,19 @@
   let availabilityController = null;
   let modifierController = null;
   let currentPackage = null;
-  let customerDraftTimer = null;
-  let customerDraftExpiryTimer = null;
-  const customerDraftKey = 'boomboxcarCustomerDraft.v1';
-  const customerDraftTtlMs = 60 * 60 * 1000;
+  let bookingDraftTimer = null;
+  let bookingDraftExpiryTimer = null;
+  let restoredTimeSelection = null;
+  const bookingDraftKey = 'boomboxcarBookingDraft.v2';
+  const legacyCustomerDraftKey = 'boomboxcarCustomerDraft.v1';
+  const bookingDraftTtlMs = 60 * 60 * 1000;
   let minimumNoticeHours = 18;
-  const customerDraftFields = [
+  const bookingDraftFields = [
     'addressLine1', 'addressLine2', 'locality', 'administrativeDistrictLevel1', 'postalCode',
+    'eventType', 'setting', 'attendance', 'requests',
     'givenName', 'familyName', 'email', 'phone'
   ];
-  const customerDraftFieldNames = new Set(customerDraftFields);
+  const bookingDraftFieldNames = new Set([...bookingDraftFields, 'duration', 'eventDate', 'eventTime']);
 
   const checkoutParams = new URLSearchParams(window.location.search);
   const returnedReservationId = checkoutParams.get('reservation') || '';
@@ -135,55 +138,82 @@
     return { value: timeInput.value, startAt: selectedStartAt() };
   }
 
-  function customerDraftValues() {
-    return Object.fromEntries(customerDraftFields.map(name => [name, form.elements[name]?.value.trim() || '']));
+  function bookingDraftValues() {
+    return Object.fromEntries(bookingDraftFields.map(name => [name, form.elements[name]?.value.trim() || '']));
   }
 
-  function persistCustomerDraft() {
-    clearTimeout(customerDraftTimer);
-    clearTimeout(customerDraftExpiryTimer);
-    customerDraftTimer = null;
+  function persistBookingDraft() {
+    clearTimeout(bookingDraftTimer);
+    clearTimeout(bookingDraftExpiryTimer);
+    bookingDraftTimer = null;
     try {
-      const values = customerDraftValues();
+      const values = bookingDraftValues();
       if (!Object.values(values).some(Boolean)) {
-        localStorage.removeItem(customerDraftKey);
+        localStorage.removeItem(bookingDraftKey);
         return;
       }
       const savedAt = Date.now();
-      localStorage.setItem(customerDraftKey, JSON.stringify({
-        version: 1, savedAt, expiresAt: savedAt + customerDraftTtlMs, values
+      localStorage.setItem(bookingDraftKey, JSON.stringify({
+        version: 2,
+        savedAt,
+        expiresAt: savedAt + bookingDraftTtlMs,
+        durationHours: selectedDuration()?.value || '',
+        eventDate: dateInput.value,
+        eventTime: timeInput.value,
+        startAt: selectedStartAt(),
+        values
       }));
-      customerDraftExpiryTimer = setTimeout(() => {
-        try { localStorage.removeItem(customerDraftKey); } catch (_) {}
-      }, customerDraftTtlMs);
+      localStorage.removeItem(legacyCustomerDraftKey);
+      bookingDraftExpiryTimer = setTimeout(() => {
+        try { localStorage.removeItem(bookingDraftKey); } catch (_) {}
+      }, bookingDraftTtlMs);
     } catch (_) {}
   }
 
-  function scheduleCustomerDraftSave() {
-    clearTimeout(customerDraftTimer);
-    customerDraftTimer = setTimeout(persistCustomerDraft, 200);
+  function scheduleBookingDraftSave() {
+    clearTimeout(bookingDraftTimer);
+    bookingDraftTimer = setTimeout(persistBookingDraft, 200);
   }
 
-  function restoreCustomerDraft() {
+  function restoreBookingDraft() {
     try {
-      const stored = JSON.parse(localStorage.getItem(customerDraftKey) || 'null');
+      const current = JSON.parse(localStorage.getItem(bookingDraftKey) || 'null');
+      const legacy = JSON.parse(localStorage.getItem(legacyCustomerDraftKey) || 'null');
+      const stored = current?.version === 2 ? current : legacy?.version === 1 ? legacy : null;
       const savedAt = Number(stored?.savedAt);
-      if (stored?.version !== 1 || !savedAt || Date.now() - savedAt > customerDraftTtlMs || savedAt > Date.now()) {
-        localStorage.removeItem(customerDraftKey);
+      if (!stored || !savedAt || Date.now() - savedAt > bookingDraftTtlMs || savedAt > Date.now()) {
+        localStorage.removeItem(bookingDraftKey);
+        localStorage.removeItem(legacyCustomerDraftKey);
         return;
       }
-      for (const name of customerDraftFields) {
+      for (const name of bookingDraftFields) {
         const control = form.elements[name];
         const value = typeof stored.values?.[name] === 'string' ? stored.values[name] : '';
-        if (!control || control.value || !value) continue;
+        if (!control || !value) continue;
         if (name === 'administrativeDistrictLevel1' && !['DC', 'MD', 'VA'].includes(value)) continue;
+        if (control instanceof HTMLSelectElement && ![...control.options].some(option => option.value === value)) continue;
+        if (name === 'attendance' && (!/^\d{1,6}$/.test(value) || Number(value) < 1)) continue;
         control.value = value;
       }
-      customerDraftExpiryTimer = setTimeout(() => {
-        try { localStorage.removeItem(customerDraftKey); } catch (_) {}
-      }, Math.max(0, customerDraftTtlMs - (Date.now() - savedAt)));
+      if (stored.version === 2) {
+        const duration = form.querySelector(`input[name="duration"][value="${Number(stored.durationHours)}"]`);
+        if (duration) duration.checked = true;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(stored.eventDate || '') && stored.eventDate >= dateInput.min) {
+          dateInput.value = stored.eventDate;
+          restoredTimeSelection = {
+            value: typeof stored.eventTime === 'string' ? stored.eventTime : '',
+            startAt: typeof stored.startAt === 'string' ? stored.startAt : ''
+          };
+        }
+      }
+      bookingDraftExpiryTimer = setTimeout(() => {
+        try { localStorage.removeItem(bookingDraftKey); } catch (_) {}
+      }, Math.max(0, bookingDraftTtlMs - (Date.now() - savedAt)));
     } catch (_) {
-      try { localStorage.removeItem(customerDraftKey); } catch (_) {}
+      try {
+        localStorage.removeItem(bookingDraftKey);
+        localStorage.removeItem(legacyCustomerDraftKey);
+      } catch (_) {}
     }
   }
 
@@ -387,9 +417,10 @@
     availabilityStatus.dataset.state = 'fallback';
     submitButton.textContent = copy.fallbackSubmit;
     handoffNote.textContent = copy.fallbackHandoff;
+    updateSummary();
   }
 
-  async function loadAvailability({ preserveSelection = false } = {}) {
+  async function loadAvailability({ preserveSelection = false, preferredSelection = null } = {}) {
     timeInput.setCustomValidity('');
     if (!selectedDuration()) {
       dateInput.disabled = true;
@@ -404,8 +435,8 @@
       availabilityStatus.dataset.state = backendReady ? '' : 'fallback';
       return;
     }
-    const preferredSelection = preserveSelection ? currentTimeSelection() : null;
-    if (!backendReady) return fallbackTimeOptions(preferredSelection);
+    const selectionToRestore = preferredSelection || (preserveSelection ? currentTimeSelection() : null);
+    if (!backendReady) return fallbackTimeOptions(selectionToRestore);
 
     availabilityController?.abort();
     availabilityController = new AbortController();
@@ -435,14 +466,15 @@
         option.dataset.startAt = slot.startAt;
         return option;
       });
-      setTimeOptions(options, options.length ? copy.chooseTime : copy.noSlots, preferredSelection);
+      setTimeOptions(options, options.length ? copy.chooseTime : copy.noSlots, selectionToRestore);
       availabilityStatus.textContent = options.length ? copy.liveReady : copy.noSlots;
       availabilityStatus.dataset.state = options.length ? 'ready' : 'empty';
       submitButton.textContent = copy.apiSubmit;
       handoffNote.textContent = copy.apiHandoff;
+      updateSummary();
     } catch (error) {
       if (error.name === 'AbortError') return;
-      fallbackTimeOptions(preferredSelection);
+      fallbackTimeOptions(selectionToRestore);
     }
   }
 
@@ -568,7 +600,10 @@
     const duration = selectedDuration();
     dateInput.disabled = !duration;
     loadModifiers();
-    if (duration && dateInput.value) loadAvailability();
+    if (duration && dateInput.value) {
+      loadAvailability({ preferredSelection: restoredTimeSelection });
+      restoredTimeSelection = null;
+    }
     else {
       availabilityStatus.textContent = duration
         ? (backendReady ? copy.chooseDate : copy.fallback)
@@ -580,12 +615,12 @@
 
   form.addEventListener('input', event => {
     if (event.target.name === 'modifiers' || event.target.dataset.modifierQuantity) modifierStatus.dataset.state = '';
-    if (customerDraftFieldNames.has(event.target.name)) scheduleCustomerDraftSave();
+    if (bookingDraftFieldNames.has(event.target.name)) scheduleBookingDraftSave();
     validateNotice();
     updateSummary();
   });
   form.addEventListener('change', event => {
-    if (customerDraftFieldNames.has(event.target.name)) scheduleCustomerDraftSave();
+    if (bookingDraftFieldNames.has(event.target.name)) scheduleBookingDraftSave();
     validateNotice();
     updateSummary();
     if (event.target === dateInput) loadAvailability();
@@ -607,7 +642,7 @@
     if (!validateModifierRules()) return;
     const draft = buildDraft();
     const squareNote = buildSquareNote(draft);
-    persistCustomerDraft();
+    persistBookingDraft();
 
     if (!backendReady || !draft.startAt) {
       const detailsCopied = await copyText(squareNote);
@@ -657,7 +692,7 @@
     }
   });
 
-  restoreCustomerDraft();
+  restoreBookingDraft();
   updateSummary();
   initializeBackend();
 })();
