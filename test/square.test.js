@@ -85,6 +85,36 @@ test('Square booking keeps modifiers in the customer note', async () => {
   });
 });
 
+test('Square existing customer is updated with the normalized first and last name', async () => {
+  const requests = [];
+  const fakeFetch = async (url, options) => {
+    const body = JSON.parse(options.body);
+    requests.push({ url, method: options.method, body });
+    if (url.endsWith('/v2/customers/search')) {
+      return new Response(JSON.stringify({
+        customers: [{ id: 'CUSTOMER-1', given_name: 'Juan San', family_name: 'Emeterio', version: 7 }]
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({
+      customer: { id: 'CUSTOMER-1', given_name: body.given_name, family_name: body.family_name, version: 8 }
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  const service = createSquareService(loadConfig(env), fakeFetch);
+  const customer = await service.findOrCreateCustomer({
+    givenName: 'Juan', familyName: 'San Emeterio', email: 'juan@example.com', phone: '240-381-7140'
+  }, 'BBC-2099-ABC123');
+
+  assert.equal(requests[1].url, 'https://connect.squareupsandbox.com/v2/customers/CUSTOMER-1');
+  assert.equal(requests[1].method, 'PUT');
+  assert.deepEqual(requests[1].body, {
+    given_name: 'Juan', family_name: 'San Emeterio', email_address: 'juan@example.com',
+    phone_number: '+12403817140', version: 7
+  });
+  assert.equal(customer.given_name, 'Juan');
+  assert.equal(customer.family_name, 'San Emeterio');
+});
+
 test('Square Catalog resolves package-specific modifier names, prices, and rules', async () => {
   const requests = [];
   const variation = {

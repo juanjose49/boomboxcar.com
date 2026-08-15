@@ -204,7 +204,20 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
         query: { filter: { email_address: { exact: customer.email } } }
       }
     });
-    if (search.customers?.[0]) return search.customers[0];
+    const existingCustomer = search.customers?.[0];
+    if (existingCustomer) {
+      const updated = await request(`/v2/customers/${encodeURIComponent(existingCustomer.id)}`, {
+        method: 'PUT',
+        body: {
+          given_name: customer.givenName,
+          family_name: customer.familyName,
+          email_address: customer.email,
+          phone_number: checkoutPhoneNumber(customer.phone),
+          version: existingCustomer.version
+        }
+      });
+      return updated.customer;
+    }
 
     const created = await request('/v2/customers', {
       method: 'POST',
@@ -213,7 +226,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
         given_name: customer.givenName,
         family_name: customer.familyName,
         email_address: customer.email,
-        phone_number: customer.phone,
+        phone_number: checkoutPhoneNumber(customer.phone),
         reference_id: reservationId,
         note: 'Created by BoomBoxCar.com booking application.'
       }
