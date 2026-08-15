@@ -45,7 +45,7 @@
   <link rel="preload" href="images/wpm.jpeg" as="image" imagesrcset="images/wps.jpeg 640w, images/wpm.jpeg 1280w, images/wpl.jpeg 1920w" imagesizes="100vw" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="index.css?v=20260605-desktop" />
+  <link rel="stylesheet" href="index.css?v=20260815-booking" />
 
   <!-- Google Analytics (unchanged) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
@@ -75,7 +75,7 @@
       "https://boomboxcar.com/images/4l.jpeg",
       "https://boomboxcar.com/images/5l.jpeg"
     ],
-    "description": "A fully licensed mobile event entertainment service offering DJ-style music, professional audio, shade awning, bubbles by day, and at night high-power lighting, lasers, and haze. Starting at $249.",
+    "description": "A fully licensed mobile event entertainment service offering DJ-style music, professional audio, a shade awning, and optional bubbles, karaoke, lighting, lasers, and haze. Starting at $249.",
     "address": {
       "@type": "PostalAddress",
       "addressLocality": "Silver Spring",
@@ -90,12 +90,6 @@
     ],
     "sameAs": ["https://www.instagram.com/boomboxcar/"],
     "availableLanguage": ["English", "Spanish"],
-    "openingHoursSpecification": [{
-      "@type": "OpeningHoursSpecification",
-      "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
-      "opens": "19:00",
-      "closes": "22:00"
-    }],
     "priceRange": "$$",
     "geo": { "@type": "GeoCoordinates", "latitude": 39.0, "longitude": -77.0 },
     "makesOffer": [
@@ -154,8 +148,8 @@
   </header>
 
   <!-- Sticky CTA (always visible) -->
-  <a id="ctaBook" class="cta-sticky" href="https://app.squareup.com/appointments/book/pz9p8fdxiu4g9w/LX5ZE0BPJR0HS/start" data-gtag="book_on_square_click" aria-label="Book on Square">
-    Book on <span class="btn-label"></span><img class="sqmark" src="images/square-logo-s.png" alt="" aria-hidden="true" decoding="async" />
+  <a id="ctaBook" class="cta-sticky" href="#book" data-gtag="booking_builder_click" aria-label="Book BoomBoxCar">
+    Book BoomBoxCar
   </a>
 
   <main id="top">
@@ -170,9 +164,82 @@
         <h1 data-i18n="hero_title">Mobile DJ, Karaoke & Event Entertainment in the DMV</h1>
         <p class="tagline" data-i18n="hero_tagline">The Easiest Way to Amplify Any Event</p>
         <div class="hero-cta">
-          <a class="btn btn-primary" href="https://app.squareup.com/appointments/book/pz9p8fdxiu4g9w/LX5ZE0BPJR0HS/start" data-gtag="book_on_square_click" aria-label="Book on Square">Book on <span class="btn-label"></span><img class="sqmark" src="images/square-logo-s.png" alt="" aria-hidden="true" decoding="async" /></a>
+          <a class="btn btn-primary" href="#book" data-gtag="booking_builder_click">Book BoomBoxCar</a>
         </div>
       </div>
+    </section>
+
+    <!-- Booking builder -->
+    <section class="booking" id="book" aria-labelledby="booking-title">
+      <div class="booking-intro">
+        <p class="eyebrow">Your event. Your BoomBoxCar.</p>
+        <h2 id="booking-title">Build your event</h2>
+        <p>Choose your time, package, and extras. You will review everything here before completing secure scheduling through Square.</p>
+      </div>
+
+      <form class="booking-builder" id="bookingBuilder" novalidate>
+        <div class="booking-main">
+          <fieldset class="booking-step">
+            <legend><span>1</span> When is your event?</legend>
+            <div class="field-grid field-grid-date">
+              <label>
+                <span>Date</span>
+                <input id="eventDate" name="eventDate" type="date" required />
+              </label>
+              <label>
+                <span>Arrival time</span>
+                <input id="eventTime" name="eventTime" type="time" required />
+              </label>
+            </div>
+            <p class="field-note">Final availability is confirmed by Square. Online bookings require at least 18 hours’ notice.</p>
+          </fieldset>
+
+          <fieldset class="booking-step">
+            <legend><span>2</span> Choose your duration</legend>
+            <div class="choice-grid duration-grid">
+              <label class="choice-card"><input type="radio" name="duration" value="1" data-price="249" required /><span><strong>1 hour</strong><small>$249</small></span></label>
+              <label class="choice-card"><input type="radio" name="duration" value="2" data-price="399" /><span><strong>2 hours</strong><small>$399</small></span></label>
+              <label class="choice-card"><input type="radio" name="duration" value="3" data-price="549" checked /><span><strong>3 hours</strong><small>$549</small></span></label>
+              <label class="choice-card"><input type="radio" name="duration" value="4" data-price="699" /><span><strong>4 hours</strong><small>$699</small></span></label>
+              <label class="choice-card"><input type="radio" name="duration" value="8" data-price="1299" /><span><strong>8 hours</strong><small>$1,299</small></span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="booking-step">
+            <legend><span>3</span> Make it yours</legend>
+            <div class="choice-grid addon-grid">
+              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Night package" data-price="125" /><span><strong>Night package</strong><small>Lighting, lasers, and haze · +$125</small></span></label>
+              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Karaoke" data-price="100" /><span><strong>Karaoke</strong><small>Licensed KaraFun and 42″ OLED · +$100</small></span></label>
+              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Bubbles" data-price="50" /><span><strong>Bubbles</strong><small>For daytime celebrations · +$50</small></span></label>
+              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Additional microphone" data-quote="true" /><span><strong>Additional microphone</strong><small>Custom quote</small></span></label>
+              <label class="choice-card choice-addon"><input type="checkbox" name="addons" value="Brand activation / custom graphics" data-quote="true" /><span><strong>Brand activation / custom graphics</strong><small>Custom quote</small></span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="booking-step">
+            <legend><span>4</span> Tell us about the event</legend>
+            <div class="field-grid">
+              <label class="field-wide"><span>Event address</span><input name="address" type="text" autocomplete="street-address" placeholder="Street address, city, state, ZIP" required /></label>
+              <label><span>Event type</span><select name="eventType" required><option value="">Choose one</option><option>Birthday</option><option>Community event</option><option>School event</option><option>Market or pop-up</option><option>Private party</option><option>Brand activation</option><option>Other</option></select></label>
+              <label><span>Setting</span><select name="setting" required><option value="">Choose one</option><option>Outdoor</option><option>Indoor</option><option>Both indoor and outdoor</option></select></label>
+              <label><span>Expected attendance</span><input name="attendance" type="number" min="1" inputmode="numeric" placeholder="Approximate guest count" required /></label>
+              <label class="field-wide"><span>Special requests <small>(optional)</small></span><textarea name="requests" rows="4" placeholder="Music, setup, access, or anything else we should know"></textarea></label>
+            </div>
+          </fieldset>
+        </div>
+
+        <aside class="booking-summary" aria-live="polite">
+          <p class="eyebrow">Your BoomBoxCar</p>
+          <h3 id="summaryPackage">3 hours</h3>
+          <p class="summary-date" id="summaryDate">Choose a date and arrival time</p>
+          <div class="summary-lines" id="summaryLines"></div>
+          <div class="summary-total"><span>Estimated total</span><strong id="summaryTotal">$549</strong></div>
+          <p class="quote-note" id="quoteNote" hidden>Custom-quote selections will be priced before your booking is confirmed.</p>
+          <button class="btn btn-primary booking-submit" type="submit">Copy details &amp; continue to Square</button>
+          <p class="handoff-note">Your event details will be copied. Paste them into Square’s appointment-notes field so every add-on stays with your booking.</p>
+          <p class="secure-note"><img src="images/square-logo-s.png" alt="" aria-hidden="true" /> Secure scheduling through Square</p>
+        </aside>
+      </form>
     </section>
 
     <!-- Value props -->
@@ -180,8 +247,8 @@
       <h2 data-i18n="features_title">What You Get</h2>
       <ul class="feature-list">
         <li data-i18n="f1"><strong>Pro Audio</strong> that fills the space without fuss.</li>
-        <li data-i18n="f2"><strong>Shade Awning & Bubbles</strong> for daytime events.</li>
-        <li data-i18n="f3"><strong>Night Package:</strong> high-power lighting, lasers, and haze.</li>
+        <li data-i18n="f2"><strong>Shade Awning</strong> for daytime events.</li>
+        <li data-i18n="f3"><strong>Night Package Add-On:</strong> high-power lighting, lasers, and haze.</li>
         <li data-i18n="f4"><strong>Fully Licensed Music</strong> via Soundtrack Your Brand.</li>
         <li data-i18n="f5"><strong>Karaoke Add-On</strong> with licensed KaraFun on a 42″ OLED.</li>
       </ul>
@@ -195,7 +262,7 @@
         Outside the service area is possible—custom add-on pricing based on location.
       </p>
       <p data-i18n="hours_copy">
-        Hours: Mon–Sun <strong>7–10pm</strong>. Online bookings must be scheduled at least <strong>18 hours</strong> in advance.
+        Online bookings must be scheduled at least <strong>18 hours</strong> in advance.
         Need us sooner? Text <a href="tel:+14049068831">404.906.8831</a>.
       </p>
     </section>
@@ -309,6 +376,7 @@
     <small>© <span id="year"></span> BoomBoxCar. All rights reserved.</small>
   </footer>
 
-  <script src="index.js" defer></script>
+  <script src="index.js?v=20260815-booking" defer></script>
+  <script src="booking.js?v=20260815-booking" defer></script>
 </body>
 </html>

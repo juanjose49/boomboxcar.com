@@ -60,8 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (y) y.textContent = new Date().getFullYear();
 
   // Attach tracking
-  bindTrackedLink(document.getElementById('ctaBook'), 'book_on_square_click');
-  document.querySelectorAll('[data-gtag="book_on_square_click"]').forEach(a => bindTrackedLink(a, 'book_on_square_click'));
+  bindTrackedLink(document.getElementById('ctaBook'), 'booking_builder_click');
+  document.querySelectorAll('[data-gtag="booking_builder_click"]').forEach(a => bindTrackedLink(a, 'booking_builder_click'));
   bindTrackedLink(document.getElementById('telLink'), 'click_phone_header');
   bindTrackedLink(document.getElementById('emailLink'), 'click_email_header');
   bindTrackedLink(document.getElementById('contactPhone'), 'click_phone_contact');
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindTrackedLink(document.getElementById('instagramLink'), 'click_instagram');
 
   // ---- CTA impressions & visibility ----
-  const heroCta = document.querySelector('.hero [data-gtag="book_on_square_click"]');
+  const heroCta = document.querySelector('.hero [data-gtag="booking_builder_click"]');
   if (heroCta && 'IntersectionObserver' in window) {
     const io = new IntersectionObserver(entries => {
       entries.forEach(entry => {
