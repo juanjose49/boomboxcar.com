@@ -17,7 +17,7 @@
     liveReady: 'Estas horas están disponibles actualmente en Square.', noSlots: 'No hay horas disponibles para esta fecha y duración.',
     fallback: 'La API aún no está disponible. Elige una hora y confirmarás la disponibilidad en el programador de Square.',
     apiSubmit: 'Reservar y pagar con Square', fallbackSubmit: 'Copiar detalles y continuar a Square',
-    apiHandoff: 'Square completará tu nombre, teléfono y dirección del evento para que los revises antes de pagar. Completa el pago en 30 minutos para conservar la hora.',
+    apiHandoff: 'La dirección del evento se guardará como el lugar de la cita. Square completará tus datos de contacto para el pago. Completa el pago en 30 minutos para conservar la hora.',
     fallbackHandoff: 'Tus detalles se copiarán. Pégalos en las notas de la cita en Square para conservar todos los extras.',
     submitting: 'Creando tu reserva y pago seguro…', checkoutReady: 'Reserva creada. Abriendo el pago seguro de Square…',
     checkoutReturn: 'Square Checkout te regresó a BoomBoxCar para la reserva',
@@ -39,7 +39,7 @@
     liveReady: 'These times are currently available in Square.', noSlots: 'No arrival times are available for this date and duration.',
     fallback: 'The API is not available yet. Choose a time and confirm availability in the hosted Square scheduler.',
     apiSubmit: 'Reserve & pay with Square', fallbackSubmit: 'Copy details & continue to Square',
-    apiHandoff: 'Square will prefill your name, phone, and event address for review before payment. Complete payment within 30 minutes to keep the time.',
+    apiHandoff: 'Your event address will be saved as the appointment location. Square will prefill your contact details for payment. Complete payment within 30 minutes to keep the time.',
     fallbackHandoff: 'Your details will be copied. Paste them into Square’s appointment notes to preserve every add-on.',
     submitting: 'Creating your reservation and secure checkout…', checkoutReady: 'Reservation created. Opening secure Square checkout…',
     checkoutReturn: 'Square Checkout returned you to BoomBoxCar for reservation',
@@ -363,7 +363,13 @@
       durationHours: Number(duration.value),
       basePrice: Number(duration.dataset.price),
       modifiers: selectedModifiers(),
-      address: form.elements.address.value.trim(),
+      address: {
+        addressLine1: form.elements.addressLine1.value.trim(),
+        addressLine2: form.elements.addressLine2.value.trim(),
+        locality: form.elements.locality.value.trim(),
+        administrativeDistrictLevel1: form.elements.administrativeDistrictLevel1.value,
+        postalCode: form.elements.postalCode.value.trim()
+      },
       eventType: form.elements.eventType.value,
       setting: form.elements.setting.value,
       attendance: Number(form.elements.attendance.value),
@@ -387,7 +393,9 @@
     const addonLines = draft.modifiers.length
       ? draft.modifiers.map(modifier => `- ${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}: +${money.format(modifier.price * modifier.quantity)}`).join('\n')
       : `- ${copy.none}`;
-    return [copy.noteTitle, `${copy.date}: ${formattedDate}`, `${copy.duration}: ${draft.durationHours} ${draft.durationHours === 1 ? copy.hour : copy.hours} (${money.format(draft.basePrice)})`, `${copy.includedLabel}: ${copy.includedItems}`, copy.staffScope, `${copy.addons}:`, addonLines, `${copy.estimatedTotal}: ${money.format(draft.basePrice + addonTotal)}`, `${copy.address}: ${draft.address}`, `${copy.eventType}: ${draft.eventType}`, `${copy.setting}: ${draft.setting}`, `${copy.attendance}: ${draft.attendance}`, `${copy.requests}: ${draft.requests || copy.none}`].join('\n');
+    const eventAddress = [draft.address.addressLine1, draft.address.addressLine2, draft.address.locality,
+      `${draft.address.administrativeDistrictLevel1} ${draft.address.postalCode}`].filter(Boolean).join(', ');
+    return [copy.noteTitle, `${copy.date}: ${formattedDate}`, `${copy.duration}: ${draft.durationHours} ${draft.durationHours === 1 ? copy.hour : copy.hours} (${money.format(draft.basePrice)})`, `${copy.includedLabel}: ${copy.includedItems}`, copy.staffScope, `${copy.addons}:`, addonLines, `${copy.estimatedTotal}: ${money.format(draft.basePrice + addonTotal)}`, `${copy.address}: ${eventAddress}`, `${copy.eventType}: ${draft.eventType}`, `${copy.setting}: ${draft.setting}`, `${copy.attendance}: ${draft.attendance}`, `${copy.requests}: ${draft.requests || copy.none}`].join('\n');
   }
 
   async function copyText(text) {

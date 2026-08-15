@@ -69,7 +69,10 @@ test('Square booking keeps modifiers in the customer note', async () => {
       }]
     },
     customerNote: 'Add-ons:\n- Night package: +$125\n- Karaoke: +$100',
-    eventAddress: '123 Test Street, Silver Spring, MD 20910'
+    eventAddress: {
+      addressLine1: '123 Test Street', addressLine2: 'Suite 2', locality: 'Silver Spring',
+      administrativeDistrictLevel1: 'MD', postalCode: '20910'
+    }
   });
 
   assert.match(bookingBody.booking.customer_note, /Night package: \+\$125/);
@@ -77,7 +80,7 @@ test('Square booking keeps modifiers in the customer note', async () => {
   assert.equal(bookingBody.booking.appointment_segments[0].service_variation_id, 'SERVICE-4H');
   assert.equal(bookingBody.booking.location_type, 'CUSTOMER_LOCATION');
   assert.deepEqual(bookingBody.booking.address, {
-    country: 'US', address_line_1: '123 Test Street', locality: 'Silver Spring',
+    address_line_1: '123 Test Street', address_line_2: 'Suite 2', locality: 'Silver Spring',
     administrative_district_level_1: 'MD', postal_code: '20910'
   });
 });
@@ -146,7 +149,10 @@ test('Square checkout references the booking package and selected Catalog modifi
     },
     customerId: 'CUSTOMER-1', reservationId: 'BBC-2099-ABC123',
     bookingId: 'BOOKING-1',
-    eventAddress: '123 Test Street, Silver Spring, MD 20910',
+    eventAddress: {
+      addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
+      administrativeDistrictLevel1: 'MD', postalCode: '20910'
+    },
     packageDetails: { serviceVariationId: 'SERVICE-1H' },
     modifiers: [{ id: 'BUBBLE', quantity: 1 }, { id: 'LASER', quantity: 2 }]
   });

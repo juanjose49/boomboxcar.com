@@ -5,7 +5,11 @@ import { buildCustomerNote, calculatePricing, findAvailableSlot, validateReserva
 const validInput = {
   locale: 'en', eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00.000Z', durationHours: 1,
   modifiers: [{ id: 'BUBBLE', quantity: 1 }, { id: 'LASER', quantity: 1 }],
-  address: '123 Test Street, Silver Spring, MD 20910', eventType: 'Birthday', setting: 'Outdoor',
+  address: {
+    addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
+    administrativeDistrictLevel1: 'MD', postalCode: '20910'
+  },
+  eventType: 'Birthday', setting: 'Outdoor',
   attendance: 75, requests: 'Main entrance',
   customer: { givenName: 'Test', familyName: 'Customer', email: 'test@example.com', phone: '+1 301 555 0100' }
 };
@@ -27,6 +31,7 @@ test('validates and normalizes Square modifier selections', () => {
   assert.equal(reservation.durationHours, 1);
   assert.deepEqual(reservation.modifiers, [{ id: 'BUBBLE', quantity: 1 }, { id: 'LASER', quantity: 1 }]);
   assert.equal(reservation.customer.email, 'test@example.com');
+  assert.deepEqual(reservation.details.address, validInput.address);
 });
 
 test('splits a customer name at the first space and preserves the remaining last name', () => {
@@ -43,6 +48,35 @@ test('rejects duplicate or malformed modifier selections', () => {
     ...validInput,
     modifiers: [{ id: 'BUBBLE', quantity: 1 }, { id: 'BUBBLE', quantity: 2 }]
   }), /invalid/i);
+});
+
+test('rejects addresses outside the DMV service area', () => {
+  assert.throws(() => validateReservation({
+    ...validInput,
+    address: { ...validInput.address, administrativeDistrictLevel1: 'PA' }
+  }), /Online booking is available in DC, Maryland, and Virginia/i);
+});
+
+test('rejects an invalid ZIP code before contacting Square', () => {
+  assert.throws(() => validateReservation({
+    ...validInput,
+    address: { ...validInput.address, postalCode: '2091' }
+  }), /valid US ZIP/i);
+});
+
+test('rejects address characters Square does not support', () => {
+  assert.throws(() => validateReservation({
+    ...validInput,
+    address: { ...validInput.address, addressLine1: '123 Test Street $' }
+  }), /unsupported characters/i);
+});
+
+test('accepts the legacy cached address format during rollout', () => {
+  const reservation = validateReservation({
+    ...validInput,
+    address: '123 Test Street, Silver Spring, MD 20910'
+  });
+  assert.deepEqual(reservation.details.address, validInput.address);
 });
 
 test('matches equivalent Square timestamps with and without milliseconds', () => {
@@ -62,6 +96,7 @@ test('calculates catalog pricing and writes modifiers into the Square booking no
   assert.match(note, /Bubble Machine: \+\$25/);
   assert.match(note, /Laser & Haze Effects: \+\$50/);
   assert.match(note, /Estimated total: \$324/);
+  assert.match(note, /Event address: 123 Test Street, Silver Spring, MD 20910/);
   assert.match(note, /Two powerful speakers, the inflatable BoomBox, two wireless microphones/);
   assert.match(note, /DJ and MC services are not included/);
   assert.match(note, /Event contact: Test Customer/);

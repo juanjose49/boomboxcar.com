@@ -26,9 +26,19 @@ function checkoutPhoneNumber(value) {
 }
 
 function appointmentAddress(value) {
+  if (value && typeof value === 'object') {
+    const address = {
+      address_line_1: value.addressLine1,
+      locality: value.locality,
+      administrative_district_level_1: value.administrativeDistrictLevel1,
+      postal_code: value.postalCode
+    };
+    if (value.addressLine2) address.address_line_2 = value.addressLine2;
+    return address;
+  }
   const parts = String(value || '').split(',').map(part => part.trim()).filter(Boolean);
   const stateAndZip = parts.at(-1)?.match(/^([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)$/);
-  const address = { country: 'US' };
+  const address = {};
   if (parts.length >= 3 && stateAndZip) {
     address.address_line_1 = parts.slice(0, -2).join(', ');
     address.locality = parts.at(-2);
@@ -38,6 +48,13 @@ function appointmentAddress(value) {
     address.address_line_1 = String(value || '').trim();
   }
   return address;
+}
+
+function formattedAppointmentAddress(value) {
+  if (!value || typeof value !== 'object') return String(value || '').trim();
+  return [value.addressLine1, value.addressLine2, value.locality,
+    `${value.administrativeDistrictLevel1} ${value.postalCode}`]
+    .filter(Boolean).join(', ');
 }
 
 export function createSquareService(config, fetchImpl = globalThis.fetch) {
@@ -227,13 +244,14 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
 
   async function createPaymentLink({ customer, customerId, bookingId, reservationId, eventAddress, packageDetails, modifiers }) {
     const contactName = `${customer.givenName} ${customer.familyName}`.trim();
+    const eventAddressLabel = formattedAppointmentAddress(eventAddress);
     const lineItem = {
       catalog_object_id: packageDetails.serviceVariationId,
       quantity: '1',
       note: [
         `Event contact: ${contactName}`,
         `Phone: ${customer.phone}`,
-        `Event address: ${eventAddress}`,
+        `Event address: ${eventAddressLabel}`,
         `Square booking: ${bookingId}`
       ].join('\n').slice(0, 2000)
     };
