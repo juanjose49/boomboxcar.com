@@ -185,30 +185,30 @@
       <div class="booking-intro">
         <p class="eyebrow">Tu evento. Tu BoomBoxCar.</p>
         <h2 id="booking-title">Crea tu evento</h2>
-        <p>Elige la hora, el paquete y los extras. Revisarás todo aquí antes de completar la reserva y el pago seguro a través de Square.</p>
+        <p>Elige primero el paquete y luego selecciona una fecha, hora de llegada y extras disponibles. Revisarás todo aquí antes de completar la reserva y el pago seguro a través de Square.</p>
       </div>
 
       <form class="booking-builder" id="bookingBuilder" data-locale="es-US" novalidate>
         <div class="booking-main">
           <fieldset class="booking-step">
-            <legend><span>1</span> ¿Cuándo es tu evento?</legend>
-            <div class="field-grid field-grid-date">
-              <label><span>Fecha</span><input id="eventDate" name="eventDate" type="date" required /></label>
-              <label><span>Hora de llegada</span><select id="eventTime" name="eventTime" required disabled><option value="">Elige una fecha primero</option></select></label>
-            </div>
-            <p class="availability-status" id="availabilityStatus" role="status">Elige una fecha y duración para ver las horas de llegada.</p>
-            <p class="field-note">La disponibilidad viene directamente de Square. Las reservas en línea requieren al menos 18 horas de antelación.</p>
-          </fieldset>
-
-          <fieldset class="booking-step">
-            <legend><span>2</span> Elige la duración</legend>
+            <legend><span>1</span> Elige la duración</legend>
             <div class="choice-grid duration-grid">
               <label class="choice-card"><input type="radio" name="duration" value="1" data-price="249" required /><span><strong>1 hora</strong><small>$249</small></span></label>
               <label class="choice-card"><input type="radio" name="duration" value="2" data-price="399" /><span><strong>2 horas</strong><small>$399</small></span></label>
-              <label class="choice-card"><input type="radio" name="duration" value="3" data-price="549" checked /><span><strong>3 horas</strong><small>$549</small></span></label>
+              <label class="choice-card"><input type="radio" name="duration" value="3" data-price="549" /><span><strong>3 horas</strong><small>$549</small></span></label>
               <label class="choice-card"><input type="radio" name="duration" value="4" data-price="699" /><span><strong>4 horas</strong><small>$699</small></span></label>
               <label class="choice-card"><input type="radio" name="duration" value="8" data-price="1299" /><span><strong>8 horas</strong><small>$1,299</small></span></label>
             </div>
+          </fieldset>
+
+          <fieldset class="booking-step">
+            <legend><span>2</span> ¿Cuándo es tu evento?</legend>
+            <div class="field-grid field-grid-date">
+              <label><span>Fecha</span><input id="eventDate" name="eventDate" type="date" required disabled /></label>
+              <label><span>Hora de llegada</span><select id="eventTime" name="eventTime" required disabled><option value="">Elige primero la duración</option></select></label>
+            </div>
+            <p class="availability-status" id="availabilityStatus" role="status">Elige primero una duración para ver las fechas y horas de llegada disponibles.</p>
+            <p class="field-note">La disponibilidad viene directamente de Square. Las reservas en línea requieren al menos 18 horas de antelación.</p>
           </fieldset>
 
           <fieldset class="booking-step">
@@ -246,10 +246,10 @@
 
         <aside class="booking-summary" aria-live="polite">
           <p class="eyebrow">Tu BoomBoxCar</p>
-          <h3 id="summaryPackage">3 horas</h3>
-          <p class="summary-date" id="summaryDate">Elige una fecha y hora de llegada</p>
+          <h3 id="summaryPackage">Elige una duración</h3>
+          <p class="summary-date" id="summaryDate">Elige primero una duración</p>
           <div class="summary-lines" id="summaryLines"></div>
-          <div class="summary-total"><span>Total estimado</span><strong id="summaryTotal">$549</strong></div>
+          <div class="summary-total"><span>Total estimado</span><strong id="summaryTotal">$0</strong></div>
           <div class="booking-includes"><strong>Cada reserva incluye</strong><span>Dos bocinas potentes, el BoomBox inflable, dos micrófonos inalámbricos y música ambiental con licencia a través de Soundtrack Your Brand.</span></div>
           <p class="quote-note" id="quoteNote" hidden>Las opciones con cotización personalizada se cobrarán antes de confirmar la reserva.</p>
           <button class="btn btn-primary booking-submit" id="bookingSubmit" type="submit">Reservar y pagar con Square</button>
@@ -390,6 +390,6 @@
   </footer>
 
   <script src="../index.js?v=20260815-layout" defer></script>
-  <script src="../booking.js?v=20260815-structured-address" defer></script>
+  <script src="../booking.js?v=20260815-duration-first" defer></script>
 </body>
 </html>

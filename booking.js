@@ -8,7 +8,9 @@
   const locale = isSpanish ? 'es-US' : 'en-US';
   const apiLocale = isSpanish ? 'es' : 'en';
   const copy = isSpanish ? {
-    chooseDate: 'Elige una fecha y hora de llegada', hour: 'hora', hours: 'horas', base: 'Servicio base',
+    chooseDate: 'Elige una fecha y hora de llegada', chooseDuration: 'Elige una duración',
+    chooseDurationFirst: 'Elige primero una duración', chooseDurationForAddons: 'Elige una duración para ver los extras.',
+    hour: 'hora', hours: 'horas', base: 'Servicio base',
     notice: 'La fecha y hora deben tener al menos 18 horas de antelación.', noteTitle: 'DETALLES DE BOOMBOXCAR',
     date: 'Fecha y hora', duration: 'Duración', addons: 'Extras', none: 'Ninguno', address: 'Dirección',
     eventType: 'Tipo de evento', setting: 'Entorno', attendance: 'Asistencia esperada', requests: 'Solicitudes especiales',
@@ -30,7 +32,9 @@
     includedItems: 'Dos bocinas potentes, el BoomBox inflable, dos micrófonos inalámbricos y música ambiental con licencia a través de Soundtrack Your Brand.',
     staffScope: 'El personal instala y opera el sistema de sonido. Los servicios de DJ y maestro de ceremonias no están incluidos; tu equipo controla los anuncios, la programación y el mensaje del evento.'
   } : {
-    chooseDate: 'Choose a date and arrival time', hour: 'hour', hours: 'hours', base: 'Base service',
+    chooseDate: 'Choose a date and arrival time', chooseDuration: 'Choose a duration',
+    chooseDurationFirst: 'Choose a duration first', chooseDurationForAddons: 'Choose a duration to see add-ons.',
+    hour: 'hour', hours: 'hours', base: 'Base service',
     notice: 'Date and time must be at least 18 hours from now.', noteTitle: 'BOOMBOXCAR EVENT DETAILS',
     date: 'Date and time', duration: 'Duration', addons: 'Add-ons', none: 'None', address: 'Address',
     eventType: 'Event type', setting: 'Setting', attendance: 'Expected attendance', requests: 'Special requests',
@@ -95,6 +99,10 @@
 
   function selectedStartAt() {
     return timeInput.selectedOptions[0]?.dataset.startAt || '';
+  }
+
+  function currentTimeSelection() {
+    return { value: timeInput.value, startAt: selectedStartAt() };
   }
 
   function selectedModifiers() {
@@ -204,6 +212,12 @@
     modifierController?.abort();
     currentPackage = null;
     modifierGroups.replaceChildren();
+    const duration = selectedDuration();
+    if (!duration) {
+      modifierStatus.textContent = copy.chooseDurationForAddons;
+      updateSummary();
+      return;
+    }
     if (!backendReady) {
       modifierStatus.textContent = copy.modifiersUnavailable;
       updateSummary();
@@ -212,7 +226,6 @@
     modifierController = new AbortController();
     modifierStatus.textContent = copy.modifiersLoading;
     try {
-      const duration = selectedDuration();
       const response = await fetch(`${apiBase}/modifiers?durationHours=${encodeURIComponent(duration.value)}`, {
         headers: { Accept: 'application/json' }, signal: modifierController.signal
       });
@@ -228,22 +241,29 @@
       backendReady = false;
       modifierGroups.replaceChildren();
       modifierStatus.textContent = copy.modifiersUnavailable;
-      if (dateInput.value) fallbackTimeOptions();
+      if (dateInput.value) fallbackTimeOptions(currentTimeSelection());
       submitButton.textContent = copy.fallbackSubmit;
       handoffNote.textContent = copy.fallbackHandoff;
       updateSummary();
     }
   }
 
-  function setTimeOptions(options, placeholder) {
+  function setTimeOptions(options, placeholder, preferredSelection = null) {
     const first = document.createElement('option');
     first.value = '';
     first.textContent = placeholder;
     timeInput.replaceChildren(first, ...options);
     timeInput.disabled = options.length === 0;
+    if (preferredSelection) {
+      const match = options.find(option =>
+        (preferredSelection.startAt && option.dataset.startAt === preferredSelection.startAt) ||
+        (!preferredSelection.startAt && preferredSelection.value && option.value === preferredSelection.value));
+      if (match) timeInput.value = match.value;
+    }
   }
 
-  function fallbackTimeOptions() {
+  function fallbackTimeOptions(preferredSelection = null) {
+    if (!selectedDuration()) return setTimeOptions([], copy.chooseDurationFirst);
     if (!dateInput.value) return setTimeOptions([], copy.chooseDateFirst);
     const options = [];
     const earliest = Date.now() + 18 * 60 * 60 * 1000;
@@ -258,24 +278,35 @@
       option.textContent = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(date);
       options.push(option);
     }
-    setTimeOptions(options, copy.chooseTime);
+    setTimeOptions(options, copy.chooseTime, preferredSelection);
     availabilityStatus.textContent = copy.fallback;
     availabilityStatus.dataset.state = 'fallback';
     submitButton.textContent = copy.fallbackSubmit;
     handoffNote.textContent = copy.fallbackHandoff;
   }
 
-  async function loadAvailability() {
+  async function loadAvailability({ preserveSelection = false } = {}) {
     timeInput.setCustomValidity('');
-    if (!dateInput.value) {
-      setTimeOptions([], copy.chooseDateFirst);
+    if (!selectedDuration()) {
+      dateInput.disabled = true;
+      setTimeOptions([], copy.chooseDurationFirst);
+      availabilityStatus.textContent = copy.chooseDurationFirst;
       return;
     }
-    if (!backendReady) return fallbackTimeOptions();
+    dateInput.disabled = false;
+    if (!dateInput.value) {
+      setTimeOptions([], copy.chooseDateFirst);
+      availabilityStatus.textContent = backendReady ? copy.chooseDate : copy.fallback;
+      availabilityStatus.dataset.state = backendReady ? '' : 'fallback';
+      return;
+    }
+    const preferredSelection = preserveSelection ? currentTimeSelection() : null;
+    if (!backendReady) return fallbackTimeOptions(preferredSelection);
 
     availabilityController?.abort();
     availabilityController = new AbortController();
-    setTimeOptions([], copy.loading);
+    if (preserveSelection && timeInput.value) timeInput.disabled = true;
+    else setTimeOptions([], copy.loading);
     availabilityStatus.textContent = copy.loading;
     availabilityStatus.dataset.state = 'loading';
     try {
@@ -300,19 +331,27 @@
         option.dataset.startAt = slot.startAt;
         return option;
       });
-      setTimeOptions(options, options.length ? copy.chooseTime : copy.noSlots);
+      setTimeOptions(options, options.length ? copy.chooseTime : copy.noSlots, preferredSelection);
       availabilityStatus.textContent = options.length ? copy.liveReady : copy.noSlots;
       availabilityStatus.dataset.state = options.length ? 'ready' : 'empty';
       submitButton.textContent = copy.apiSubmit;
       handoffNote.textContent = copy.apiHandoff;
     } catch (error) {
       if (error.name === 'AbortError') return;
-      fallbackTimeOptions();
+      fallbackTimeOptions(preferredSelection);
     }
   }
 
   function updateSummary() {
     const duration = selectedDuration();
+    if (!duration) {
+      packageOutput.textContent = copy.chooseDuration;
+      totalOutput.textContent = money.format(0);
+      linesOutput.replaceChildren();
+      dateOutput.textContent = copy.chooseDurationFirst;
+      quoteNote.hidden = true;
+      return;
+    }
     const hours = Number(duration.value);
     const basePrice = Number(duration.dataset.price);
     const modifiers = selectedModifiers();
@@ -420,10 +459,14 @@
       const config = await response.json();
       backendReady = response.ok && config.ready === true;
     } catch (_) { backendReady = false; }
+    const duration = selectedDuration();
+    dateInput.disabled = !duration;
     loadModifiers();
-    if (dateInput.value) loadAvailability();
+    if (duration && dateInput.value) loadAvailability();
     else {
-      availabilityStatus.textContent = backendReady ? copy.chooseDate : copy.fallback;
+      availabilityStatus.textContent = duration
+        ? (backendReady ? copy.chooseDate : copy.fallback)
+        : copy.chooseDurationFirst;
       submitButton.textContent = backendReady ? copy.apiSubmit : copy.fallbackSubmit;
       handoffNote.textContent = backendReady ? copy.apiHandoff : copy.fallbackHandoff;
     }
@@ -433,24 +476,27 @@
     if (event.target.name === 'modifiers' || event.target.dataset.modifierQuantity) modifierStatus.dataset.state = '';
     validateNotice();
     updateSummary();
-    if (event.target === dateInput) loadAvailability();
   });
   form.addEventListener('change', event => {
     validateNotice();
     updateSummary();
-    if (event.target === dateInput || event.target.name === 'duration') loadAvailability();
-    if (event.target.name === 'duration') loadModifiers();
+    if (event.target === dateInput) loadAvailability();
+    if (event.target.name === 'duration') {
+      dateInput.disabled = false;
+      loadAvailability({ preserveSelection: true });
+      loadModifiers();
+    }
   });
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
     validateNotice();
+    if (!form.reportValidity()) return;
     if (backendReady && !currentPackage) {
       modifierStatus.textContent = copy.modifiersLoading;
       return;
     }
     if (!validateModifierRules()) return;
-    if (!form.reportValidity()) return;
     const draft = buildDraft();
     const squareNote = buildSquareNote(draft);
     try { sessionStorage.setItem('boomboxcarBookingDraft', JSON.stringify({ ...draft, squareNote })); } catch (_) {}
@@ -499,7 +545,7 @@
       bookingResult.hidden = false;
       submitButton.disabled = false;
       submitButton.textContent = copy.apiSubmit;
-      loadAvailability();
+      loadAvailability({ preserveSelection: true });
     }
   });
 
