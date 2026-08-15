@@ -242,7 +242,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     return payload.booking;
   }
 
-  async function createPaymentLink({ customer, customerId, bookingId, reservationId, eventAddress, packageDetails, modifiers }) {
+  async function createPaymentLink({ customer, customerId, bookingId, reservationId, confirmationToken, eventAddress, packageDetails, modifiers }) {
     const contactName = `${customer.givenName} ${customer.familyName}`.trim();
     const eventAddressLabel = formattedAppointmentAddress(eventAddress);
     const lineItem = {
@@ -261,10 +261,9 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
         quantity: String(modifier.quantity)
       }));
     }
-    const confirmationUrl = new URL(config.appBaseUrl);
-    confirmationUrl.searchParams.set('checkout', 'complete');
+    const confirmationUrl = new URL('/confirmation/', config.appBaseUrl);
     confirmationUrl.searchParams.set('reservation', reservationId);
-    confirmationUrl.hash = 'book';
+    confirmationUrl.searchParams.set('token', confirmationToken);
     const payload = await request('/v2/online-checkout/payment-links', {
       method: 'POST',
       body: {

@@ -75,6 +75,15 @@
   let availabilityController = null;
   let modifierController = null;
   let currentPackage = null;
+  let customerDraftTimer = null;
+  let customerDraftExpiryTimer = null;
+  const customerDraftKey = 'boomboxcarCustomerDraft.v1';
+  const customerDraftTtlMs = 60 * 60 * 1000;
+  const customerDraftFields = [
+    'addressLine1', 'addressLine2', 'locality', 'administrativeDistrictLevel1', 'postalCode',
+    'givenName', 'familyName', 'email', 'phone'
+  ];
+  const customerDraftFieldNames = new Set(customerDraftFields);
 
   const checkoutParams = new URLSearchParams(window.location.search);
   const returnedReservationId = checkoutParams.get('reservation') || '';
@@ -103,6 +112,58 @@
 
   function currentTimeSelection() {
     return { value: timeInput.value, startAt: selectedStartAt() };
+  }
+
+  function customerDraftValues() {
+    return Object.fromEntries(customerDraftFields.map(name => [name, form.elements[name]?.value.trim() || '']));
+  }
+
+  function persistCustomerDraft() {
+    clearTimeout(customerDraftTimer);
+    clearTimeout(customerDraftExpiryTimer);
+    customerDraftTimer = null;
+    try {
+      const values = customerDraftValues();
+      if (!Object.values(values).some(Boolean)) {
+        localStorage.removeItem(customerDraftKey);
+        return;
+      }
+      const savedAt = Date.now();
+      localStorage.setItem(customerDraftKey, JSON.stringify({
+        version: 1, savedAt, expiresAt: savedAt + customerDraftTtlMs, values
+      }));
+      customerDraftExpiryTimer = setTimeout(() => {
+        try { localStorage.removeItem(customerDraftKey); } catch (_) {}
+      }, customerDraftTtlMs);
+    } catch (_) {}
+  }
+
+  function scheduleCustomerDraftSave() {
+    clearTimeout(customerDraftTimer);
+    customerDraftTimer = setTimeout(persistCustomerDraft, 200);
+  }
+
+  function restoreCustomerDraft() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(customerDraftKey) || 'null');
+      const savedAt = Number(stored?.savedAt);
+      if (stored?.version !== 1 || !savedAt || Date.now() - savedAt > customerDraftTtlMs || savedAt > Date.now()) {
+        localStorage.removeItem(customerDraftKey);
+        return;
+      }
+      for (const name of customerDraftFields) {
+        const control = form.elements[name];
+        const value = typeof stored.values?.[name] === 'string' ? stored.values[name] : '';
+        if (!control || control.value || !value) continue;
+        if (name === 'administrativeDistrictLevel1' && !['DC', 'MD', 'VA'].includes(value)) continue;
+        control.value = value;
+      }
+      customerDraftExpiryTimer = setTimeout(() => {
+        try { localStorage.removeItem(customerDraftKey); } catch (_) {}
+      }, Math.max(0, customerDraftTtlMs - (Date.now() - savedAt)));
+    } catch (_) {
+      try { localStorage.removeItem(customerDraftKey); } catch (_) {}
+    }
   }
 
   function selectedModifiers() {
@@ -474,10 +535,12 @@
 
   form.addEventListener('input', event => {
     if (event.target.name === 'modifiers' || event.target.dataset.modifierQuantity) modifierStatus.dataset.state = '';
+    if (customerDraftFieldNames.has(event.target.name)) scheduleCustomerDraftSave();
     validateNotice();
     updateSummary();
   });
   form.addEventListener('change', event => {
+    if (customerDraftFieldNames.has(event.target.name)) scheduleCustomerDraftSave();
     validateNotice();
     updateSummary();
     if (event.target === dateInput) loadAvailability();
@@ -499,7 +562,7 @@
     if (!validateModifierRules()) return;
     const draft = buildDraft();
     const squareNote = buildSquareNote(draft);
-    try { sessionStorage.setItem('boomboxcarBookingDraft', JSON.stringify({ ...draft, squareNote })); } catch (_) {}
+    persistCustomerDraft();
 
     if (!backendReady || !draft.startAt) {
       const detailsCopied = await copyText(squareNote);
@@ -549,6 +612,7 @@
     }
   });
 
+  restoreCustomerDraft();
   updateSummary();
   initializeBackend();
 })();

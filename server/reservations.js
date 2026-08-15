@@ -127,6 +127,10 @@ export function createReservationId(now = new Date()) {
   return `BBC-${now.getUTCFullYear()}-${randomBytes(3).toString('hex').toUpperCase()}`;
 }
 
+export function createConfirmationToken() {
+  return randomBytes(24).toString('base64url');
+}
+
 export function findAvailableSlot(slots, startAt) {
   const selectedTime = Date.parse(startAt);
   return slots.find(slot => Date.parse(slot.startAt) === selectedTime);

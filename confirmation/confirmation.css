@@ -1,0 +1,235 @@
+:root{
+  color-scheme:light;
+  --brand:#ff6a00;
+  --brand-dark:#a84400;
+  --ink:#141414;
+  --muted:#626262;
+  --bg:#f5f2ed;
+  --surface:#fff;
+  --soft:#fff4e8;
+  --line:rgba(20,20,20,.14);
+  --success:#147a52;
+  --shadow:rgba(0,0,0,.09);
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ink:#f4f1ea;
+  --muted:#bec1c2;
+  --bg:#101214;
+  --surface:#191c1f;
+  --soft:#211b17;
+  --line:rgba(255,255,255,.15);
+  --success:#6ed2a7;
+  --shadow:rgba(0,0,0,.38);
+}
+*{box-sizing:border-box}
+html{min-height:100%;background:var(--bg)}
+body{
+  min-height:100vh;
+  margin:0;
+  color:var(--ink);
+  background:var(--bg);
+  font:16px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  text-rendering:optimizeLegibility;
+}
+a{color:var(--brand-dark)}
+:root[data-theme="dark"] a{color:#ff9a52}
+[hidden]{display:none!important}
+.confirmation-site-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:13px max(20px,calc((100vw - 1120px)/2 + 20px));
+  border-bottom:1px solid var(--line);
+  background:color-mix(in srgb,var(--surface) 92%,transparent);
+  backdrop-filter:blur(10px);
+}
+.confirmation-brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:var(--ink);
+  font-size:1.05rem;
+  font-weight:900;
+  text-decoration:none;
+}
+.confirmation-brand img{display:block;border-radius:6px}
+:root[data-theme="dark"] .confirmation-brand img{filter:invert(1) hue-rotate(180deg)}
+.header-contact{font-weight:750;text-decoration:none}
+.confirmation-page{
+  width:min(1120px,calc(100% - 36px));
+  margin:0 auto;
+  padding:48px 0 100px;
+}
+.confirmation-state{
+  max-width:760px;
+  padding:34px;
+  margin:50px auto;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--surface);
+  box-shadow:0 18px 48px var(--shadow);
+}
+.confirmation-state h1{margin:.15em 0;font-size:clamp(2rem,6vw,4rem);line-height:1.05}
+.confirmation-state p:not(.eyebrow){color:var(--muted)}
+.confirmation-error{border-top:6px solid var(--brand)}
+.confirmation-document{display:grid;gap:22px}
+.eyebrow{
+  margin:0 0 7px;
+  color:var(--brand-dark);
+  font-size:.76rem;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+:root[data-theme="dark"] .eyebrow{color:#ff9a52}
+.confirmation-intro{
+  display:grid;
+  gap:24px;
+  align-items:end;
+  padding:34px;
+  overflow:hidden;
+  border-radius:16px;
+  color:#fff;
+  background:
+    linear-gradient(135deg,rgba(255,106,0,.34),transparent 52%),
+    #171717;
+  box-shadow:0 22px 54px var(--shadow);
+}
+.confirmation-intro .eyebrow{color:#ffb47d}
+.confirmation-intro h1{
+  max-width:760px;
+  margin:0;
+  color:#fff;
+  font-size:clamp(2.5rem,7vw,5.2rem);
+  line-height:.98;
+  letter-spacing:-.045em;
+}
+.confirmation-lead{margin:18px 0 0;color:rgba(255,255,255,.88);font-size:1.12rem}
+.confirmation-issued{margin:4px 0 0;color:rgba(255,255,255,.66);font-size:.88rem}
+.confirmation-total-card{
+  min-width:250px;
+  padding:22px;
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:12px;
+  background:rgba(255,255,255,.09);
+}
+.confirmation-total-card span,.confirmation-total-card strong,.confirmation-total-card small{display:block}
+.confirmation-total-card span{color:rgba(255,255,255,.7);font-size:.76rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.confirmation-total-card strong{margin:4px 0;color:#fff;font-size:clamp(2.6rem,7vw,4rem);line-height:1;letter-spacing:-.04em}
+.confirmation-total-card small{color:#99edc8;font-weight:800}
+.confirmation-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.button{
+  display:inline-flex;
+  min-height:46px;
+  align-items:center;
+  justify-content:center;
+  padding:10px 16px;
+  border:1px solid transparent;
+  border-radius:10px;
+  font:inherit;
+  font-weight:850;
+  text-decoration:none;
+  cursor:pointer;
+}
+.button-primary{color:#fff;background:var(--brand)}
+.button-secondary{color:var(--ink);border-color:var(--line);background:var(--surface)}
+.text-link{margin-left:auto;font-weight:800}
+.pdf-help{margin:-14px 0 0;color:var(--muted);font-size:.85rem}
+.confirmation-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+.confirmation-card{
+  min-width:0;
+  padding:25px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:var(--surface);
+  box-shadow:0 14px 36px var(--shadow);
+}
+.confirmation-card h2{margin:0 0 17px;font-size:clamp(1.45rem,4vw,2.2rem);line-height:1.15}
+.confirmation-event-card,.confirmation-price-card{grid-column:1/-1}
+.confirmation-details{display:grid;grid-template-columns:minmax(120px,.42fr) minmax(0,1fr);margin:0}
+.confirmation-details dt,.confirmation-details dd{padding:10px 0;border-bottom:1px solid var(--line)}
+.confirmation-details dt{padding-right:18px;color:var(--muted);font-size:.78rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
+.confirmation-details dd{margin:0;overflow-wrap:anywhere}
+.confirmation-details dt:last-of-type,.confirmation-details dd:last-of-type{border-bottom:0}
+.confirmation-price-table{width:100%;border-collapse:collapse}
+.confirmation-price-table th,.confirmation-price-table td{padding:12px;text-align:left;border-bottom:1px solid var(--line)}
+.confirmation-price-table th:last-child,.confirmation-price-table td:last-child{text-align:right;white-space:nowrap}
+.confirmation-price-table thead{color:var(--muted);font-size:.75rem;letter-spacing:.05em;text-transform:uppercase}
+.confirmation-price-table tfoot{font-size:1.08rem;font-weight:900}
+.confirmation-checklist{display:grid;gap:10px;padding:0;margin:0;list-style:none}
+.confirmation-checklist li{position:relative;padding-left:25px;color:var(--muted)}
+.confirmation-checklist li::before{content:"✓";position:absolute;left:0;color:var(--success);font-weight:950}
+.scope-note{padding:14px 16px;margin:20px 0 0;border-left:4px solid var(--brand);border-radius:0 8px 8px 0;color:var(--muted);background:var(--soft)}
+.confirmation-notes{margin:0;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
+.confirmation-footer{padding:22px 4px 0;border-top:1px solid var(--line);color:var(--muted)}
+.confirmation-footer strong{color:var(--ink);font-size:1.05rem}
+.confirmation-footer p{margin:.35em 0}
+@media (min-width:760px){
+  .confirmation-intro{grid-template-columns:minmax(0,1fr) auto}
+  .confirmation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:620px){
+  .confirmation-site-header{padding:10px 14px}
+  .header-contact{font-size:.78rem}
+  .confirmation-page{width:calc(100% - 24px);padding:25px 0 70px}
+  .confirmation-intro,.confirmation-card,.confirmation-state{padding:20px}
+  .confirmation-actions{align-items:stretch;flex-direction:column}
+  .confirmation-actions>*{width:100%}
+  .text-link{margin-left:0;text-align:center}
+  .confirmation-details{grid-template-columns:1fr}
+  .confirmation-details dt{padding-bottom:2px;border-bottom:0}
+  .confirmation-details dd{padding-top:0}
+  .confirmation-price-table{font-size:.82rem}
+  .confirmation-price-table th,.confirmation-price-table td{padding:9px 5px}
+}
+@media print{
+  @page{size:letter;margin:.45in}
+  :root,:root[data-theme="dark"]{
+    color-scheme:light!important;
+    --brand:#c64f00;
+    --brand-dark:#8c3900;
+    --ink:#111;
+    --muted:#4f5354;
+    --bg:#fff;
+    --surface:#fff;
+    --soft:#fff5e9;
+    --line:#d4cec7;
+    --success:#176b4c;
+    --shadow:transparent;
+  }
+  html,body{color:#111!important;background:#fff!important}
+  body,body *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .confirmation-site-header,.document-actions,.pdf-help{display:none!important}
+  .confirmation-page{width:100%;padding:0}
+  .confirmation-document{gap:13px}
+  .confirmation-intro{
+    grid-template-columns:minmax(0,1fr) 215px;
+    padding:22px;
+    border:2px solid #e06a18;
+    border-top-width:9px;
+    border-radius:8px;
+    color:#111!important;
+    background:#fff3e5!important;
+    box-shadow:none;
+    break-inside:avoid;
+  }
+  .confirmation-intro .eyebrow{color:#8c3900!important}
+  .confirmation-intro h1{color:#111!important;font-size:31pt}
+  .confirmation-lead{color:#343738!important}
+  .confirmation-issued{color:#626566!important}
+  .confirmation-total-card{border-color:#e06a18;color:#111!important;background:#fff!important}
+  .confirmation-total-card span,.confirmation-total-card small{color:#4f5354!important}
+  .confirmation-total-card strong{color:#111!important;font-size:27pt}
+  .confirmation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+  .confirmation-card{padding:18px;margin:0;border-color:#d4cec7;color:#111!important;background:#fff!important;box-shadow:none;break-inside:avoid}
+  .confirmation-card h2,.confirmation-details dd,.confirmation-notes{color:#111!important}
+  .confirmation-card .eyebrow{color:#8c3900!important}
+  .confirmation-details dt,.confirmation-checklist li,.confirmation-price-table thead{color:#4f5354!important}
+  .confirmation-details dt,.confirmation-details dd,.confirmation-price-table th,.confirmation-price-table td{border-color:#d4cec7}
+  .confirmation-price-table tr,.confirmation-checklist li{break-inside:avoid}
+  .scope-note{color:#3e4142!important;background:#fff5e9!important}
+  .confirmation-footer{color:#4f5354!important;border-color:#d4cec7;break-inside:avoid}
+  .confirmation-footer strong{color:#111!important}
+}

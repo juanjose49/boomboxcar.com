@@ -149,6 +149,7 @@ test('Square checkout references the booking package and selected Catalog modifi
     },
     customerId: 'CUSTOMER-1', reservationId: 'BBC-2099-ABC123',
     bookingId: 'BOOKING-1',
+    confirmationToken: 'abcdefghijklmnopqrstuvwxyzABCDEF',
     eventAddress: {
       addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
       administrativeDistrictLevel1: 'MD', postalCode: '20910'
@@ -166,7 +167,7 @@ test('Square checkout references the booking package and selected Catalog modifi
     { catalog_object_id: 'BUBBLE', quantity: '1' },
     { catalog_object_id: 'LASER', quantity: '2' }
   ]);
-  assert.equal(checkoutRequest.body.checkout_options.redirect_url, 'http://localhost:3100/?checkout=complete&reservation=BBC-2099-ABC123#book');
+  assert.equal(checkoutRequest.body.checkout_options.redirect_url, 'http://localhost:3100/confirmation/?reservation=BBC-2099-ABC123&token=abcdefghijklmnopqrstuvwxyzABCDEF');
   assert.equal(checkoutRequest.body.checkout_options.accepted_payment_methods.apple_pay, true);
   assert.equal(checkoutRequest.body.checkout_options.allow_tipping, false);
   assert.equal(checkoutRequest.body.checkout_options.ask_for_shipping_address, false);

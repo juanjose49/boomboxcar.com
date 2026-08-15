@@ -8,9 +8,11 @@ import { createSquareService } from './square.js';
 import {
   buildCustomerNote,
   calculatePricing,
+  createConfirmationToken,
   createReservationId,
   findAvailableSlot,
   persistReservation,
+  readReservationRecords,
   validateReservation
 } from './reservations.js';
 import { paymentEventRecord, verifySquareWebhook } from './webhooks.js';
@@ -128,6 +130,56 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
       if (request.method === 'GET' && pathname === '/config') {
         return sendJson(response, 200, publicConfig(config), corsHeaders);
       }
+      const confirmationMatch = pathname.match(/^\/confirmations\/(BBC-\d{4}-[A-F0-9]{6})$/);
+      if (request.method === 'GET' && confirmationMatch) {
+        if (!allowRequest(`${ip}:confirmation`, 60)) throw new AppError(429, 'RATE_LIMITED', 'Too many confirmation requests.');
+        const reservationId = confirmationMatch[1];
+        const confirmationToken = url.searchParams.get('token') || '';
+        if (!/^[A-Za-z0-9_-]{32}$/.test(confirmationToken)) {
+          throw new AppError(404, 'CONFIRMATION_NOT_FOUND', 'Confirmation not found.');
+        }
+        const records = await readReservationRecords(config.dataDir);
+        const reservationRecord = records.find(record =>
+          record.reservationId === reservationId && record.confirmationToken === confirmationToken && record.reservation && record.pricing);
+        if (!reservationRecord) throw new AppError(404, 'CONFIRMATION_NOT_FOUND', 'Confirmation not found.');
+
+        const completedRecord = [...records].reverse().find(record => record.reservationId === reservationId
+          && ['PAYMENT_EVENT', 'PAYMENT_RECONCILIATION'].includes(record.recordType)
+          && record.paymentStatus === 'COMPLETED');
+        const expiredRecord = [...records].reverse().find(record => record.reservationId === reservationId
+          && record.recordType === 'PAYMENT_EXPIRATION' && record.paymentStatus === 'EXPIRED');
+        let paymentStatus = completedRecord ? 'COMPLETED' : expiredRecord ? 'EXPIRED' : 'PENDING';
+        if (paymentStatus === 'PENDING' && config.squareConfigured) {
+          const order = await square.retrieveOrder(reservationRecord.squareOrderId);
+          if (order?.state === 'COMPLETED') {
+            paymentStatus = 'COMPLETED';
+            await persistReservation(config.dataDir, {
+              recordType: 'PAYMENT_RECONCILIATION',
+              reservationId,
+              recordedAt: new Date().toISOString(),
+              squareOrderId: reservationRecord.squareOrderId,
+              paymentStatus
+            });
+          } else if (order?.state === 'CANCELED') {
+            paymentStatus = 'EXPIRED';
+          }
+        }
+        if (paymentStatus === 'PENDING') throw new AppError(409, 'PAYMENT_PENDING', 'Square is still confirming the payment. Try again shortly.');
+        if (paymentStatus === 'EXPIRED') throw new AppError(410, 'RESERVATION_EXPIRED', 'This unpaid reservation expired.');
+
+        return sendJson(response, 200, {
+          reservationId,
+          confirmedAt: completedRecord?.eventCreatedAt || completedRecord?.recordedAt || new Date().toISOString(),
+          createdAt: reservationRecord.createdAt,
+          paymentStatus,
+          bookingStatus: reservationRecord.bookingStatus,
+          squareBookingId: reservationRecord.squareBookingId,
+          squareOrderId: reservationRecord.squareOrderId,
+          receiptUrl: completedRecord?.receiptUrl || null,
+          reservation: reservationRecord.reservation,
+          pricing: reservationRecord.pricing
+        }, corsHeaders);
+      }
       if (request.method === 'POST' && pathname === '/webhooks/square') {
         if (!allowRequest(`${ip}:square-webhook`, 240)) throw new AppError(429, 'RATE_LIMITED', 'Too many webhook requests.');
         if (!config.squareWebhookConfigured) throw new AppError(503, 'SQUARE_WEBHOOK_NOT_CONFIGURED', 'Square webhook verification is not configured.');
@@ -178,6 +230,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         if (!slot) throw new AppError(409, 'SLOT_NO_LONGER_AVAILABLE', 'That arrival time is no longer available. Choose another time.');
 
         const reservationId = createReservationId();
+        const confirmationToken = createConfirmationToken();
         const customerNote = buildCustomerNote({ reservationId, reservation, pricing });
         const customer = await square.findOrCreateCustomer(reservation.customer, reservationId);
         const booking = await square.createBooking({
@@ -193,6 +246,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
             customerId: customer.id,
             bookingId: booking.id,
             reservationId,
+            confirmationToken,
             eventAddress: reservation.details.address,
             packageDetails,
             modifiers: pricing.modifiers
@@ -227,6 +281,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         const paymentExpiresAt = new Date(Date.now() + PAYMENT_TTL_MINUTES * 60 * 1000).toISOString();
         await persistReservation(config.dataDir, {
           reservationId,
+          confirmationToken,
           createdAt: new Date().toISOString(),
           expiresAt: paymentExpiresAt,
           squareEnvironment: config.squareEnvironment,

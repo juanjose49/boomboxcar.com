@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCustomerNote, calculatePricing, findAvailableSlot, validateReservation } from '../server/reservations.js';
+import { buildCustomerNote, calculatePricing, createConfirmationToken, findAvailableSlot, validateReservation } from '../server/reservations.js';
 
 const validInput = {
   locale: 'en', eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00.000Z', durationHours: 1,
@@ -82,6 +82,13 @@ test('accepts the legacy cached address format during rollout', () => {
 test('matches equivalent Square timestamps with and without milliseconds', () => {
   const slots = [{ startAt: '2099-08-20T19:00:00Z', label: '3:00 PM' }];
   assert.equal(findAvailableSlot(slots, '2099-08-20T19:00:00.000Z'), slots[0]);
+});
+
+test('creates opaque URL-safe confirmation tokens', () => {
+  const first = createConfirmationToken();
+  const second = createConfirmationToken();
+  assert.match(first, /^[A-Za-z0-9_-]{32}$/);
+  assert.notEqual(first, second);
 });
 
 test('rejects modifiers that are not attached to the selected Square package', () => {
