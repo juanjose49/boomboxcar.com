@@ -172,7 +172,10 @@ test('Square checkout references the booking package and selected Catalog modifi
   assert.equal(checkoutRequest.body.checkout_options.ask_for_shipping_address, false);
   assert.equal(checkoutRequest.body.pre_populated_data.buyer_email, 'buyer@example.com');
   assert.equal(checkoutRequest.body.pre_populated_data.buyer_phone_number, '+13015550199');
-  assert.equal(checkoutRequest.body.pre_populated_data.buyer_address, undefined);
+  assert.deepEqual(checkoutRequest.body.pre_populated_data.buyer_address, {
+    first_name: 'Test', last_name: 'Customer'
+  });
+  assert.equal(checkoutRequest.body.pre_populated_data.buyer_address.address_line_1, undefined);
   assert.match(checkoutRequest.body.order.line_items[0].note, /Event contact: Test Customer/);
   assert.match(checkoutRequest.body.order.line_items[0].note, /Phone: \(301\) 555-0199/);
   assert.match(checkoutRequest.body.order.line_items[0].note, /Event address: 123 Test Street/);

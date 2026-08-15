@@ -290,7 +290,11 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
         },
         pre_populated_data: {
           buyer_email: customer.email,
-          buyer_phone_number: checkoutPhoneNumber(customer.phone)
+          buyer_phone_number: checkoutPhoneNumber(customer.phone),
+          buyer_address: {
+            first_name: customer.givenName,
+            last_name: customer.familyName
+          }
         },
         payment_note: `BoomBoxCar ${reservationId}; Square booking ${bookingId}`
       }
