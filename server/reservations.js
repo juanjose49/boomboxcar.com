@@ -122,7 +122,10 @@ export function buildCustomerNote({ reservationId, reservation, pricing }) {
     `Event type: ${reservation.details.eventType}`,
     `Setting: ${reservation.details.setting}`,
     `Expected attendance: ${reservation.details.attendance}`,
-    `Special requests: ${reservation.details.requests || 'None'}`
+    `Special requests: ${reservation.details.requests || 'None'}`,
+    `Event contact: ${reservation.customer.givenName} ${reservation.customer.familyName}`,
+    `Contact email: ${reservation.customer.email}`,
+    `Contact phone: ${reservation.customer.phone}`
   ].join('\n');
 }
 

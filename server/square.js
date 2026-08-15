@@ -18,6 +18,32 @@ function slotLabel(isoTimestamp, locale) {
   }).format(new Date(isoTimestamp));
 }
 
+function checkoutPhoneNumber(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  return String(value || '').trim().slice(0, 17);
+}
+
+function checkoutAddress(value, customer) {
+  const parts = String(value || '').split(',').map(part => part.trim()).filter(Boolean);
+  const stateAndZip = parts.at(-1)?.match(/^([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)$/);
+  const address = {
+    first_name: customer.givenName,
+    last_name: customer.familyName,
+    country: 'US'
+  };
+  if (parts.length >= 3 && stateAndZip) {
+    address.address_line_1 = parts.slice(0, -2).join(', ');
+    address.locality = parts.at(-2);
+    address.administrative_district_level_1 = stateAndZip[1].toUpperCase();
+    address.postal_code = stateAndZip[2];
+  } else {
+    address.address_line_1 = String(value || '').trim();
+  }
+  return address;
+}
+
 export function createSquareService(config, fetchImpl = globalThis.fetch) {
   if (typeof fetchImpl !== 'function') throw new Error('A fetch implementation is required.');
   const catalogCache = new Map();
@@ -201,10 +227,17 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     return payload.booking;
   }
 
-  async function createPaymentLink({ customer, customerId, bookingId, reservationId, packageDetails, modifiers }) {
+  async function createPaymentLink({ customer, customerId, bookingId, reservationId, eventAddress, packageDetails, modifiers }) {
+    const contactName = `${customer.givenName} ${customer.familyName}`.trim();
     const lineItem = {
       catalog_object_id: packageDetails.serviceVariationId,
-      quantity: '1'
+      quantity: '1',
+      note: [
+        `Event contact: ${contactName}`,
+        `Phone: ${customer.phone}`,
+        `Event address: ${eventAddress}`,
+        `Square booking: ${bookingId}`
+      ].join('\n').slice(0, 2000)
     };
     if (modifiers.length) {
       lineItem.modifiers = modifiers.map(modifier => ({
@@ -229,6 +262,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
         },
         checkout_options: {
           allow_tipping: false,
+          ask_for_shipping_address: true,
           redirect_url: confirmationUrl.toString(),
           merchant_support_email: 'booking@boomboxcar.com',
           accepted_payment_methods: {
@@ -239,7 +273,9 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
           }
         },
         pre_populated_data: {
-          buyer_email: customer.email
+          buyer_email: customer.email,
+          buyer_phone_number: checkoutPhoneNumber(customer.phone),
+          buyer_address: checkoutAddress(eventAddress, customer)
         },
         payment_note: `BoomBoxCar ${reservationId}; Square booking ${bookingId}`
       }
@@ -247,7 +283,8 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     const paymentLink = payload.payment_link;
     let checkoutUrl;
     try { checkoutUrl = new URL(paymentLink?.url); } catch (_) {}
-    if (!paymentLink?.id || !paymentLink?.order_id || checkoutUrl?.protocol !== 'https:' || checkoutUrl.hostname !== 'square.link') {
+    const expectedCheckoutHost = config.squareEnvironment === 'production' ? 'square.link' : 'sandbox.square.link';
+    if (!paymentLink?.id || !paymentLink?.order_id || checkoutUrl?.protocol !== 'https:' || checkoutUrl.hostname !== expectedCheckoutHost) {
       throw new AppError(502, 'INVALID_PAYMENT_LINK_RESPONSE', 'Square did not return a usable checkout link.');
     }
     return paymentLink;

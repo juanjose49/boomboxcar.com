@@ -128,16 +128,19 @@ test('Square checkout references the booking package and selected Catalog modifi
   const fakeFetch = async (url, options) => {
     checkoutRequest = { url, body: JSON.parse(options.body) };
     return new Response(JSON.stringify({
-      payment_link: { id: 'LINK-1', order_id: 'ORDER-1', url: 'https://square.link/u/TEST' }
+      payment_link: { id: 'LINK-1', order_id: 'ORDER-1', url: 'https://sandbox.square.link/u/TEST' }
     }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
     });
   };
   const service = createSquareService(loadConfig(env), fakeFetch);
   const paymentLink = await service.createPaymentLink({
-    customer: { email: 'buyer@example.com' },
+    customer: {
+      givenName: 'Test', familyName: 'Customer', email: 'buyer@example.com', phone: '(301) 555-0199'
+    },
     customerId: 'CUSTOMER-1', reservationId: 'BBC-2099-ABC123',
     bookingId: 'BOOKING-1',
+    eventAddress: '123 Test Street, Silver Spring, MD 20910',
     packageDetails: { serviceVariationId: 'SERVICE-1H' },
     modifiers: [{ id: 'BUBBLE', quantity: 1 }, { id: 'LASER', quantity: 2 }]
   });
@@ -154,7 +157,17 @@ test('Square checkout references the booking package and selected Catalog modifi
   assert.equal(checkoutRequest.body.checkout_options.redirect_url, 'http://localhost:3100/?checkout=complete&reservation=BBC-2099-ABC123#book');
   assert.equal(checkoutRequest.body.checkout_options.accepted_payment_methods.apple_pay, true);
   assert.equal(checkoutRequest.body.checkout_options.allow_tipping, false);
+  assert.equal(checkoutRequest.body.checkout_options.ask_for_shipping_address, true);
   assert.equal(checkoutRequest.body.pre_populated_data.buyer_email, 'buyer@example.com');
+  assert.equal(checkoutRequest.body.pre_populated_data.buyer_phone_number, '+13015550199');
+  assert.deepEqual(checkoutRequest.body.pre_populated_data.buyer_address, {
+    first_name: 'Test', last_name: 'Customer', country: 'US',
+    address_line_1: '123 Test Street', locality: 'Silver Spring',
+    administrative_district_level_1: 'MD', postal_code: '20910'
+  });
+  assert.match(checkoutRequest.body.order.line_items[0].note, /Event contact: Test Customer/);
+  assert.match(checkoutRequest.body.order.line_items[0].note, /Phone: \(301\) 555-0199/);
+  assert.match(checkoutRequest.body.order.line_items[0].note, /Event address: 123 Test Street/);
   assert.match(checkoutRequest.body.payment_note, /BOOKING-1/);
 });
 

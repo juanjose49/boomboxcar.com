@@ -55,4 +55,6 @@ test('calculates catalog pricing and writes modifiers into the Square booking no
   assert.match(note, /Estimated total: \$324/);
   assert.match(note, /Two powerful speakers, the inflatable BoomBox, two wireless microphones/);
   assert.match(note, /DJ and MC services are not included/);
+  assert.match(note, /Event contact: Test Customer/);
+  assert.match(note, /Contact phone: \+1 301 555 0100/);
 });

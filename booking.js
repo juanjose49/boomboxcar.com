@@ -17,7 +17,7 @@
     liveReady: 'Estas horas están disponibles actualmente en Square.', noSlots: 'No hay horas disponibles para esta fecha y duración.',
     fallback: 'La API aún no está disponible. Elige una hora y confirmarás la disponibilidad en el programador de Square.',
     apiSubmit: 'Reservar y pagar con Square', fallbackSubmit: 'Copiar detalles y continuar a Square',
-    apiHandoff: 'Tu reserva se creará en Square y continuarás al pago seguro. Completa el pago en 30 minutos para conservar la hora.',
+    apiHandoff: 'Square completará tu nombre, teléfono y dirección del evento para que los revises antes de pagar. Completa el pago en 30 minutos para conservar la hora.',
     fallbackHandoff: 'Tus detalles se copiarán. Pégalos en las notas de la cita en Square para conservar todos los extras.',
     submitting: 'Creando tu reserva y pago seguro…', checkoutReady: 'Reserva creada. Abriendo el pago seguro de Square…',
     checkoutReturn: 'Square Checkout te regresó a BoomBoxCar para la reserva',
@@ -39,7 +39,7 @@
     liveReady: 'These times are currently available in Square.', noSlots: 'No arrival times are available for this date and duration.',
     fallback: 'The API is not available yet. Choose a time and confirm availability in the hosted Square scheduler.',
     apiSubmit: 'Reserve & pay with Square', fallbackSubmit: 'Copy details & continue to Square',
-    apiHandoff: 'Your reservation will be created in Square, then you will continue to secure payment. Complete payment within 30 minutes to keep the time.',
+    apiHandoff: 'Square will prefill your name, phone, and event address for review before payment. Complete payment within 30 minutes to keep the time.',
     fallbackHandoff: 'Your details will be copied. Paste them into Square’s appointment notes to preserve every add-on.',
     submitting: 'Creating your reservation and secure checkout…', checkoutReady: 'Reservation created. Opening secure Square checkout…',
     checkoutReturn: 'Square Checkout returned you to BoomBoxCar for reservation',
@@ -478,7 +478,7 @@
       const result = await response.json();
       if (!response.ok) throw new Error(result.error?.message || copy.error);
       const checkoutUrl = new URL(result.checkoutUrl);
-      if (checkoutUrl.protocol !== 'https:' || checkoutUrl.hostname !== 'square.link') throw new Error(copy.error);
+      if (checkoutUrl.protocol !== 'https:' || !['square.link', 'sandbox.square.link'].includes(checkoutUrl.hostname)) throw new Error(copy.error);
       bookingResult.textContent = copy.checkoutReady;
       bookingResult.dataset.state = 'success';
       bookingResult.hidden = false;

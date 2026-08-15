@@ -188,6 +188,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
             customerId: customer.id,
             bookingId: booking.id,
             reservationId,
+            eventAddress: reservation.details.address,
             packageDetails,
             modifiers: pricing.modifiers
           });
