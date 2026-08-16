@@ -58,7 +58,7 @@
   <link rel="preconnect" href="https://app.squareup.com" crossorigin />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="index.css?v=20260816-day-night-flow-5" />
+  <link rel="stylesheet" href="index.css?v=20260816-day-night-flow-6" />
 
   <!-- Google Analytics (unchanged) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
@@ -164,13 +164,14 @@
   <main id="top">
     <!-- Theme-driven party video -->
     <section class="hero experience-video" data-experience="theme-video">
-      <div class="hero-media">
+      <div class="hero-media" data-experience-media data-src-day-small="videos/boombox-party-day-s.mp4" data-src-day-medium="videos/boombox-party-day-m.mp4" data-src-day-large="videos/boombox-party-day-l.mp4" data-src-night-small="videos/boombox-party-night-s.mp4" data-src-night-medium="videos/boombox-party-night-m.mp4" data-src-night-large="videos/boombox-party-night-l.mp4">
         <picture data-video-fallback>
           <source data-src-day="images/wallpapers/day-l.jpeg" data-src-night="images/wallpapers/night-l.jpeg" media="(min-width:1200px)" />
           <source data-src-day="images/wallpapers/day-m.jpeg" data-src-night="images/wallpapers/night-m.jpeg" media="(min-width:640px)" />
           <img data-src-day="images/wallpapers/day-s.jpeg" data-src-night="images/wallpapers/night-s.jpeg" alt="BoomBoxCar party experience" decoding="async" />
         </picture>
-        <video class="hero-video" data-experience-video data-src-day-small="videos/boombox-party-day-s.mp4" data-src-day-medium="videos/boombox-party-day-m.mp4" data-src-day-large="videos/boombox-party-day-l.mp4" data-src-night-small="videos/boombox-party-night-s.mp4" data-src-night-medium="videos/boombox-party-night-m.mp4" data-src-night-large="videos/boombox-party-night-l.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video>
+        <video class="hero-video" data-video-layer autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video>
+        <video class="hero-video" data-video-layer autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video>
       </div>
       <div class="hero-copy">
         <p class="hero-eyebrow">The BoomBoxCar experience</p>
@@ -451,7 +452,7 @@
     <small>© <span id="year"></span> BoomBoxCar. All rights reserved.</small>
   </footer>
 
-  <script src="index.js?v=20260816-day-night-flow-5" defer></script>
+  <script src="index.js?v=20260816-day-night-flow-6" defer></script>
   <script src="booking.js?v=20260816-payment-validation" defer></script>
 </body>
 </html>

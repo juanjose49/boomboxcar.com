@@ -4,7 +4,7 @@ BoomBoxCar is a bilingual static website with a dependency-free Node API for Squ
 
 ## Homepage party video
 
-The homepage presents one theme-driven party video using responsive, self-hosted MP4 files. Light theme selects the daytime video, while dark theme selects the nighttime video. Changing the theme swaps the active video and its matching fallback. A single continuous gallery follows the video: light theme streams nighttime images 1–5 into daytime images 1–5, while dark theme streams daytime images 1–5 into nighttime images 1–5.
+The homepage presents one theme-driven party video using responsive, self-hosted MP4 files. Light theme selects the daytime video, while dark theme selects the nighttime video. Two stacked playback layers make theme changes seamless: the destination video loads and begins playing underneath the current video, then the current layer fades away. A single continuous gallery follows the video: light theme streams nighttime images 1–5 into daytime images 1–5, while dark theme streams daytime images 1–5 into nighttime images 1–5.
 
 ```text
 videos/boombox-party-day-s.mp4    Daytime mobile crop, under 640px
@@ -15,7 +15,7 @@ videos/boombox-party-night-m.mp4  Nighttime tablet crop, 640px to 1199px
 videos/boombox-party-night-l.mp4  Nighttime desktop crop, 1200px and wider
 ```
 
-Export each as a short, loopable H.264 MP4 with the visual subject positioned for its target crop. Each video stays muted, autoplaying, looping, inline, and free of media controls. It loads as its section approaches the viewport. If the file is missing, playback is unavailable, or the visitor prefers reduced motion, the matching still in `images/wallpapers/` loads as a fallback. Wallpaper stills are not displayed as a separate content section.
+Export each as a loopable H.264 MP4 containing the clip forward and then in reverse for continuous bounce playback, with the visual subject positioned for its target crop. Each video stays muted, autoplaying, looping, inline, and free of media controls. It loads as its section approaches the viewport. If the file is missing, playback is unavailable, or the visitor prefers reduced motion, the matching still in `images/wallpapers/` loads as a fallback. Wallpaper stills are not displayed as a separate content section.
 
 The responsive gallery uses `images/day-1s.jpeg` through `images/day-5l.jpeg` and `images/night-1s.jpeg` through `images/night-5l.jpeg`. Each numbered frame has 320×400 small, 640×800 medium, and 1200×1500 large variants.
 

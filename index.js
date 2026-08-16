@@ -74,18 +74,23 @@ function bindThemeToggle() {
 }
 
 function bindExperienceVideos() {
-  const video = document.querySelector('[data-experience-video]');
-  if (!video) return;
-  const hero = video.closest('.hero');
+  const media = document.querySelector('[data-experience-media]');
+  if (!media) return;
+  const layers = Array.from(media.querySelectorAll('[data-video-layer]'));
+  if (layers.length < 2) return;
+  const hero = media.closest('.hero');
   if (!hero) return;
-  const fallback = hero.querySelector('[data-video-fallback]');
+  const fallback = media.querySelector('[data-video-fallback]');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const size = window.innerWidth >= 1200 ? 'Large' : (window.innerWidth >= 640 ? 'Medium' : 'Small');
+  const transitionMs = 2000;
   let currentPeriod = '';
-  let sourceLoaded = false;
   let loadRequested = false;
+  let activeVideo = null;
+  let switchToken = 0;
+  let fadeTimer = null;
 
-  const showFallback = () => {
+  const setFallbackSource = () => {
     if (!fallback) return;
     const sourceKey = currentPeriod === 'night' ? 'srcNight' : 'srcDay';
     fallback.querySelectorAll('source').forEach(source => {
@@ -95,75 +100,169 @@ function bindExperienceVideos() {
     const image = fallback.querySelector('img');
     const imagePath = image?.dataset[sourceKey];
     if (image && imagePath) image.src = imagePath;
+  };
+
+  const stopLayer = layer => {
+    layer.pause();
+    layer.classList.remove('is-current', 'is-underlay', 'is-fading-out');
+  };
+
+  const finishFallbackTransition = previous => {
+    if (previous) stopLayer(previous);
+    activeVideo = null;
     hero.classList.remove('has-video');
+  };
+
+  const showFallback = (previous = activeVideo) => {
+    setFallbackSource();
     hero.classList.add('has-fallback');
-  };
-
-  const showVideo = () => {
-    if (reducedMotion.matches || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
-    hero.classList.remove('has-fallback');
-    hero.classList.add('has-video');
-  };
-
-  const loadVideo = () => {
-    if (reducedMotion.matches || !currentPeriod) return;
-    if (!sourceLoaded) {
-      const period = currentPeriod === 'night' ? 'Night' : 'Day';
-      const source = video.dataset[`src${period}${size}`];
-      if (!source) return;
-      video.src = source;
-      video.load();
-      sourceLoaded = true;
+    if (!previous) {
+      finishFallbackTransition(null);
+      return;
     }
-    video.play().then(showVideo).catch(() => {});
+    requestAnimationFrame(() => requestAnimationFrame(() => previous.classList.add('is-fading-out')));
+    clearTimeout(fadeTimer);
+    fadeTimer = setTimeout(() => finishFallbackTransition(previous), transitionMs);
   };
 
-  const selectThemeMedia = theme => {
+  const sourceFor = period => {
+    const label = period === 'night' ? 'Night' : 'Day';
+    return media.dataset[`src${label}${size}`] || '';
+  };
+
+  const prepareLayer = (layer, period) => new Promise((resolve, reject) => {
+    const source = sourceFor(period);
+    if (!source) {
+      reject(new Error('Missing video source'));
+      return;
+    }
+
+    const play = () => layer.play().then(resolve).catch(reject);
+    if (layer.dataset.period === period && layer.getAttribute('src') === source && layer.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      play();
+      return;
+    }
+
+    const cleanup = () => {
+      layer.removeEventListener('loadeddata', handleReady);
+      layer.removeEventListener('error', handleError);
+    };
+    const handleReady = () => {
+      cleanup();
+      play();
+    };
+    const handleError = () => {
+      cleanup();
+      reject(new Error(`Unable to load ${period} video`));
+    };
+    layer.addEventListener('loadeddata', handleReady);
+    layer.addEventListener('error', handleError);
+    layer.dataset.period = period;
+    layer.src = source;
+    layer.load();
+  });
+
+  const selectThemeMedia = async theme => {
     const nextPeriod = theme === 'dark' ? 'night' : 'day';
-    if (nextPeriod === currentPeriod) return;
     currentPeriod = nextPeriod;
     hero.dataset.experience = `${currentPeriod}-video`;
-    sourceLoaded = false;
-    video.pause();
-    video.removeAttribute('src');
-    hero.classList.remove('has-video', 'has-fallback');
-    fallback?.querySelectorAll('source').forEach(source => source.removeAttribute('srcset'));
-    fallback?.querySelector('img')?.removeAttribute('src');
-    if (reducedMotion.matches) showFallback();
-    else if (loadRequested) loadVideo();
-    else video.load();
+    if (reducedMotion.matches) {
+      switchToken += 1;
+      layers.forEach(stopLayer);
+      activeVideo = null;
+      showFallback(null);
+      return;
+    }
+    if (!loadRequested) return;
+
+    const token = ++switchToken;
+    clearTimeout(fadeTimer);
+    if (activeVideo?.dataset.period === currentPeriod) {
+      layers.filter(layer => layer !== activeVideo).forEach(stopLayer);
+      activeVideo.classList.remove('is-fading-out', 'is-underlay');
+      activeVideo.classList.add('is-current');
+      hero.classList.remove('has-fallback');
+      hero.classList.add('has-video');
+      return;
+    }
+
+    const previous = activeVideo;
+    if (previous) previous.classList.remove('is-fading-out');
+    const destination = layers.find(layer => layer !== previous) || layers[0];
+    stopLayer(destination);
+    if (previous) destination.classList.add('is-underlay');
+
+    try {
+      await prepareLayer(destination, currentPeriod);
+    } catch (_) {
+      if (token !== switchToken) return;
+      stopLayer(destination);
+      showFallback(previous);
+      return;
+    }
+    if (token !== switchToken) {
+      if (destination.dataset.period !== currentPeriod) stopLayer(destination);
+      return;
+    }
+
+    hero.classList.remove('has-fallback');
+    hero.classList.add('has-video');
+    if (!previous) {
+      destination.classList.remove('is-underlay');
+      destination.classList.add('is-current');
+      activeVideo = destination;
+      return;
+    }
+
+    destination.classList.add('is-underlay');
+    requestAnimationFrame(() => requestAnimationFrame(() => previous.classList.add('is-fading-out')));
+    fadeTimer = setTimeout(() => {
+      if (token !== switchToken) return;
+      stopLayer(previous);
+      destination.classList.remove('is-underlay');
+      destination.classList.add('is-current');
+      activeVideo = destination;
+    }, transitionMs);
   };
 
-  video.addEventListener('loadeddata', showVideo);
-  video.addEventListener('error', () => {
-    if (sourceLoaded) showFallback();
+  layers.forEach(layer => {
+    layer.addEventListener('error', () => {
+      if (layer === activeVideo) showFallback(layer);
+    });
   });
 
   const handleReducedMotion = event => {
     if (event.matches) {
-      video.pause();
-      showFallback();
-    } else loadVideo();
+      switchToken += 1;
+      clearTimeout(fadeTimer);
+      layers.forEach(stopLayer);
+      activeVideo = null;
+      showFallback(null);
+    } else {
+      loadRequested = true;
+      selectThemeMedia(document.documentElement.dataset.theme);
+    }
   };
   if (typeof reducedMotion.addEventListener === 'function') reducedMotion.addEventListener('change', handleReducedMotion);
   else reducedMotion.addListener(handleReducedMotion);
 
-  window.addEventListener('boomboxcar:themechange', event => selectThemeMedia(event.detail.theme));
-  selectThemeMedia(document.documentElement.dataset.theme || (systemTheme.matches ? 'dark' : 'light'));
+  window.addEventListener('boomboxcar:themechange', event => { selectThemeMedia(event.detail.theme); });
+  currentPeriod = document.documentElement.dataset.theme === 'dark' ? 'night' : 'day';
+  hero.dataset.experience = `${currentPeriod}-video`;
 
   if (!reducedMotion.matches && 'IntersectionObserver' in window) {
     const loader = new IntersectionObserver(entries => {
       if (entries.some(entry => entry.isIntersecting)) {
         loadRequested = true;
-        loadVideo();
+        selectThemeMedia(document.documentElement.dataset.theme);
         loader.disconnect();
       }
     }, { rootMargin: '300px' });
     loader.observe(hero);
   } else if (!reducedMotion.matches) {
     loadRequested = true;
-    loadVideo();
-  } else showFallback();
+    selectThemeMedia(document.documentElement.dataset.theme);
+  } else showFallback(null);
 }
 
 // ---- Ensure GA event sends before same-tab navigation (best-effort) ----
