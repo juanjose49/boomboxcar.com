@@ -51,7 +51,7 @@ test('reconciles a paid order without canceling its appointment', async () => {
   const dataDir = await mkdtemp(path.join(os.tmpdir(), 'boomboxcar-paid-'));
   let destructiveCalls = 0;
   const square = {
-    async retrieveOrder() { return { id: 'ORDER-1', state: 'COMPLETED' }; },
+    async retrieveOrder() { return { id: 'ORDER-1', state: 'COMPLETED', total_money: { amount: 19900, currency: 'USD' } }; },
     async deletePaymentLink() { destructiveCalls += 1; },
     async cancelBooking() { destructiveCalls += 1; }
   };
@@ -61,6 +61,7 @@ test('reconciles a paid order without canceling its appointment', async () => {
       dataDir, square, now: new Date('2099-08-20T19:31:00Z')
     });
     assert.equal(results[0].paymentStatus, 'COMPLETED');
+    assert.deepEqual(results[0].amountMoney, { amount: 19900, currency: 'USD' });
     assert.equal(destructiveCalls, 0);
   } finally {
     await rm(dataDir, { recursive: true, force: true });

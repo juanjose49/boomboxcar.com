@@ -33,7 +33,8 @@ export async function expirePendingReservations({ dataDir, square, now = new Dat
           reservationId: reservation.reservationId,
           recordedAt: now.toISOString(),
           squareOrderId: reservation.squareOrderId,
-          paymentStatus: 'COMPLETED'
+          paymentStatus: 'COMPLETED',
+          amountMoney: order.total_money || null
         };
         await persistReservation(dataDir, record);
         results.push(record);

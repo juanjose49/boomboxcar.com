@@ -146,7 +146,9 @@ test('returns a paid confirmation only with its private token', async () => {
     });
     await persistReservation(dataDir, {
       recordType: 'PAYMENT_EVENT', eventCreatedAt: '2099-08-20T18:05:00Z', reservationId,
-      squareOrderId: 'ORDER-1', paymentStatus: 'COMPLETED', receiptUrl: 'https://squareup.com/receipt/preview/TEST'
+      squareOrderId: 'ORDER-1', paymentStatus: 'COMPLETED',
+      amountMoney: { amount: 19900, currency: 'USD' },
+      receiptUrl: 'https://squareup.com/receipt/preview/TEST'
     });
     await withServer({ ...placeholderEnv, DATA_DIR: dataDir }, async baseUrl => {
       const response = await fetch(`${baseUrl}/api/confirmations/${reservationId}?token=${token}`);
@@ -154,7 +156,8 @@ test('returns a paid confirmation only with its private token', async () => {
       const confirmation = await response.json();
       assert.equal(confirmation.paymentStatus, 'COMPLETED');
       assert.equal(confirmation.reservation.customer.familyName, 'Customer');
-      assert.equal(confirmation.pricing.total, 249);
+      assert.equal(confirmation.pricing.total, 199);
+      assert.deepEqual(confirmation.pricing.squareAdjustment, { amount: -50 });
       assert.equal(JSON.stringify(confirmation).includes(token), false);
 
       const privateResponse = await fetch(`${baseUrl}/api/confirmations/${reservationId}?token=ABCDEFGHIJKLMNOPQRSTUVWXYZ123456`);

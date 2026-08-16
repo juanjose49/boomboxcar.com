@@ -93,6 +93,19 @@ function resolveCoupon(config, code) {
   return coupon;
 }
 
+function pricingWithPaidAmount(pricing, amountMoney) {
+  const paidCents = Number(amountMoney?.amount);
+  const currency = typeof amountMoney?.currency === 'string' ? amountMoney.currency : pricing.currency;
+  if (!Number.isSafeInteger(paidCents) || paidCents < 0 || currency !== pricing.currency) return pricing;
+  const estimatedCents = Math.round(pricing.total * 100);
+  const adjustmentCents = paidCents - estimatedCents;
+  return {
+    ...pricing,
+    total: paidCents / 100,
+    ...(adjustmentCents ? { squareAdjustment: { amount: adjustmentCents / 100 } } : {})
+  };
+}
+
 async function serveStatic(requestPath, response) {
   const relative = requestPath === '/' ? 'index.html' : decodeURIComponent(requestPath).replace(/^\/+/, '');
   const topLevel = relative.split('/')[0];
@@ -170,30 +183,51 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           record.reservationId === reservationId && record.confirmationToken === confirmationToken && record.reservation && record.pricing);
         if (!reservationRecord) throw new AppError(404, 'CONFIRMATION_NOT_FOUND', 'Confirmation not found.');
 
-        const completedRecord = [...records].reverse().find(record => record.reservationId === reservationId
+        let completedRecord = [...records].reverse().find(record => record.reservationId === reservationId
           && ['PAYMENT_EVENT', 'PAYMENT_RECONCILIATION'].includes(record.recordType)
           && record.paymentStatus === 'COMPLETED');
         const expiredRecord = [...records].reverse().find(record => record.reservationId === reservationId
           && record.recordType === 'PAYMENT_EXPIRATION' && record.paymentStatus === 'EXPIRED');
         let paymentStatus = completedRecord ? 'COMPLETED' : expiredRecord ? 'EXPIRED' : 'PENDING';
+        let squareOrder = null;
         if (paymentStatus === 'PENDING' && config.squareConfigured) {
-          const order = await square.retrieveOrder(reservationRecord.squareOrderId);
-          if (order?.state === 'COMPLETED') {
+          squareOrder = await square.retrieveOrder(reservationRecord.squareOrderId);
+          if (squareOrder?.state === 'COMPLETED') {
             paymentStatus = 'COMPLETED';
-            await persistReservation(config.dataDir, {
+            completedRecord = {
               recordType: 'PAYMENT_RECONCILIATION',
               reservationId,
               recordedAt: new Date().toISOString(),
               squareOrderId: reservationRecord.squareOrderId,
-              paymentStatus
-            });
-          } else if (order?.state === 'CANCELED') {
+              paymentStatus,
+              amountMoney: squareOrder.total_money || null
+            };
+            await persistReservation(config.dataDir, completedRecord);
+          } else if (squareOrder?.state === 'CANCELED') {
             paymentStatus = 'EXPIRED';
           }
         }
         if (paymentStatus === 'PENDING') throw new AppError(409, 'PAYMENT_PENDING', 'Square is still confirming the payment. Try again shortly.');
         if (paymentStatus === 'EXPIRED') throw new AppError(410, 'RESERVATION_EXPIRED', 'This unpaid reservation expired.');
 
+        if (paymentStatus === 'COMPLETED' && !completedRecord?.amountMoney && config.squareConfigured) {
+          try {
+            squareOrder ||= await square.retrieveOrder(reservationRecord.squareOrderId);
+            if (squareOrder?.total_money) {
+              completedRecord = { ...completedRecord, amountMoney: squareOrder.total_money };
+              await persistReservation(config.dataDir, {
+                recordType: 'PAYMENT_RECONCILIATION',
+                reservationId,
+                recordedAt: new Date().toISOString(),
+                squareOrderId: reservationRecord.squareOrderId,
+                paymentStatus,
+                amountMoney: squareOrder.total_money
+              });
+            }
+          } catch (error) {
+            console.error('[boomboxcar-api] confirmation amount reconciliation', error.code || error.name, error.message);
+          }
+        }
         return sendJson(response, 200, {
           reservationId,
           confirmedAt: completedRecord?.eventCreatedAt || completedRecord?.recordedAt || new Date().toISOString(),
@@ -204,7 +238,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           squareOrderId: reservationRecord.squareOrderId,
           receiptUrl: completedRecord?.receiptUrl || null,
           reservation: reservationRecord.reservation,
-          pricing: reservationRecord.pricing
+          pricing: pricingWithPaidAmount(reservationRecord.pricing, completedRecord?.amountMoney)
         }, corsHeaders);
       }
       if (request.method === 'POST' && pathname === '/webhooks/square') {
@@ -470,6 +504,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
             squareOrderId: order.id,
             squarePaymentId: payment.id,
             paymentStatus: payment.status,
+            amountMoney: payment.amount_money || null,
             receiptUrl: payment.receipt_url || null
           });
         } catch (error) {

@@ -22,6 +22,7 @@
       requestsEyebrow: 'Planning', requestsTitle: 'Event notes', referencesEyebrow: 'Reference', referencesTitle: 'Booking references',
       service: 'Service', quantity: 'Quantity', amount: 'Amount', totalPaid: 'Total paid',
       coupon: code => `Coupon ${code}`,
+      squareDiscount: 'Square Checkout discount', squareAdjustment: 'Square Checkout adjustment',
       dateTime: 'Date and arrival', duration: 'Duration', address: 'Event address', eventType: 'Event type', setting: 'Setting',
       attendance: 'Expected attendance', name: 'Name', email: 'Email', phone: 'Phone', reservation: 'Reservation',
       squareBooking: 'Square booking', squareOrder: 'Square order', created: 'Created', hours: value => `${value} hour${value === 1 ? '' : 's'}`,
@@ -44,6 +45,7 @@
       requestsEyebrow: 'Planificación', requestsTitle: 'Notas del evento', referencesEyebrow: 'Referencia', referencesTitle: 'Referencias de la reserva',
       service: 'Servicio', quantity: 'Cantidad', amount: 'Importe', totalPaid: 'Total pagado',
       coupon: code => `Cupón ${code}`,
+      squareDiscount: 'Descuento de Square Checkout', squareAdjustment: 'Ajuste de Square Checkout',
       dateTime: 'Fecha y llegada', duration: 'Duración', address: 'Dirección del evento', eventType: 'Tipo de evento', setting: 'Entorno',
       attendance: 'Asistencia esperada', name: 'Nombre', email: 'Correo', phone: 'Teléfono', reservation: 'Reserva',
       squareBooking: 'Reserva de Square', squareOrder: 'Pedido de Square', created: 'Creada', hours: value => `${value} hora${value === 1 ? '' : 's'}`,
@@ -140,7 +142,12 @@
     const lines = [
       { name: c.baseService(reservation.durationHours), quantity: 1, price: pricing.basePrice },
       ...pricing.modifiers,
-      ...(pricing.discount ? [{ name: c.coupon(pricing.discount.code), quantity: 1, price: -pricing.discount.amount }] : [])
+      ...(pricing.discount ? [{ name: c.coupon(pricing.discount.code), quantity: 1, price: -pricing.discount.amount }] : []),
+      ...(pricing.squareAdjustment ? [{
+        name: pricing.squareAdjustment.amount < 0 ? c.squareDiscount : c.squareAdjustment,
+        quantity: 1,
+        price: pricing.squareAdjustment.amount
+      }] : [])
     ];
     lines.forEach(line => {
       const row = document.createElement('tr');
