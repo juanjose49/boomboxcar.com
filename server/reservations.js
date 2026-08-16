@@ -183,9 +183,12 @@ export function applyCoupon(pricing, coupon) {
   if (!coupon) return pricing;
   const subtotalCents = Math.round(pricing.total * 100);
   const discountCents = coupon.type === 'PERCENT'
-    ? Math.round(subtotalCents * coupon.value / 100)
+    ? coupon.value === 100 ? subtotalCents - 1 : Math.round(subtotalCents * coupon.value / 100)
     : Math.round(coupon.value * 100);
-  const appliedCents = Math.min(subtotalCents, Math.max(0, discountCents));
+  const appliedCents = Math.max(0, discountCents);
+  if (appliedCents >= subtotalCents) {
+    throw new AppError(400, 'COUPON_EXCEEDS_TOTAL', 'This coupon must leave at least $0.01 due for payment.');
+  }
   return {
     ...pricing,
     subtotal: pricing.total,

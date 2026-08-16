@@ -26,6 +26,7 @@
     applePayError: 'Apple Pay no pudo completar el pago. Inténtalo de nuevo o usa el pago de Square.',
     couponApply: 'Aplicando cupón…', couponApplied: amount => `Cupón aplicado: −${amount}`,
     couponInvalid: 'Ese código de cupón no es válido.', couponNeedsApply: 'Aplica el código de cupón antes de continuar.',
+    couponExceedsTotal: 'El cupón debe dejar al menos $0.01 por pagar.',
     couponLabel: code => `Cupón ${code}`,
     checkoutReturn: 'Square Checkout te regresó a BoomBoxCar para la reserva',
     error: 'No pudimos crear la reserva. Revisa los datos o elige otra hora.',
@@ -55,6 +56,7 @@
     applePayError: 'Apple Pay could not complete the payment. Try again or use Square Checkout.',
     couponApply: 'Applying coupon…', couponApplied: amount => `Coupon applied: −${amount}`,
     couponInvalid: 'That coupon code is not valid.', couponNeedsApply: 'Apply the coupon code before continuing.',
+    couponExceedsTotal: 'The coupon must leave at least $0.01 due for payment.',
     couponLabel: code => `Coupon ${code}`,
     checkoutReturn: 'Square Checkout returned you to BoomBoxCar for reservation',
     error: 'We could not create the reservation. Check the details or choose another time.',
@@ -565,7 +567,7 @@
     if (!appliedCoupon) return 0;
     const subtotalCents = Math.round(subtotal * 100);
     const discountCents = appliedCoupon.type === 'PERCENT'
-      ? Math.round(subtotalCents * appliedCoupon.value / 100)
+      ? appliedCoupon.value === 100 ? subtotalCents - 1 : Math.round(subtotalCents * appliedCoupon.value / 100)
       : Math.round(appliedCoupon.value * 100);
     return Math.min(subtotalCents, Math.max(0, discountCents)) / 100;
   }
@@ -900,6 +902,12 @@
     const draft = buildDraft();
     if (!draft.startAt) return;
     const expectedTotalCents = Math.round(draft.total * 100);
+    if (expectedTotalCents < 1) {
+      bookingResult.textContent = copy.couponExceedsTotal;
+      bookingResult.dataset.state = 'error';
+      bookingResult.hidden = false;
+      return;
+    }
     persistBookingDraft();
 
     let tokenization;

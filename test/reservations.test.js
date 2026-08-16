@@ -110,16 +110,23 @@ test('calculates catalog pricing and writes modifiers into the Square booking no
   assert.match(note, /Contact phone: \+1 301 555 0100/);
 });
 
-test('applies percentage and fixed coupons in cents without reducing the total below zero', () => {
+test('applies coupons in cents and rejects discounts that cover the entire payment', () => {
   const pricing = calculatePricing(packageDetails, [{ id: 'BUBBLE', quantity: 1 }]);
   const percentage = applyCoupon(pricing, { code: 'SAVE10', type: 'PERCENT', value: 10 });
   assert.equal(percentage.subtotal, 274);
   assert.equal(percentage.discount.amount, 27.4);
   assert.equal(percentage.total, 246.6);
 
-  const fixed = applyCoupon(pricing, { code: 'BIGSAVE', type: 'FIXED', value: 500 });
-  assert.equal(fixed.discount.amount, 274);
-  assert.equal(fixed.total, 0);
+  const fixed = applyCoupon(pricing, { code: 'SAVE50', type: 'FIXED', value: 50 });
+  assert.equal(fixed.discount.amount, 50);
+  assert.equal(fixed.total, 224);
+  assert.throws(
+    () => applyCoupon(pricing, { code: 'BIGSAVE', type: 'FIXED', value: 500 }),
+    /leave at least \$0\.01/i
+  );
+  const testPrice = applyCoupon(pricing, { code: 'TEST_SALE', type: 'PERCENT', value: 100 });
+  assert.equal(testPrice.discount.amount, 273.99);
+  assert.equal(testPrice.total, 0.01);
 });
 
 test('normalizes coupon codes and rejects unsupported characters', () => {

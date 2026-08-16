@@ -19,11 +19,12 @@ const env = {
 test('coupon environment entries are parsed privately into fixed and percentage rules', () => {
   const config = loadConfig({
     ...env,
-    BOOMBOXCAR_COUPONS: 'welcome10:percent:10,BOOM50:FIXED:50,broken entry'
+    BOOMBOXCAR_COUPONS: 'welcome10:percent:10,BOOM50:FIXED:50,TEST_SALE:PERCENT:100,broken entry'
   });
   assert.deepEqual(config.coupons.get('WELCOME10'), { code: 'WELCOME10', type: 'PERCENT', value: 10 });
   assert.deepEqual(config.coupons.get('BOOM50'), { code: 'BOOM50', type: 'FIXED', value: 50 });
-  assert.equal(config.coupons.size, 2);
+  assert.deepEqual(config.coupons.get('TEST_SALE'), { code: 'TEST_SALE', type: 'PERCENT', value: 100 });
+  assert.equal(config.coupons.size, 3);
 });
 
 test('Square availability uses configured location, service, and team member IDs', async () => {
