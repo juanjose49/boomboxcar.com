@@ -626,14 +626,34 @@
     try {
       await loadSquareSdk(config.webPaymentsSdkUrl);
       squarePayments = window.Square.payments(config.applicationId, config.locationId);
-      applePayRequest = squarePayments.paymentRequest(details);
-      applePay = await squarePayments.applePay(applePayRequest);
-      applePayButton.hidden = false;
+      await resetApplePay();
     } catch (_) {
       squarePayments = null;
       applePayRequest = null;
       applePay = null;
       applePayButton.hidden = true;
+    }
+  }
+
+  async function resetApplePay() {
+    const previousApplePay = applePay;
+    applePay = null;
+    applePayRequest = null;
+    if (previousApplePay) {
+      try { await previousApplePay.destroy(); } catch (_) {}
+    }
+    const details = paymentRequestDetails();
+    if (!squarePayments || !details) return false;
+    try {
+      applePayRequest = squarePayments.paymentRequest(details);
+      applePay = await squarePayments.applePay(applePayRequest);
+      applePayButton.hidden = false;
+      return true;
+    } catch (_) {
+      applePayRequest = null;
+      applePay = null;
+      applePayButton.hidden = true;
+      return false;
     }
   }
 
@@ -917,6 +937,7 @@
       bookingResult.textContent = copy.applePayError;
       bookingResult.dataset.state = 'error';
       bookingResult.hidden = false;
+      await resetApplePay();
       return;
     }
     applePayButton.disabled = true;
@@ -957,7 +978,8 @@
       bookingResult.textContent = error.message || copy.applePayError;
       bookingResult.dataset.state = 'error';
       bookingResult.hidden = false;
-      applePayButton.disabled = false;
+      const applePayReset = await resetApplePay();
+      applePayButton.disabled = !applePayReset;
       submitButton.disabled = false;
       loadAvailability({ preserveSelection: true });
     }
