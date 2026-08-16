@@ -59,7 +59,7 @@
   <link rel="preload" href="images/wpm.jpeg" as="image" imagesrcset="images/wps.jpeg 640w, images/wpm.jpeg 1280w, images/wpl.jpeg 1920w" imagesizes="100vw" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="index.css?v=20260815-availability-status" />
+  <link rel="stylesheet" href="index.css?v=20260815-apple-pay-coupons" />
 
   <!-- Google Analytics (unchanged) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
@@ -256,6 +256,13 @@
           <div class="summary-total"><span>Estimated total</span><strong id="summaryTotal">$0</strong></div>
           <div class="booking-includes"><strong>Every booking includes</strong><span>Two powerful speakers, the inflatable BoomBox, two wireless microphones, and licensed background music through Soundtrack Your Brand.</span></div>
           <p class="quote-note" id="quoteNote" hidden>Custom-quote selections will be priced before your booking is confirmed.</p>
+          <button class="text-link coupon-toggle" id="couponToggle" type="button" aria-expanded="false" aria-controls="couponPanel">Have a coupon code?</button>
+          <div class="coupon-panel" id="couponPanel" hidden>
+            <label for="couponCode">Coupon code</label>
+            <div class="coupon-controls"><input id="couponCode" name="couponCode" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" /><button class="btn btn-secondary" id="couponApply" type="button">Apply</button></div>
+            <p class="coupon-status" id="couponStatus" role="status"></p>
+          </div>
+          <button class="apple-pay-button" id="applePayButton" type="button" aria-label="Book and pay with Apple Pay" hidden></button>
           <button class="btn btn-primary booking-submit" id="bookingSubmit" type="submit">Continue to Square Checkout</button>
           <p class="handoff-note" id="handoffNote">Your event address will be saved as the appointment location. Square will prefill your contact details for payment. Complete payment within 30 minutes to keep the time.</p>
           <div class="booking-result" id="bookingResult" role="status" hidden></div>
@@ -401,6 +408,6 @@
   </footer>
 
   <script src="index.js?v=20260815-layout" defer></script>
-  <script src="booking.js?v=20260815-availability-status" defer></script>
+  <script src="booking.js?v=20260815-apple-pay-coupons" defer></script>
 </body>
 </html>

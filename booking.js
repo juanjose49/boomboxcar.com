@@ -22,6 +22,11 @@
     apiHandoff: 'La dirección del evento se guardará como el lugar de la cita. Square completará tus datos de contacto para el pago. Completa el pago en 30 minutos para conservar la hora.',
     fallbackHandoff: 'Tus detalles se copiarán. Pégalos en las notas de la cita en Square para conservar todos los extras.',
     submitting: 'Conectando con Square…', checkoutReady: 'Reserva creada. Abriendo el pago de Square…',
+    applePayProcessing: 'Procesando Apple Pay de forma segura…', applePayReady: 'Pago completado. Abriendo tu confirmación…',
+    applePayError: 'Apple Pay no pudo completar el pago. Inténtalo de nuevo o usa el pago de Square.',
+    couponApply: 'Aplicando cupón…', couponApplied: amount => `Cupón aplicado: −${amount}`,
+    couponInvalid: 'Ese código de cupón no es válido.', couponNeedsApply: 'Aplica el código de cupón antes de continuar.',
+    couponLabel: code => `Cupón ${code}`,
     checkoutReturn: 'Square Checkout te regresó a BoomBoxCar para la reserva',
     error: 'No pudimos crear la reserva. Revisa los datos o elige otra hora.',
     modifiersLoading: 'Cargando los extras configurados en Square…', noModifiers: 'No hay extras disponibles para este paquete.',
@@ -46,6 +51,11 @@
     apiHandoff: 'Your event address will be saved as the appointment location. Square will prefill your contact details for payment. Complete payment within 30 minutes to keep the time.',
     fallbackHandoff: 'Your details will be copied. Paste them into Square’s appointment notes to preserve every add-on.',
     submitting: 'Connecting to Square…', checkoutReady: 'Reservation created. Opening Square Checkout…',
+    applePayProcessing: 'Securely processing Apple Pay…', applePayReady: 'Payment complete. Opening your confirmation…',
+    applePayError: 'Apple Pay could not complete the payment. Try again or use Square Checkout.',
+    couponApply: 'Applying coupon…', couponApplied: amount => `Coupon applied: −${amount}`,
+    couponInvalid: 'That coupon code is not valid.', couponNeedsApply: 'Apply the coupon code before continuing.',
+    couponLabel: code => `Coupon ${code}`,
     checkoutReturn: 'Square Checkout returned you to BoomBoxCar for reservation',
     error: 'We could not create the reservation. Check the details or choose another time.',
     modifiersLoading: 'Loading your Square add-ons…', noModifiers: 'No add-ons are available for this package.',
@@ -66,6 +76,12 @@
   const quoteNote = document.getElementById('quoteNote');
   const availabilityStatus = document.getElementById('availabilityStatus');
   const submitButton = document.getElementById('bookingSubmit');
+  const applePayButton = document.getElementById('applePayButton');
+  const couponToggle = document.getElementById('couponToggle');
+  const couponPanel = document.getElementById('couponPanel');
+  const couponInput = document.getElementById('couponCode');
+  const couponApplyButton = document.getElementById('couponApply');
+  const couponStatus = document.getElementById('couponStatus');
   const handoffNote = document.getElementById('handoffNote');
   const bookingResult = document.getElementById('bookingResult');
   const modifierGroups = document.getElementById('modifierGroups');
@@ -75,6 +91,10 @@
   let availabilityController = null;
   let modifierController = null;
   let currentPackage = null;
+  let squarePayments = null;
+  let applePay = null;
+  let applePayRequest = null;
+  let appliedCoupon = null;
   let bookingDraftTimer = null;
   let bookingDraftExpiryTimer = null;
   let restoredTimeSelection = null;
@@ -85,7 +105,7 @@
   const bookingDraftFields = [
     'addressLine1', 'addressLine2', 'locality', 'administrativeDistrictLevel1', 'postalCode',
     'eventType', 'setting', 'attendance', 'requests',
-    'givenName', 'familyName', 'email', 'phone'
+    'givenName', 'familyName', 'email', 'phone', 'couponCode'
   ];
   const bookingDraftFieldNames = new Set([...bookingDraftFields, 'duration', 'eventDate', 'eventTime']);
 
@@ -194,6 +214,10 @@
         if (control instanceof HTMLSelectElement && ![...control.options].some(option => option.value === value)) continue;
         if (name === 'attendance' && (!/^\d{1,6}$/.test(value) || Number(value) < 1)) continue;
         control.value = value;
+      }
+      if (couponInput?.value) {
+        couponPanel.hidden = false;
+        couponToggle.setAttribute('aria-expanded', 'true');
       }
       if (stored.version === 2) {
         const duration = form.querySelector(`input[name="duration"][value="${Number(stored.durationHours)}"]`);
@@ -373,6 +397,11 @@
     } catch (error) {
       if (error.name === 'AbortError') return;
       backendReady = false;
+      appliedCoupon = null;
+      if (couponInput?.value) {
+        couponStatus.textContent = copy.couponNeedsApply;
+        couponStatus.dataset.state = 'error';
+      }
       modifierGroups.replaceChildren();
       modifierStatus.textContent = copy.modifiersUnavailable;
       if (dateInput.value) fallbackTimeOptions(currentTimeSelection());
@@ -489,12 +518,19 @@
       linesOutput.replaceChildren();
       dateOutput.textContent = copy.chooseDurationFirst;
       quoteNote.hidden = true;
+      updateApplePayRequest();
       return;
     }
     const hours = Number(duration.value);
     const basePrice = Number(duration.dataset.price);
     const modifiers = selectedModifiers();
-    const total = modifiers.reduce((sum, modifier) => sum + modifier.price * modifier.quantity, basePrice);
+    const subtotal = modifiers.reduce((sum, modifier) => sum + modifier.price * modifier.quantity, basePrice);
+    const discountAmount = couponDiscountAmount(subtotal);
+    const total = subtotal - discountAmount;
+
+    if (appliedCoupon && couponStatus.dataset.state === 'success') {
+      couponStatus.textContent = copy.couponApplied(money.format(discountAmount));
+    }
 
     packageOutput.textContent = `${hours} ${hours === 1 ? copy.hour : copy.hours}`;
     totalOutput.textContent = money.format(total);
@@ -502,7 +538,7 @@
     const lines = [{ label: copy.base, price: basePrice }, ...modifiers.map(modifier => ({
       label: `${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}`,
       price: modifier.price * modifier.quantity
-    }))];
+    })), ...(appliedCoupon ? [{ label: copy.couponLabel(appliedCoupon.code), price: -discountAmount }] : [])];
     linesOutput.replaceChildren(...lines.map(line => {
       const row = document.createElement('div');
       row.className = 'summary-line';
@@ -522,6 +558,81 @@
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
       }).format(date);
     } else dateOutput.textContent = copy.chooseDate;
+    updateApplePayRequest();
+  }
+
+  function couponDiscountAmount(subtotal) {
+    if (!appliedCoupon) return 0;
+    const subtotalCents = Math.round(subtotal * 100);
+    const discountCents = appliedCoupon.type === 'PERCENT'
+      ? Math.round(subtotalCents * appliedCoupon.value / 100)
+      : Math.round(appliedCoupon.value * 100);
+    return Math.min(subtotalCents, Math.max(0, discountCents)) / 100;
+  }
+
+  function paymentRequestDetails() {
+    const duration = selectedDuration();
+    if (!duration) return null;
+    const modifiers = selectedModifiers();
+    const basePrice = Number(duration.dataset.price);
+    const subtotal = modifiers.reduce((sum, modifier) => sum + modifier.price * modifier.quantity, basePrice);
+    const discountAmount = couponDiscountAmount(subtotal);
+    const total = subtotal - discountAmount;
+    if (!Number.isFinite(total) || total < 0) return null;
+    return {
+      countryCode: 'US',
+      currencyCode: currentPackage?.currency || 'USD',
+      lineItems: [
+        { label: `${duration.value} ${Number(duration.value) === 1 ? copy.hour : copy.hours}`, amount: basePrice.toFixed(2) },
+        ...modifiers.map(modifier => ({
+          label: `${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}`,
+          amount: (modifier.price * modifier.quantity).toFixed(2)
+        })),
+        ...(appliedCoupon ? [{ label: copy.couponLabel(appliedCoupon.code), amount: `-${discountAmount.toFixed(2)}` }] : [])
+      ],
+      total: { label: 'BoomBoxCar', amount: total.toFixed(2) }
+    };
+  }
+
+  function updateApplePayRequest() {
+    const details = paymentRequestDetails();
+    if (!applePayRequest || !details) return;
+    try { applePayRequest.update(details); } catch (_) {}
+  }
+
+  function loadSquareSdk(url) {
+    const allowed = new Set([
+      'https://web.squarecdn.com/v1/square.js',
+      'https://sandbox.web.squarecdn.com/v1/square.js'
+    ]);
+    if (!allowed.has(url)) return Promise.reject(new Error('Invalid Square SDK URL.'));
+    if (window.Square?.payments) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = url;
+      script.crossOrigin = 'anonymous';
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('Square Web Payments SDK could not be loaded.'));
+      document.head.append(script);
+    });
+  }
+
+  async function initializeApplePay(config) {
+    if (!applePayButton || !config.applePayReady || !window.isSecureContext) return;
+    const details = paymentRequestDetails();
+    if (!details) return;
+    try {
+      await loadSquareSdk(config.webPaymentsSdkUrl);
+      squarePayments = window.Square.payments(config.applicationId, config.locationId);
+      applePayRequest = squarePayments.paymentRequest(details);
+      applePay = await squarePayments.applePay(applePayRequest);
+      applePayButton.hidden = false;
+    } catch (_) {
+      squarePayments = null;
+      applePayRequest = null;
+      applePay = null;
+      applePayButton.hidden = true;
+    }
   }
 
   function validateNotice() {
@@ -533,14 +644,21 @@
 
   function buildDraft() {
     const duration = selectedDuration();
+    const modifiers = selectedModifiers();
+    const basePrice = Number(duration.dataset.price);
+    const subtotal = modifiers.reduce((sum, modifier) => sum + modifier.price * modifier.quantity, basePrice);
+    const discountAmount = couponDiscountAmount(subtotal);
     return {
       locale: apiLocale,
       eventDate: dateInput.value,
       eventTime: timeInput.value,
       startAt: selectedStartAt(),
       durationHours: Number(duration.value),
-      basePrice: Number(duration.dataset.price),
-      modifiers: selectedModifiers(),
+      basePrice,
+      modifiers,
+      couponCode: appliedCoupon?.code || '',
+      discount: appliedCoupon ? { ...appliedCoupon, amount: discountAmount } : null,
+      total: subtotal - discountAmount,
       address: {
         addressLine1: form.elements.addressLine1.value.trim(),
         addressLine2: form.elements.addressLine2.value.trim(),
@@ -561,19 +679,84 @@
     };
   }
 
+  function reservationPayload(draft) {
+    return {
+      locale: draft.locale,
+      eventDate: draft.eventDate,
+      startAt: draft.startAt,
+      durationHours: draft.durationHours,
+      modifiers: draft.modifiers.map(modifier => ({ id: modifier.id, quantity: modifier.quantity })),
+      couponCode: draft.couponCode,
+      address: draft.address,
+      eventType: draft.eventType,
+      setting: draft.setting,
+      attendance: draft.attendance,
+      requests: draft.requests,
+      customer: draft.customer
+    };
+  }
+
   function buildSquareNote(draft) {
     const date = draft.startAt ? new Date(draft.startAt) : new Date(`${draft.eventDate}T${draft.eventTime}`);
     const formattedDate = new Intl.DateTimeFormat(locale, {
       timeZone: draft.startAt ? 'America/New_York' : undefined,
       weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
     }).format(date);
-    const addonTotal = draft.modifiers.reduce((sum, modifier) => sum + modifier.price * modifier.quantity, 0);
     const addonLines = draft.modifiers.length
       ? draft.modifiers.map(modifier => `- ${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}: +${money.format(modifier.price * modifier.quantity)}`).join('\n')
       : `- ${copy.none}`;
     const eventAddress = [draft.address.addressLine1, draft.address.addressLine2, draft.address.locality,
       `${draft.address.administrativeDistrictLevel1} ${draft.address.postalCode}`].filter(Boolean).join(', ');
-    return [copy.noteTitle, `${copy.date}: ${formattedDate}`, `${copy.duration}: ${draft.durationHours} ${draft.durationHours === 1 ? copy.hour : copy.hours} (${money.format(draft.basePrice)})`, `${copy.includedLabel}: ${copy.includedItems}`, copy.staffScope, `${copy.addons}:`, addonLines, `${copy.estimatedTotal}: ${money.format(draft.basePrice + addonTotal)}`, `${copy.address}: ${eventAddress}`, `${copy.eventType}: ${draft.eventType}`, `${copy.setting}: ${draft.setting}`, `${copy.attendance}: ${draft.attendance}`, `${copy.requests}: ${draft.requests || copy.none}`].join('\n');
+    return [copy.noteTitle, `${copy.date}: ${formattedDate}`, `${copy.duration}: ${draft.durationHours} ${draft.durationHours === 1 ? copy.hour : copy.hours} (${money.format(draft.basePrice)})`, `${copy.includedLabel}: ${copy.includedItems}`, copy.staffScope, `${copy.addons}:`, addonLines, ...(draft.discount ? [`${copy.couponLabel(draft.discount.code)}: -${money.format(draft.discount.amount)}`] : []), `${copy.estimatedTotal}: ${money.format(draft.total)}`, `${copy.address}: ${eventAddress}`, `${copy.eventType}: ${draft.eventType}`, `${copy.setting}: ${draft.setting}`, `${copy.attendance}: ${draft.attendance}`, `${copy.requests}: ${draft.requests || copy.none}`].join('\n');
+  }
+
+  function couponIsReady() {
+    const enteredCode = couponInput?.value.trim().toUpperCase() || '';
+    if (!enteredCode) return true;
+    if (appliedCoupon?.code === enteredCode) return true;
+    couponStatus.textContent = copy.couponNeedsApply;
+    couponStatus.dataset.state = 'error';
+    couponInput.focus();
+    return false;
+  }
+
+  async function applyCouponCode() {
+    const duration = selectedDuration();
+    const couponCode = couponInput.value.trim().toUpperCase();
+    couponInput.value = couponCode;
+    appliedCoupon = null;
+    updateSummary();
+    if (!couponCode || !duration || !currentPackage) {
+      couponStatus.textContent = couponCode ? copy.modifiersLoading : copy.couponInvalid;
+      couponStatus.dataset.state = 'error';
+      return;
+    }
+    couponApplyButton.disabled = true;
+    couponStatus.textContent = copy.couponApply;
+    couponStatus.dataset.state = '';
+    try {
+      const response = await fetch(`${apiBase}/coupons/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          couponCode,
+          durationHours: Number(duration.value),
+          modifiers: selectedModifiers().map(modifier => ({ id: modifier.id, quantity: modifier.quantity }))
+        })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.coupon) throw new Error(result.error?.message || copy.couponInvalid);
+      appliedCoupon = result.coupon;
+      couponStatus.textContent = copy.couponApplied(money.format(result.coupon.amount));
+      couponStatus.dataset.state = 'success';
+      persistBookingDraft();
+      updateSummary();
+    } catch (error) {
+      couponStatus.textContent = error.message || copy.couponInvalid;
+      couponStatus.dataset.state = 'error';
+    } finally {
+      couponApplyButton.disabled = false;
+    }
   }
 
   async function copyText(text) {
@@ -593,16 +776,19 @@
   }
 
   async function initializeBackend() {
+    let publicConfiguration = null;
     try {
       const response = await fetch(`${apiBase}/config`, { headers: { Accept: 'application/json' } });
       const config = await response.json();
+      publicConfiguration = config;
       backendReady = response.ok && config.ready === true;
       if (Number.isFinite(Number(config.minimumNoticeHours))) minimumNoticeHours = Number(config.minimumNoticeHours);
     } catch (_) { backendReady = false; }
     await loadPackagePricing();
     const duration = selectedDuration();
     dateInput.disabled = !duration;
-    loadModifiers();
+    await loadModifiers();
+    if (publicConfiguration) await initializeApplePay(publicConfiguration);
     if (duration && dateInput.value) {
       loadAvailability({ preferredSelection: restoredTimeSelection });
       restoredTimeSelection = null;
@@ -619,8 +805,25 @@
   form.addEventListener('input', event => {
     if (event.target.name === 'modifiers' || event.target.dataset.modifierQuantity) modifierStatus.dataset.state = '';
     if (bookingDraftFieldNames.has(event.target.name)) scheduleBookingDraftSave();
+    if (event.target === couponInput && appliedCoupon?.code !== couponInput.value.trim().toUpperCase()) {
+      appliedCoupon = null;
+      couponStatus.textContent = '';
+      couponStatus.dataset.state = '';
+    }
     validateNotice();
     updateSummary();
+  });
+  couponToggle?.addEventListener('click', () => {
+    couponPanel.hidden = !couponPanel.hidden;
+    couponToggle.setAttribute('aria-expanded', String(!couponPanel.hidden));
+    if (!couponPanel.hidden) couponInput.focus();
+  });
+  couponApplyButton?.addEventListener('click', applyCouponCode);
+  couponInput?.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      applyCouponCode();
+    }
   });
   form.addEventListener('change', event => {
     if (bookingDraftFieldNames.has(event.target.name)) scheduleBookingDraftSave();
@@ -643,6 +846,7 @@
       return;
     }
     if (!validateModifierRules()) return;
+    if (!couponIsReady()) return;
     const draft = buildDraft();
     const squareNote = buildSquareNote(draft);
     persistBookingDraft();
@@ -661,19 +865,7 @@
       const response = await fetch(`${apiBase}/reservations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          locale: draft.locale,
-          eventDate: draft.eventDate,
-          startAt: draft.startAt,
-          durationHours: draft.durationHours,
-          modifiers: draft.modifiers.map(modifier => ({ id: modifier.id, quantity: modifier.quantity })),
-          address: draft.address,
-          eventType: draft.eventType,
-          setting: draft.setting,
-          attendance: draft.attendance,
-          requests: draft.requests,
-          customer: draft.customer
-        })
+        body: JSON.stringify(reservationPayload(draft))
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error?.message || copy.error);
@@ -691,6 +883,74 @@
       bookingResult.hidden = false;
       submitButton.disabled = false;
       submitButton.textContent = copy.apiSubmit;
+      loadAvailability({ preserveSelection: true });
+    }
+  });
+
+  applePayButton?.addEventListener('click', async event => {
+    event.preventDefault();
+    validateNotice();
+    if (!form.reportValidity() || !applePay) return;
+    if (backendReady && !currentPackage) {
+      modifierStatus.textContent = copy.modifiersLoading;
+      return;
+    }
+    if (!validateModifierRules()) return;
+    if (!couponIsReady()) return;
+    const draft = buildDraft();
+    if (!draft.startAt) return;
+    const expectedTotalCents = Math.round(draft.total * 100);
+    persistBookingDraft();
+
+    let tokenization;
+    try {
+      tokenization = applePay.tokenize();
+    } catch (_) {
+      bookingResult.textContent = copy.applePayError;
+      bookingResult.dataset.state = 'error';
+      bookingResult.hidden = false;
+      return;
+    }
+    applePayButton.disabled = true;
+    submitButton.disabled = true;
+    bookingResult.textContent = copy.applePayProcessing;
+    bookingResult.dataset.state = '';
+    bookingResult.hidden = false;
+    try {
+      const tokenResult = await tokenization;
+      if (tokenResult.status !== 'OK' || !tokenResult.token) throw new Error(copy.applePayError);
+      const response = await fetch(`${apiBase}/reservations/apple-pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...reservationPayload(draft),
+          sourceToken: tokenResult.token,
+          expectedTotalCents
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || copy.applePayError);
+      const confirmationUrl = new URL(result.confirmationUrl);
+      if (confirmationUrl.origin !== window.location.origin || confirmationUrl.pathname !== '/confirmation/') {
+        throw new Error(copy.applePayError);
+      }
+      bookingResult.textContent = copy.applePayReady;
+      bookingResult.dataset.state = 'success';
+      handoffNote.hidden = true;
+      if (typeof fireGA === 'function') fireGA('apple_pay_booking_completed', {
+        reservation_id: result.reservationId,
+        duration_hours: draft.durationHours,
+        addon_count: draft.modifiers.length,
+        order_id: result.orderId || '',
+        lang: document.documentElement.lang || 'en'
+      });
+      window.location.assign(confirmationUrl.href);
+    } catch (error) {
+      bookingResult.textContent = error.message || copy.applePayError;
+      bookingResult.dataset.state = 'error';
+      bookingResult.hidden = false;
+      applePayButton.disabled = false;
+      submitButton.disabled = false;
       loadAvailability({ preserveSelection: true });
     }
   });

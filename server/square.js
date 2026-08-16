@@ -57,6 +57,23 @@ function formattedAppointmentAddress(value) {
     .filter(Boolean).join(', ');
 }
 
+function squareOrderDiscount(discount, currency) {
+  if (!discount) return null;
+  const value = {
+    uid: 'boomboxcar-coupon',
+    name: discount.name,
+    scope: 'ORDER'
+  };
+  if (discount.type === 'PERCENT') {
+    value.type = 'FIXED_PERCENTAGE';
+    value.percentage = String(discount.value);
+  } else {
+    value.type = 'FIXED_AMOUNT';
+    value.amount_money = { amount: Math.round(discount.amount * 100), currency };
+  }
+  return value;
+}
+
 export function createSquareService(config, fetchImpl = globalThis.fetch) {
   if (typeof fetchImpl !== 'function') throw new Error('A fetch implementation is required.');
   const catalogCache = new Map();
@@ -259,7 +276,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     return payload.booking;
   }
 
-  async function createPaymentLink({ customer, customerId, bookingId, reservationId, confirmationToken, eventAddress, packageDetails, modifiers }) {
+  async function createPaymentLink({ customer, customerId, bookingId, reservationId, confirmationToken, eventAddress, packageDetails, modifiers, discount }) {
     const contactName = `${customer.givenName} ${customer.familyName}`.trim();
     const eventAddressLabel = formattedAppointmentAddress(eventAddress);
     const lineItem = {
@@ -281,19 +298,23 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     const confirmationUrl = new URL('/confirmation/', config.appBaseUrl);
     confirmationUrl.searchParams.set('reservation', reservationId);
     confirmationUrl.searchParams.set('token', confirmationToken);
+    const orderDiscount = squareOrderDiscount(discount, packageDetails.currency || 'USD');
+    const order = {
+      location_id: config.squareLocationId,
+      reference_id: reservationId,
+      customer_id: customerId,
+      line_items: [lineItem]
+    };
+    if (orderDiscount) order.discounts = [orderDiscount];
     const payload = await request('/v2/online-checkout/payment-links', {
       method: 'POST',
       body: {
         idempotency_key: randomUUID(),
         description: `BoomBoxCar reservation ${reservationId}`,
-        order: {
-          location_id: config.squareLocationId,
-          reference_id: reservationId,
-          customer_id: customerId,
-          line_items: [lineItem]
-        },
+        order,
         checkout_options: {
           allow_tipping: false,
+          enable_coupon: false,
           ask_for_shipping_address: false,
           redirect_url: confirmationUrl.toString(),
           merchant_support_email: 'booking@boomboxcar.com',
@@ -325,6 +346,71 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     return paymentLink;
   }
 
+  async function createOrder({ customer, customerId, bookingId, reservationId, eventAddress, packageDetails, modifiers, discount }) {
+    const contactName = `${customer.givenName} ${customer.familyName}`.trim();
+    const lineItem = {
+      catalog_object_id: packageDetails.serviceVariationId,
+      quantity: '1',
+      note: [
+        `Event contact: ${contactName}`,
+        `Phone: ${customer.phone}`,
+        `Event address: ${formattedAppointmentAddress(eventAddress)}`,
+        `Square booking: ${bookingId}`
+      ].join('\n').slice(0, 2000)
+    };
+    if (modifiers.length) {
+      lineItem.modifiers = modifiers.map(modifier => ({
+        catalog_object_id: modifier.id,
+        quantity: String(modifier.quantity)
+      }));
+    }
+    const orderDiscount = squareOrderDiscount(discount, packageDetails.currency || 'USD');
+    const order = {
+      location_id: config.squareLocationId,
+      reference_id: reservationId,
+      customer_id: customerId,
+      line_items: [lineItem]
+    };
+    if (orderDiscount) order.discounts = [orderDiscount];
+    const payload = await request('/v2/orders', {
+      method: 'POST',
+      body: {
+        idempotency_key: randomUUID(),
+        order
+      }
+    });
+    if (!payload.order?.id) {
+      throw new AppError(502, 'INVALID_ORDER_RESPONSE', 'Square did not return a usable order.');
+    }
+    return payload.order;
+  }
+
+  async function createPayment({ sourceId, orderId, customerId, reservationId, customer, pricing }) {
+    const payload = await request('/v2/payments', {
+      method: 'POST',
+      body: {
+        source_id: sourceId,
+        idempotency_key: randomUUID(),
+        amount_money: {
+          amount: Math.round(pricing.total * 100),
+          currency: pricing.currency
+        },
+        autocomplete: true,
+        order_id: orderId,
+        customer_id: customerId,
+        location_id: config.squareLocationId,
+        reference_id: reservationId,
+        buyer_email_address: customer.email,
+        buyer_phone_number: checkoutPhoneNumber(customer.phone),
+        note: `BoomBoxCar reservation ${reservationId}`
+      }
+    });
+    if (!payload.payment?.id || payload.payment.status !== 'COMPLETED') {
+      throw new AppError(502, 'PAYMENT_NOT_COMPLETED', 'Square did not complete the Apple Pay payment.');
+    }
+    return payload.payment;
+  }
+
   async function cancelBooking(booking) {
     const payload = await request(`/v2/bookings/${encodeURIComponent(booking.id)}/cancel`, {
       method: 'POST',
@@ -349,6 +435,6 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
 
   return {
     searchAvailability, getPackage, getPackages, findOrCreateCustomer, createBooking,
-    createPaymentLink, cancelBooking, retrieveOrder, deletePaymentLink
+    createPaymentLink, createOrder, createPayment, cancelBooking, retrieveOrder, deletePaymentLink
   };
 }

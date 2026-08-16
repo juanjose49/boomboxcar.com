@@ -73,14 +73,17 @@ function normalizeCustomerName(givenName, familyName) {
   };
 }
 
-export function validateReservation(input) {
-  const durationHours = Number(input.durationHours);
-  if (!PACKAGES[durationHours]) throw new AppError(400, 'INVALID_DURATION', 'Choose a valid duration.');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.eventDate || '')) throw new AppError(400, 'INVALID_DATE', 'Choose a valid event date.');
-  if (!input.startAt || !Number.isFinite(Date.parse(input.startAt))) throw new AppError(400, 'INVALID_TIME', 'Choose an available arrival time.');
+export function normalizeCouponCode(value) {
+  const code = cleanString(value, 40).toUpperCase();
+  if (code && !/^[A-Z0-9_-]{3,40}$/.test(code)) {
+    throw new AppError(400, 'INVALID_COUPON', 'Enter a valid coupon code.');
+  }
+  return code;
+}
 
+export function normalizeModifierSelections(input) {
   const modifierIds = new Set();
-  const modifiers = Array.isArray(input.modifiers) ? input.modifiers.map(entry => {
+  return Array.isArray(input) ? input.map(entry => {
     const id = cleanString(entry?.id, 100);
     const quantity = Number(entry?.quantity || 1);
     if (!id || modifierIds.has(id) || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
@@ -89,6 +92,15 @@ export function validateReservation(input) {
     modifierIds.add(id);
     return { id, quantity };
   }) : [];
+}
+
+export function validateReservation(input) {
+  const durationHours = Number(input.durationHours);
+  if (!PACKAGES[durationHours]) throw new AppError(400, 'INVALID_DURATION', 'Choose a valid duration.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.eventDate || '')) throw new AppError(400, 'INVALID_DATE', 'Choose a valid event date.');
+  if (!input.startAt || !Number.isFinite(Date.parse(input.startAt))) throw new AppError(400, 'INVALID_TIME', 'Choose an available arrival time.');
+
+  const modifiers = normalizeModifierSelections(input.modifiers);
 
   const customerName = normalizeCustomerName(input.customer?.givenName, input.customer?.familyName);
   const customer = {
@@ -118,6 +130,7 @@ export function validateReservation(input) {
     startAt: new Date(input.startAt).toISOString(),
     durationHours,
     modifiers,
+    couponCode: normalizeCouponCode(input.couponCode),
     customer,
     details
   };
@@ -166,6 +179,27 @@ export function calculatePricing(packageDetails, selections) {
   return { basePrice: packageDetails.basePrice, modifiers, total, currency: packageDetails.currency };
 }
 
+export function applyCoupon(pricing, coupon) {
+  if (!coupon) return pricing;
+  const subtotalCents = Math.round(pricing.total * 100);
+  const discountCents = coupon.type === 'PERCENT'
+    ? Math.round(subtotalCents * coupon.value / 100)
+    : Math.round(coupon.value * 100);
+  const appliedCents = Math.min(subtotalCents, Math.max(0, discountCents));
+  return {
+    ...pricing,
+    subtotal: pricing.total,
+    discount: {
+      code: coupon.code,
+      name: `Coupon ${coupon.code}`,
+      type: coupon.type,
+      value: coupon.value,
+      amount: appliedCents / 100
+    },
+    total: (subtotalCents - appliedCents) / 100
+  };
+}
+
 export function buildCustomerNote({ reservationId, reservation, pricing }) {
   const money = value => `$${value.toLocaleString('en-US')}`;
   const addonLines = pricing.modifiers.length
@@ -178,6 +212,7 @@ export function buildCustomerNote({ reservationId, reservation, pricing }) {
     'Staff scope: Sound-system setup and operation only. DJ and MC services are not included; the client team controls announcements, programming, and the event message.',
     'Add-ons:',
     ...addonLines,
+    ...(pricing.discount ? [`Coupon ${pricing.discount.code}: -${money(pricing.discount.amount)}`] : []),
     `Estimated total: ${money(pricing.total)}`,
     `Event address: ${formatEventAddress(reservation.details.address)}`,
     `Event type: ${reservation.details.eventType}`,

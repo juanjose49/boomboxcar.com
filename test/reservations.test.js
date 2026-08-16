@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCustomerNote, calculatePricing, createConfirmationToken, findAvailableSlot, validateReservation } from '../server/reservations.js';
+import { applyCoupon, buildCustomerNote, calculatePricing, createConfirmationToken, findAvailableSlot, validateReservation } from '../server/reservations.js';
 
 const validInput = {
   locale: 'en', eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00.000Z', durationHours: 1,
@@ -108,4 +108,22 @@ test('calculates catalog pricing and writes modifiers into the Square booking no
   assert.match(note, /DJ and MC services are not included/);
   assert.match(note, /Event contact: Test Customer/);
   assert.match(note, /Contact phone: \+1 301 555 0100/);
+});
+
+test('applies percentage and fixed coupons in cents without reducing the total below zero', () => {
+  const pricing = calculatePricing(packageDetails, [{ id: 'BUBBLE', quantity: 1 }]);
+  const percentage = applyCoupon(pricing, { code: 'SAVE10', type: 'PERCENT', value: 10 });
+  assert.equal(percentage.subtotal, 274);
+  assert.equal(percentage.discount.amount, 27.4);
+  assert.equal(percentage.total, 246.6);
+
+  const fixed = applyCoupon(pricing, { code: 'BIGSAVE', type: 'FIXED', value: 500 });
+  assert.equal(fixed.discount.amount, 274);
+  assert.equal(fixed.total, 0);
+});
+
+test('normalizes coupon codes and rejects unsupported characters', () => {
+  const reservation = validateReservation({ ...validInput, couponCode: ' save-10 ' });
+  assert.equal(reservation.couponCode, 'SAVE-10');
+  assert.throws(() => validateReservation({ ...validInput, couponCode: 'save 10' }), /valid coupon code/i);
 });

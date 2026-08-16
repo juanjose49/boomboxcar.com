@@ -16,6 +16,16 @@ const env = {
   SQUARE_SERVICE_VARIATION_8H: 'SERVICE-8H'
 };
 
+test('coupon environment entries are parsed privately into fixed and percentage rules', () => {
+  const config = loadConfig({
+    ...env,
+    BOOMBOXCAR_COUPONS: 'welcome10:percent:10,BOOM50:FIXED:50,broken entry'
+  });
+  assert.deepEqual(config.coupons.get('WELCOME10'), { code: 'WELCOME10', type: 'PERCENT', value: 10 });
+  assert.deepEqual(config.coupons.get('BOOM50'), { code: 'BOOM50', type: 'FIXED', value: 50 });
+  assert.equal(config.coupons.size, 2);
+});
+
 test('Square availability uses configured location, service, and team member IDs', async () => {
   const requests = [];
   const fakeFetch = async (url, options) => {
@@ -219,8 +229,9 @@ test('Square checkout references the booking package and selected Catalog modifi
       addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
       administrativeDistrictLevel1: 'MD', postalCode: '20910'
     },
-    packageDetails: { serviceVariationId: 'SERVICE-1H' },
-    modifiers: [{ id: 'BUBBLE', quantity: 1 }, { id: 'LASER', quantity: 2 }]
+    packageDetails: { serviceVariationId: 'SERVICE-1H', currency: 'USD' },
+    modifiers: [{ id: 'BUBBLE', quantity: 1 }, { id: 'LASER', quantity: 2 }],
+    discount: { code: 'SAVE10', name: 'Coupon SAVE10', type: 'PERCENT', value: 10, amount: 39.9 }
   });
 
   assert.equal(paymentLink.order_id, 'ORDER-1');
@@ -236,6 +247,11 @@ test('Square checkout references the booking package and selected Catalog modifi
   assert.equal(checkoutRequest.body.checkout_options.accepted_payment_methods.apple_pay, true);
   assert.equal(checkoutRequest.body.checkout_options.allow_tipping, false);
   assert.equal(checkoutRequest.body.checkout_options.ask_for_shipping_address, false);
+  assert.equal(checkoutRequest.body.checkout_options.enable_coupon, false);
+  assert.deepEqual(checkoutRequest.body.order.discounts, [{
+    uid: 'boomboxcar-coupon', name: 'Coupon SAVE10', scope: 'ORDER',
+    type: 'FIXED_PERCENTAGE', percentage: '10'
+  }]);
   assert.equal(checkoutRequest.body.pre_populated_data.buyer_email, 'buyer@example.com');
   assert.equal(checkoutRequest.body.pre_populated_data.buyer_phone_number, '+13015550199');
   assert.deepEqual(checkoutRequest.body.pre_populated_data.buyer_address, {
@@ -246,6 +262,80 @@ test('Square checkout references the booking package and selected Catalog modifi
   assert.match(checkoutRequest.body.order.line_items[0].note, /Phone: \(301\) 555-0199/);
   assert.match(checkoutRequest.body.order.line_items[0].note, /Event address: 123 Test Street/);
   assert.match(checkoutRequest.body.payment_note, /BOOKING-1/);
+});
+
+test('Square direct order preserves the booking item, modifiers, and event details', async () => {
+  let orderRequest;
+  const fakeFetch = async (url, options) => {
+    orderRequest = { url, body: JSON.parse(options.body) };
+    return new Response(JSON.stringify({ order: { id: 'ORDER-APPLE-1', state: 'OPEN', version: 1 } }), {
+      status: 200, headers: { 'Content-Type': 'application/json' }
+    });
+  };
+  const service = createSquareService(loadConfig(env), fakeFetch);
+  const order = await service.createOrder({
+    customer: { givenName: 'Juan', familyName: 'San Emeterio', phone: '240-381-7140' },
+    customerId: 'CUSTOMER-1', bookingId: 'BOOKING-1', reservationId: 'BBC-2099-ABC123',
+    eventAddress: {
+      addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
+      administrativeDistrictLevel1: 'MD', postalCode: '20910'
+    },
+    packageDetails: { serviceVariationId: 'SERVICE-3H', currency: 'USD' },
+    modifiers: [{ id: 'BUBBLE', quantity: 1 }, { id: 'LASER', quantity: 2 }],
+    discount: { code: 'BOOM50', name: 'Coupon BOOM50', type: 'FIXED', value: 50, amount: 50 }
+  });
+
+  assert.equal(order.id, 'ORDER-APPLE-1');
+  assert.equal(orderRequest.url, 'https://connect.squareupsandbox.com/v2/orders');
+  assert.equal(orderRequest.body.order.location_id, 'LOCATION-1');
+  assert.equal(orderRequest.body.order.reference_id, 'BBC-2099-ABC123');
+  assert.equal(orderRequest.body.order.customer_id, 'CUSTOMER-1');
+  assert.equal(orderRequest.body.order.line_items[0].catalog_object_id, 'SERVICE-3H');
+  assert.deepEqual(orderRequest.body.order.line_items[0].modifiers, [
+    { catalog_object_id: 'BUBBLE', quantity: '1' },
+    { catalog_object_id: 'LASER', quantity: '2' }
+  ]);
+  assert.deepEqual(orderRequest.body.order.discounts, [{
+    uid: 'boomboxcar-coupon', name: 'Coupon BOOM50', scope: 'ORDER', type: 'FIXED_AMOUNT',
+    amount_money: { amount: 5000, currency: 'USD' }
+  }]);
+  assert.match(orderRequest.body.order.line_items[0].note, /Event contact: Juan San Emeterio/);
+  assert.match(orderRequest.body.order.line_items[0].note, /Event address: 123 Test Street/);
+  assert.match(orderRequest.body.order.line_items[0].note, /Square booking: BOOKING-1/);
+});
+
+test('Square direct payment charges the server total against the created order', async () => {
+  let paymentRequest;
+  const fakeFetch = async (url, options) => {
+    paymentRequest = { url, body: JSON.parse(options.body) };
+    return new Response(JSON.stringify({
+      payment: {
+        id: 'PAYMENT-1', status: 'COMPLETED', order_id: 'ORDER-1',
+        receipt_url: 'https://squareup.com/receipt/preview/PAYMENT-1'
+      }
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  const service = createSquareService(loadConfig(env), fakeFetch);
+  const payment = await service.createPayment({
+    sourceId: 'cnon:apple-pay-token', orderId: 'ORDER-1', customerId: 'CUSTOMER-1',
+    reservationId: 'BBC-2099-ABC123',
+    customer: {
+      givenName: 'Test', familyName: 'Customer', email: 'buyer@example.com', phone: '(301) 555-0199'
+    },
+    pricing: { total: 674, currency: 'USD' }
+  });
+
+  assert.equal(payment.status, 'COMPLETED');
+  assert.equal(paymentRequest.url, 'https://connect.squareupsandbox.com/v2/payments');
+  assert.equal(paymentRequest.body.source_id, 'cnon:apple-pay-token');
+  assert.deepEqual(paymentRequest.body.amount_money, { amount: 67400, currency: 'USD' });
+  assert.equal(paymentRequest.body.order_id, 'ORDER-1');
+  assert.equal(paymentRequest.body.customer_id, 'CUSTOMER-1');
+  assert.equal(paymentRequest.body.location_id, 'LOCATION-1');
+  assert.equal(paymentRequest.body.reference_id, 'BBC-2099-ABC123');
+  assert.equal(paymentRequest.body.buyer_email_address, 'buyer@example.com');
+  assert.equal(paymentRequest.body.buyer_phone_number, '+13015550199');
+  assert.equal(paymentRequest.body.autocomplete, true);
 });
 
 test('Square booking cancellation rolls back a reservation when checkout fails', async () => {

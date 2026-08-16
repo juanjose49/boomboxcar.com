@@ -21,6 +21,7 @@
       customerEyebrow: 'Customer', contactTitle: 'Contact', includedEyebrow: 'Included', includedTitle: 'Every BoomBoxCar booking includes',
       requestsEyebrow: 'Planning', requestsTitle: 'Event notes', referencesEyebrow: 'Reference', referencesTitle: 'Booking references',
       service: 'Service', quantity: 'Quantity', amount: 'Amount', totalPaid: 'Total paid',
+      coupon: code => `Coupon ${code}`,
       dateTime: 'Date and arrival', duration: 'Duration', address: 'Event address', eventType: 'Event type', setting: 'Setting',
       attendance: 'Expected attendance', name: 'Name', email: 'Email', phone: 'Phone', reservation: 'Reservation',
       squareBooking: 'Square booking', squareOrder: 'Square order', created: 'Created', hours: value => `${value} hour${value === 1 ? '' : 's'}`,
@@ -42,6 +43,7 @@
       customerEyebrow: 'Cliente', contactTitle: 'Contacto', includedEyebrow: 'Incluido', includedTitle: 'Cada reserva de BoomBoxCar incluye',
       requestsEyebrow: 'Planificación', requestsTitle: 'Notas del evento', referencesEyebrow: 'Referencia', referencesTitle: 'Referencias de la reserva',
       service: 'Servicio', quantity: 'Cantidad', amount: 'Importe', totalPaid: 'Total pagado',
+      coupon: code => `Cupón ${code}`,
       dateTime: 'Fecha y llegada', duration: 'Duración', address: 'Dirección del evento', eventType: 'Tipo de evento', setting: 'Entorno',
       attendance: 'Asistencia esperada', name: 'Nombre', email: 'Correo', phone: 'Teléfono', reservation: 'Reserva',
       squareBooking: 'Reserva de Square', squareOrder: 'Pedido de Square', created: 'Creada', hours: value => `${value} hora${value === 1 ? '' : 's'}`,
@@ -135,7 +137,11 @@
 
     const pricingBody = document.getElementById('pricing-lines');
     pricingBody.replaceChildren();
-    const lines = [{ name: c.baseService(reservation.durationHours), quantity: 1, price: pricing.basePrice }, ...pricing.modifiers];
+    const lines = [
+      { name: c.baseService(reservation.durationHours), quantity: 1, price: pricing.basePrice },
+      ...pricing.modifiers,
+      ...(pricing.discount ? [{ name: c.coupon(pricing.discount.code), quantity: 1, price: -pricing.discount.amount }] : [])
+    ];
     lines.forEach(line => {
       const row = document.createElement('tr');
       const service = document.createElement('th');

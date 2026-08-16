@@ -365,6 +365,18 @@ main > .contact{order:8}
 .quote-note{padding:10px;border-radius:8px;color:#5d3a20;background:#fff0e4;font-size:.82rem}
 .booking-submit{width:100%;min-height:52px;border:0;cursor:pointer;font:inherit}
 .booking-submit:disabled{cursor:wait;opacity:.7}
+.coupon-toggle{display:inline-block;margin:14px 0 10px;padding:0;border:0;background:none;color:var(--accent);font:inherit;font-size:.84rem;text-decoration:underline;cursor:pointer}
+.coupon-panel{margin:0 0 12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.coupon-panel>label{display:block;margin-bottom:6px;font-size:.78rem;font-weight:700}
+.coupon-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.coupon-controls input{min-width:0;text-transform:uppercase}
+.coupon-controls .btn{min-height:44px;padding:0 16px}
+.coupon-status{min-height:1.2em;margin:7px 0 0;color:var(--muted);font-size:.76rem}
+.coupon-status[data-state="success"]{color:var(--success,#27753b)}
+.coupon-status[data-state="error"]{color:var(--danger,#b42318)}
+.apple-pay-button{display:block;width:100%;height:52px;margin:0 0 10px;border:0;border-radius:12px;cursor:pointer;-webkit-appearance:-apple-pay-button;-apple-pay-button-type:plain;-apple-pay-button-style:black}
+.apple-pay-button[hidden]{display:none}
+.apple-pay-button:disabled{cursor:wait;opacity:.7}
 .handoff-note{margin:10px 0 0;color:var(--muted);font-size:.78rem;line-height:1.45}
 .booking-result{margin:12px 0 0;padding:12px;border-radius:9px;font-size:.88rem;font-weight:700}
 .booking-result[data-state="success"]{color:#174c29;background:#dff6e6}
