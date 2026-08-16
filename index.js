@@ -273,95 +273,42 @@ function bindGalleryThemeTransition() {
   const nightFigures = Array.from(grid.querySelectorAll('.gallery-night-image'));
   if (!dayFigures.length || dayFigures.length !== nightFigures.length) return;
 
-  const frames = dayFigures.map((dayFigure, index) => {
-    const frame = document.createElement('figure');
-    frame.className = 'gallery-theme-image';
-    const dayPicture = dayFigure.querySelector('picture');
-    const nightPicture = nightFigures[index].querySelector('picture');
-    dayPicture.dataset.galleryPeriod = 'day';
-    nightPicture.dataset.galleryPeriod = 'night';
-    frame.append(dayPicture, nightPicture);
-    return frame;
-  });
-  grid.replaceChildren(...frames);
-
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const transitionMs = 2000;
   let activePeriod = document.documentElement.dataset.theme === 'dark' ? 'night' : 'day';
-  let transitioningTo = null;
-  let transitionToken = 0;
   let transitionTimer = null;
 
-  const setInitialState = period => {
-    frames.forEach(frame => {
-      frame.querySelectorAll('[data-gallery-period]').forEach(picture => {
-        const isCurrent = picture.dataset.galleryPeriod === period;
-        picture.classList.toggle('is-current', isCurrent);
-        picture.classList.toggle('is-underlay', !isCurrent);
-        picture.classList.remove('is-fading-out');
-        picture.setAttribute('aria-hidden', String(!isCurrent));
-      });
-    });
+  const sortGallery = period => {
+    const first = period === 'night' ? nightFigures : dayFigures;
+    const second = period === 'night' ? dayFigures : nightFigures;
+    [...first, ...second].forEach(figure => grid.append(figure));
     activePeriod = period;
-    transitioningTo = null;
   };
 
   const selectGalleryPeriod = period => {
-    if (period === activePeriod && !transitioningTo) return;
-    if (period === transitioningTo) return;
-    const token = ++transitionToken;
+    if (period === activePeriod) return;
     clearTimeout(transitionTimer);
+    grid.querySelector('.gallery-transition-overlay')?.remove();
     if (reducedMotion.matches) {
-      setInitialState(period);
+      sortGallery(period);
       return;
     }
 
-    if (period === activePeriod) {
-      frames.forEach(frame => {
-        const current = frame.querySelector(`[data-gallery-period="${activePeriod}"]`);
-        const underlay = frame.querySelector(`[data-gallery-period="${transitioningTo}"]`);
-        current.classList.remove('is-underlay', 'is-fading-out');
-        current.classList.add('is-current');
-        underlay.classList.remove('is-current', 'is-fading-out');
-        underlay.classList.add('is-underlay');
-        current.setAttribute('aria-hidden', 'false');
-        underlay.setAttribute('aria-hidden', 'true');
-      });
-      transitioningTo = activePeriod;
-      transitionTimer = setTimeout(() => {
-        if (token !== transitionToken) return;
-        setInitialState(period);
-      }, transitionMs);
-      return;
-    }
-
-    transitioningTo = period;
-
-    frames.forEach(frame => {
-      const outgoing = frame.querySelector(`[data-gallery-period="${activePeriod}"]`);
-      const incoming = frame.querySelector(`[data-gallery-period="${period}"]`);
-      outgoing.classList.remove('is-underlay', 'is-fading-out');
-      outgoing.classList.add('is-current');
-      incoming.classList.remove('is-current', 'is-fading-out');
-      incoming.classList.add('is-underlay');
-      outgoing.setAttribute('aria-hidden', 'true');
-      incoming.setAttribute('aria-hidden', 'false');
+    const overlay = document.createElement('div');
+    overlay.className = 'gallery-transition-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    Array.from(grid.children).forEach(figure => {
+      if (figure.matches('figure')) overlay.append(figure.cloneNode(true));
     });
-
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (token !== transitionToken) return;
-      frames.forEach(frame => {
-        frame.querySelector(`[data-gallery-period="${activePeriod}"]`).classList.add('is-fading-out');
-      });
-    }));
-
+    sortGallery(period);
+    grid.append(overlay);
+    requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('is-fading-out')));
     transitionTimer = setTimeout(() => {
-      if (token !== transitionToken) return;
-      setInitialState(period);
+      overlay.remove();
     }, transitionMs);
   };
 
-  setInitialState(activePeriod);
+  sortGallery(activePeriod);
   window.addEventListener('boomboxcar:themechange', event => {
     selectGalleryPeriod(event.detail.theme === 'dark' ? 'night' : 'day');
   });

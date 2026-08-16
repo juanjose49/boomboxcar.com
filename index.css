@@ -164,19 +164,22 @@ main > .contact{order:8}
 
 /* Gallery */
 .gallery .grid{
-  display:grid; gap:10px;
+  position:relative;display:grid;gap:10px;
   grid-template-columns:repeat(2,1fr);
 }
 .gallery-intro{max-width:var(--max);margin:-10px auto 20px;color:var(--muted)}
-.gallery figure{position:relative;margin:0; background:var(--card); border-radius:8px; overflow:hidden; border:1px solid var(--ring); aspect-ratio:4/5}
-.gallery figure picture{position:absolute;inset:0;z-index:0;opacity:0;transition:opacity 2s ease}
+.gallery figure{margin:0;background:var(--card);border-radius:8px;overflow:hidden;border:1px solid var(--ring);aspect-ratio:4/5}
 .gallery figure picture,
 .gallery figure img{display:block;width:100%;height:100%;object-fit:cover}
-.gallery figure picture.is-underlay{z-index:1;opacity:1}
-.gallery figure picture.is-current{z-index:2;opacity:1}
-.gallery figure picture.is-current.is-fading-out{opacity:0}
+.gallery-transition-overlay{
+  position:absolute;inset:0;z-index:2;display:grid;gap:10px;
+  grid-template-columns:repeat(2,1fr);pointer-events:none;opacity:1;
+  transition:opacity 2s ease;
+}
+.gallery-transition-overlay.is-fading-out{opacity:0}
 @media (min-width:900px){
   .gallery .grid{grid-template-columns:repeat(5,1fr)}
+  .gallery-transition-overlay{grid-template-columns:repeat(5,1fr)}
 }
 
 @media (min-width:760px){
@@ -274,7 +277,7 @@ main > .contact{order:8}
 
 @media (prefers-reduced-motion:reduce){
   .hero-video{display:none}
-  .gallery figure picture{transition:none}
+  .gallery-transition-overlay{display:none;transition:none}
 }
 
 /* Booking builder */
