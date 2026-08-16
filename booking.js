@@ -34,6 +34,7 @@
     modifiersUnavailable: 'Los extras se seleccionarán en el programador de Square.', optional: 'Opcional',
     required: 'Requerido', upTo: 'Hasta', selections: 'selecciones', quantity: 'Cantidad',
     invalidModifiers: 'Revisa la cantidad de extras seleccionados.',
+    incompleteForm: 'Completa todos los campos obligatorios antes de continuar al pago.',
     includedLabel: 'Incluido en cada reserva',
     includedItems: 'Equipo de audio profesional, BoomBox inflable, dos micrófonos inalámbricos, música con licencia y seguro comercial, burbujas de día, paneles de luz RGB de noche, apoyo de maestro de ceremonias y anuncios, y energía a bordo sin necesidad de tomacorrientes. El toldo y los efectos de láser y niebla son extras opcionales.',
     staffScope: 'El personal instala y opera el sistema y brinda apoyo de maestro de ceremonias y anuncios. El servicio dedicado de DJ no está incluido; tú controlas la selección musical, la programación y el mensaje del evento.',
@@ -65,6 +66,7 @@
     modifiersUnavailable: 'Add-ons will be selected in the hosted Square scheduler.', optional: 'Optional',
     required: 'Required', upTo: 'Up to', selections: 'selections', quantity: 'Quantity',
     invalidModifiers: 'Review the number of add-ons selected.',
+    incompleteForm: 'Complete all required fields before continuing to payment.',
     includedLabel: 'Included with every booking',
     includedItems: 'Professional-grade audio equipment, the inflatable BoomBox, two wireless microphones, licensed music and commercial insurance, daytime bubbles, nighttime RGB light panels, MC support and announcements, and on-board power with no outlets required. The shade awning and laser and haze effects are optional add-ons.',
     staffScope: 'Staff set up and operate the system and provide MC support and announcements. Dedicated DJ service is not included; you control music selections, programming, and the event message.',
@@ -746,6 +748,35 @@
     return false;
   }
 
+  function showIncompleteForm() {
+    bookingResult.textContent = copy.incompleteForm;
+    bookingResult.dataset.state = 'error';
+    bookingResult.hidden = false;
+  }
+
+  function validateBeforePayment() {
+    validateNotice();
+    if (!form.checkValidity()) {
+      showIncompleteForm();
+      form.reportValidity();
+      return false;
+    }
+    if (backendReady && !currentPackage) {
+      modifierStatus.textContent = copy.modifiersLoading;
+      showIncompleteForm();
+      return false;
+    }
+    if (!validateModifierRules()) {
+      showIncompleteForm();
+      return false;
+    }
+    if (!couponIsReady()) {
+      showIncompleteForm();
+      return false;
+    }
+    return true;
+  }
+
   async function applyCouponCode() {
     const duration = selectedDuration();
     const couponCode = couponInput.value.trim().toUpperCase();
@@ -865,14 +896,7 @@
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
-    validateNotice();
-    if (!form.reportValidity()) return;
-    if (backendReady && !currentPackage) {
-      modifierStatus.textContent = copy.modifiersLoading;
-      return;
-    }
-    if (!validateModifierRules()) return;
-    if (!couponIsReady()) return;
+    if (!validateBeforePayment()) return;
     const draft = buildDraft();
     const squareNote = buildSquareNote(draft);
     persistBookingDraft();
@@ -915,14 +939,7 @@
 
   applePayButton?.addEventListener('click', async event => {
     event.preventDefault();
-    validateNotice();
-    if (!form.reportValidity() || !applePay) return;
-    if (backendReady && !currentPackage) {
-      modifierStatus.textContent = copy.modifiersLoading;
-      return;
-    }
-    if (!validateModifierRules()) return;
-    if (!couponIsReady()) return;
+    if (!validateBeforePayment() || !applePay) return;
     const draft = buildDraft();
     if (!draft.startAt) return;
     const expectedTotalCents = Math.round(draft.total * 100);
