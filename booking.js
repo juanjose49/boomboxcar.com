@@ -37,7 +37,7 @@
     incompleteForm: 'Completa todos los campos obligatorios antes de continuar al pago.',
     includedLabel: 'Incluido en cada reserva',
     includedItems: 'Equipo de audio profesional, BoomBox inflable, dos micrófonos inalámbricos, música con licencia y seguro comercial, burbujas de día, paneles de luz RGB de noche, apoyo de maestro de ceremonias y anuncios, y energía a bordo sin necesidad de tomacorrientes. El toldo y los efectos de láser y niebla son extras opcionales.',
-    staffScope: 'El personal instala y opera el sistema y brinda apoyo de maestro de ceremonias y anuncios. El servicio dedicado de DJ no está incluido; tú controlas la selección musical, la programación y el mensaje del evento.',
+    staffScope: 'El personal de BoomBoxCar instala y opera el sistema, gestiona la reproducción de música con licencia y brinda apoyo de maestro de ceremonias y anuncios. El servicio dedicado de DJ no está incluido. Tú proporcionas la dirección musical general y el mensaje del evento; el personal conserva el control de la reproducción y la programación.',
     included: 'Incluido'
   } : {
     chooseDate: 'Choose a date and arrival time', chooseDuration: 'Choose a duration',
@@ -69,7 +69,7 @@
     incompleteForm: 'Complete all required fields before continuing to payment.',
     includedLabel: 'Included with every booking',
     includedItems: 'Professional-grade audio equipment, the inflatable BoomBox, two wireless microphones, licensed music and commercial insurance, daytime bubbles, nighttime RGB light panels, MC support and announcements, and on-board power with no outlets required. The shade awning and laser and haze effects are optional add-ons.',
-    staffScope: 'Staff set up and operate the system and provide MC support and announcements. Dedicated DJ service is not included; you control music selections, programming, and the event message.',
+    staffScope: 'BoomBoxCar staff set up and operate the system, manage licensed music playback, and provide MC support and announcements. Dedicated DJ service is not included. You provide general musical direction and the event message; staff retain control of playback and programming.',
     included: 'Included'
   };
 

@@ -221,7 +221,7 @@ export function buildCustomerNote({ reservationId, reservation, pricing }) {
     `Duration: ${reservation.durationHours} hour${reservation.durationHours === 1 ? '' : 's'} (${money(pricing.basePrice)})`,
     'Included with every booking: Professional-grade audio equipment, the inflatable BoomBox, two wireless microphones, licensed music and commercial insurance, daytime bubbles, nighttime RGB light panels, MC support and announcements, and on-board power with no outlets required.',
     'Optional add-ons: Shade awning and laser and haze effects are available for an additional charge.',
-    'Staff scope: BoomBoxCar staff set up and operate the system and provide MC support and announcements. Dedicated DJ service is not included; the client controls music selections, programming, and the event message.',
+    'Staff scope: BoomBoxCar staff set up and operate the system, manage licensed music playback, and provide MC support and announcements. Dedicated DJ service is not included. The client provides general musical direction and the event message; BoomBoxCar staff retain control of playback and programming.',
     'Add-ons:',
     ...addonLines,
     ...(pricing.discount ? [`Coupon ${pricing.discount.code}: -${money(pricing.discount.amount)}`] : []),
