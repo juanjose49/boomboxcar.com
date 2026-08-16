@@ -2,6 +2,25 @@
 
 BoomBoxCar is a bilingual static website with a dependency-free Node API for Square availability, booking creation, and hosted payment checkout.
 
+## Homepage party video
+
+The homepage presents separate daytime and nighttime video sections using responsive, self-hosted MP4 files. Light theme orders the experience as daytime video, nighttime video, nighttime gallery, daytime gallery, then booking. Dark theme reverses the periods: nighttime video, daytime video, daytime gallery, nighttime gallery, then booking. Until a playable file is present, visitors continue to see the existing hero photograph in that video section.
+
+```text
+videos/boombox-party-day-s.mp4    Daytime mobile crop, under 640px
+videos/boombox-party-day-m.mp4    Daytime tablet crop, 640px to 1199px
+videos/boombox-party-day-l.mp4    Daytime desktop crop, 1200px and wider
+videos/boombox-party-night-s.mp4  Nighttime mobile crop, under 640px
+videos/boombox-party-night-m.mp4  Nighttime tablet crop, 640px to 1199px
+videos/boombox-party-night-l.mp4  Nighttime desktop crop, 1200px and wider
+```
+
+Export each as a short, loopable H.264 MP4 with the visual subject positioned for its target crop. Each player starts muted and inline, loads as its section approaches the viewport, exposes pause and sound controls after loading, and falls back to the existing hero photograph when the file is missing or playback is unavailable. Turning on sound for one video mutes the other. Visitors who prefer reduced motion receive the fallback photograph instead.
+
+The two responsive galleries use `images/day-1s.jpeg` through `images/day-5l.jpeg` and `images/night-1s.jpeg` through `images/night-5l.jpeg`. Each numbered frame has 320×400 small, 640×800 medium, and 1200×1500 large variants.
+
+The production `public_html/videos` directory is manually managed. The cPanel deployment script intentionally does not delete, replace, or copy into it, so uploaded video files survive subsequent site deployments.
+
 ## Local development
 
 Use Node 24 LTS or Node 22. Copy `.env.example` values into your shell environment, then run:

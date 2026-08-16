@@ -14,7 +14,7 @@ for (const entry of ['server.js', 'expire-reservations.js', 'package.json', 'ser
   await cp(path.join(root, entry), path.join(app, entry), { recursive: true });
 }
 
-for (const entry of ['index.html', 'index.css', 'index.js', 'booking.js', 'robots.txt', 'sitemap.xml', 'es', 'confirmation', 'images']) {
+for (const entry of ['index.html', 'index.css', 'index.js', 'booking.js', 'robots.txt', 'sitemap.xml', 'es', 'confirmation', 'images', 'videos']) {
   await cp(path.join(root, entry), path.join(publicDir, entry), { recursive: true });
 }
 

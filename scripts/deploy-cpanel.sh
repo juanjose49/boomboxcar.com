@@ -34,5 +34,6 @@ mkdir -p "$app_root/tmp"
 touch "$app_root/tmp/restart.txt"
 
 echo "Deployed BoomBoxCar public files to $public_root"
+echo "Preserved manually managed videos in $public_root/videos"
 echo "Deployed BoomBoxCar API to $app_root"
 echo "Requested cPanel Passenger restart"
