@@ -230,10 +230,11 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
         const overrides = new Map((info.modifier_overrides || []).map(override => [override.modifier_id, override]));
         const listMin = Number(data.min_selected_modifiers || 0);
         const listMax = Number(data.max_selected_modifiers || 0);
+        const configuredMin = info.min_selected_modifiers >= 0 ? info.min_selected_modifiers : listMin;
         return {
           id: list.id,
           name: data.name || 'Add-ons',
-          minSelections: info.min_selected_modifiers >= 0 ? info.min_selected_modifiers : listMin,
+          minSelections: hours === 1 ? 0 : configuredMin,
           maxSelections: info.max_selected_modifiers >= 0 ? info.max_selected_modifiers : listMax,
           allowQuantities: info.allow_quantities === 'YES' || (info.allow_quantities !== 'NO' && data.allow_quantities === true),
           modifiers: (data.modifiers || [])

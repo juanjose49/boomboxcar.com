@@ -137,7 +137,7 @@ test('Square Catalog resolves package-specific modifier names, prices, and rules
       name: '1 Hour Rental',
       variations: [variation],
       modifier_list_info: [{
-        modifier_list_id: 'LIST-1H', min_selected_modifiers: -1, max_selected_modifiers: -1,
+        modifier_list_id: 'LIST-1H', min_selected_modifiers: 1, max_selected_modifiers: -1,
         allow_quantities: 'NOT_SET', enabled: true
       }]
     }
@@ -177,6 +177,7 @@ test('Square Catalog resolves package-specific modifier names, prices, and rules
   assert.deepEqual(pkg.modifierGroups[1].modifiers.map(modifier => [modifier.id, modifier.price]), [
     ['LASER', 50]
   ]);
+  assert.equal(pkg.modifierGroups[1].minSelections, 0);
 });
 
 test('Square Catalog supplies live prices for every booking duration', async () => {
