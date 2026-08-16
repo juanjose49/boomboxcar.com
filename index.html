@@ -39,7 +39,7 @@
   <!-- Open Graph -->
   <meta property="og:title" content="BoomBoxCar | Mobile Event Sound & Amplification in the DMV" />
   <meta property="og:description" content="A fully mobile entertainment experience with professional audio, bubbles, RGB lighting, MC support, and on-board power included." />
-  <meta property="og:image" content="https://boomboxcar.com/images/wpl.jpeg" />
+  <meta property="og:image" content="https://boomboxcar.com/images/wallpapers/night-l.jpeg" />
   <meta property="og:image:alt" content="BoomBoxCar mobile entertainment setup with awning, speakers, and event lighting" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://boomboxcar.com/" />
@@ -51,15 +51,14 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="BoomBoxCar | Mobile Event Sound & Amplification in the DMV" />
   <meta name="twitter:description" content="Professional audio, bubbles, RGB lighting, MC support, and on-board power for private and commercial events." />
-  <meta name="twitter:image" content="https://boomboxcar.com/images/wpl.jpeg" />
+  <meta name="twitter:image" content="https://boomboxcar.com/images/wallpapers/night-l.jpeg" />
   <meta name="twitter:image:alt" content="BoomBoxCar mobile entertainment setup with awning, speakers, and event lighting" />
 
   <!-- Performance -->
   <link rel="preconnect" href="https://app.squareup.com" crossorigin />
-  <link rel="preload" href="images/wpm.jpeg" as="image" imagesrcset="images/wps.jpeg 640w, images/wpm.jpeg 1280w, images/wpl.jpeg 1920w" imagesizes="100vw" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="index.css?v=20260816-day-night-flow-2" />
+  <link rel="stylesheet" href="index.css?v=20260816-day-night-flow-4" />
 
   <!-- Google Analytics (unchanged) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
@@ -81,7 +80,8 @@
     "email": "booking@boomboxcar.com",
     "logo": "https://boomboxcar.com/images/logol.jpeg",
     "image": [
-      "https://boomboxcar.com/images/wpl.jpeg",
+      "https://boomboxcar.com/images/wallpapers/day-l.jpeg",
+      "https://boomboxcar.com/images/wallpapers/night-l.jpeg",
       "https://boomboxcar.com/images/day-1l.jpeg",
       "https://boomboxcar.com/images/night-1l.jpeg",
       "https://boomboxcar.com/images/day-3l.jpeg",
@@ -165,10 +165,10 @@
     <!-- Daytime video -->
     <section class="hero experience-video experience-day" data-experience="day-video">
       <div class="hero-media">
-        <picture>
-          <source srcset="images/wpl.jpeg" media="(min-width:1200px)" />
-          <source srcset="images/wpm.jpeg" media="(min-width:640px)" />
-          <img src="images/wps.jpeg" alt="BoomBoxCar mobile venue setup" loading="eager" decoding="async" />
+        <picture data-video-fallback>
+          <source data-srcset="images/wallpapers/day-l.jpeg" media="(min-width:1200px)" />
+          <source data-srcset="images/wallpapers/day-m.jpeg" media="(min-width:640px)" />
+          <img data-src="images/wallpapers/day-s.jpeg" alt="BoomBoxCar entertaining a daytime crowd" decoding="async" />
         </picture>
         <video class="hero-video" data-experience-video data-src-small="videos/boombox-party-day-s.mp4" data-src-medium="videos/boombox-party-day-m.mp4" data-src-large="videos/boombox-party-day-l.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video>
       </div>
@@ -180,19 +180,15 @@
           <a class="btn btn-primary" href="#book" data-gtag="booking_builder_click">Book BoomBoxCar</a>
         </div>
       </div>
-      <div class="hero-video-controls" data-video-controls hidden>
-        <button class="hero-video-control" type="button" data-video-pause aria-label="Pause daytime video">Pause video</button>
-        <button class="hero-video-control" type="button" data-video-sound aria-label="Turn daytime sound on">Sound on</button>
-      </div>
     </section>
 
     <!-- Nighttime video -->
     <section class="hero experience-video experience-night" data-experience="night-video">
       <div class="hero-media">
-        <picture>
-          <source srcset="images/wpl.jpeg" media="(min-width:1200px)" />
-          <source srcset="images/wpm.jpeg" media="(min-width:640px)" />
-          <img src="images/wps.jpeg" alt="BoomBoxCar mobile venue setup" loading="eager" decoding="async" />
+        <picture data-video-fallback>
+          <source data-srcset="images/wallpapers/night-l.jpeg" media="(min-width:1200px)" />
+          <source data-srcset="images/wallpapers/night-m.jpeg" media="(min-width:640px)" />
+          <img data-src="images/wallpapers/night-s.jpeg" alt="BoomBoxCar illuminated at a nighttime party" decoding="async" />
         </picture>
         <video class="hero-video" data-experience-video data-src-small="videos/boombox-party-night-s.mp4" data-src-medium="videos/boombox-party-night-m.mp4" data-src-large="videos/boombox-party-night-l.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video>
       </div>
@@ -203,10 +199,6 @@
         <div class="hero-cta">
           <a class="btn btn-primary" href="#book" data-gtag="booking_builder_click">Book BoomBoxCar</a>
         </div>
-      </div>
-      <div class="hero-video-controls" data-video-controls hidden>
-        <button class="hero-video-control" type="button" data-video-pause aria-label="Pause nighttime video">Pause video</button>
-        <button class="hero-video-control" type="button" data-video-sound aria-label="Turn nighttime sound on">Sound on</button>
       </div>
     </section>
 
@@ -487,7 +479,7 @@
     <small>© <span id="year"></span> BoomBoxCar. All rights reserved.</small>
   </footer>
 
-  <script src="index.js?v=20260816-day-night-flow-2" defer></script>
+  <script src="index.js?v=20260816-day-night-flow-4" defer></script>
   <script src="booking.js?v=20260816-payment-validation" defer></script>
 </body>
 </html>

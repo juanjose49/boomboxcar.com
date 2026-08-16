@@ -78,37 +78,31 @@ function bindThemeToggle() {
 function bindExperienceVideos() {
   const videos = Array.from(document.querySelectorAll('[data-experience-video]'));
   if (!videos.length) return;
-  const isSpanish = document.documentElement.lang.startsWith('es');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const size = window.innerWidth >= 1200 ? 'Large' : (window.innerWidth >= 640 ? 'Medium' : 'Small');
 
   videos.forEach(video => {
     const hero = video.closest('.hero');
-    const controls = hero?.querySelector('[data-video-controls]');
-    const pauseButton = hero?.querySelector('[data-video-pause]');
-    const soundButton = hero?.querySelector('[data-video-sound]');
-    if (!hero || !controls || !pauseButton || !soundButton) return;
+    if (!hero) return;
+    const fallback = hero.querySelector('[data-video-fallback]');
 
-    const period = hero.dataset.experience === 'night-video' ? 'night' : 'day';
-    let userPaused = false;
     let sourceLoaded = false;
 
-    const updateControls = () => {
-      const pausedLabel = isSpanish ? 'Reproducir video' : 'Play video';
-      const playingLabel = isSpanish ? 'Pausar video' : 'Pause video';
-      const mutedLabel = isSpanish ? 'Activar sonido' : 'Sound on';
-      const audibleLabel = isSpanish ? 'Silenciar' : 'Mute';
-      pauseButton.textContent = video.paused ? pausedLabel : playingLabel;
-      pauseButton.setAttribute('aria-label', `${video.paused ? pausedLabel : playingLabel}: ${period}`);
-      soundButton.textContent = video.muted ? mutedLabel : audibleLabel;
-      soundButton.setAttribute('aria-label', `${video.muted ? mutedLabel : audibleLabel}: ${period}`);
+    const showFallback = () => {
+      if (!fallback) return;
+      fallback.querySelectorAll('source[data-srcset]').forEach(source => {
+        if (!source.srcset) source.srcset = source.dataset.srcset;
+      });
+      const image = fallback.querySelector('img[data-src]');
+      if (image && !image.src) image.src = image.dataset.src;
+      hero.classList.remove('has-video');
+      hero.classList.add('has-fallback');
     };
 
     const showVideo = () => {
       if (reducedMotion.matches || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+      hero.classList.remove('has-fallback');
       hero.classList.add('has-video');
-      controls.hidden = false;
-      updateControls();
     };
 
     const loadVideo = () => {
@@ -120,39 +114,16 @@ function bindExperienceVideos() {
         video.load();
         sourceLoaded = true;
       }
-      if (!userPaused) video.play().then(showVideo).catch(() => {});
+      video.play().then(showVideo).catch(() => {});
     };
 
     video.addEventListener('loadeddata', showVideo);
-    video.addEventListener('play', updateControls);
-    video.addEventListener('pause', updateControls);
-    video.addEventListener('volumechange', updateControls);
-    video.addEventListener('error', () => {
-      hero.classList.remove('has-video');
-      controls.hidden = true;
-    });
-
-    pauseButton.addEventListener('click', () => {
-      const willPlay = video.paused;
-      userPaused = !willPlay;
-      if (willPlay) video.play().then(showVideo).catch(() => {});
-      else video.pause();
-      fireGA(willPlay ? 'hero_video_play' : 'hero_video_pause', { period, lang: document.documentElement.lang || 'en' });
-    });
-
-    soundButton.addEventListener('click', () => {
-      const willUnmute = video.muted;
-      if (willUnmute) videos.forEach(other => { if (other !== video) other.muted = true; });
-      video.muted = !willUnmute;
-      if (video.paused) video.play().catch(() => {});
-      fireGA(willUnmute ? 'hero_video_unmute' : 'hero_video_mute', { period, lang: document.documentElement.lang || 'en' });
-    });
+    video.addEventListener('error', showFallback);
 
     const handleReducedMotion = event => {
       if (event.matches) {
         video.pause();
-        hero.classList.remove('has-video');
-        controls.hidden = true;
+        showFallback();
       } else loadVideo();
     };
     if (typeof reducedMotion.addEventListener === 'function') reducedMotion.addEventListener('change', handleReducedMotion);
@@ -167,6 +138,7 @@ function bindExperienceVideos() {
       }, { rootMargin: '300px' });
       loader.observe(hero);
     } else if (!reducedMotion.matches) loadVideo();
+    else showFallback();
   });
 }
 

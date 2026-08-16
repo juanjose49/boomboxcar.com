@@ -12,7 +12,7 @@
     <xhtml:link rel="alternate" hreflang="es-US" href="https://boomboxcar.com/es/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://boomboxcar.com/"/>
     <!-- Image hints -->
-    <image:image><image:loc>https://boomboxcar.com/wpl.jpeg</image:loc></image:image>
+    <image:image><image:loc>https://boomboxcar.com/images/wallpapers/day-l.jpeg</image:loc></image:image>
     <image:image><image:loc>https://boomboxcar.com/1l.jpeg</image:loc></image:image>
     <image:image><image:loc>https://boomboxcar.com/2l.jpeg</image:loc></image:image>
     <image:image><image:loc>https://boomboxcar.com/3l.jpeg</image:loc></image:image>
@@ -29,6 +29,6 @@
     <xhtml:link rel="alternate" hreflang="en-US" href="https://boomboxcar.com/"/>
     <xhtml:link rel="alternate" hreflang="es-US" href="https://boomboxcar.com/es/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://boomboxcar.com/"/>
-    <image:image><image:loc>https://boomboxcar.com/wpl.jpeg</image:loc></image:image>
+    <image:image><image:loc>https://boomboxcar.com/images/wallpapers/night-l.jpeg</image:loc></image:image>
   </url>
 </urlset>

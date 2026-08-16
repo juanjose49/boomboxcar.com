@@ -15,7 +15,7 @@ videos/boombox-party-night-m.mp4  Nighttime tablet crop, 640px to 1199px
 videos/boombox-party-night-l.mp4  Nighttime desktop crop, 1200px and wider
 ```
 
-Export each as a short, loopable H.264 MP4 with the visual subject positioned for its target crop. Each player starts muted and inline, loads as its section approaches the viewport, exposes pause and sound controls after loading, and falls back to the existing hero photograph when the file is missing or playback is unavailable. Turning on sound for one video mutes the other. Visitors who prefer reduced motion receive the fallback photograph instead.
+Export each as a short, loopable H.264 MP4 with the visual subject positioned for its target crop. Each video stays muted, autoplaying, looping, inline, and free of media controls. It loads as its section approaches the viewport. If the file is missing, playback is unavailable, or the visitor prefers reduced motion, the matching still in `images/wallpapers/` loads as a fallback. Wallpaper stills are not displayed as a separate content section.
 
 The two responsive galleries use `images/day-1s.jpeg` through `images/day-5l.jpeg` and `images/night-1s.jpeg` through `images/night-5l.jpeg`. Each numbered frame has 320×400 small, 640×800 medium, and 1200×1500 large variants.
 
