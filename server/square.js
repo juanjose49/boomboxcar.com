@@ -64,7 +64,7 @@ function squareOrderDiscount(discount, currency) {
     name: discount.name,
     scope: 'ORDER'
   };
-  if (discount.type === 'PERCENT') {
+  if (discount.type === 'PERCENT' && discount.value < 100) {
     value.type = 'FIXED_PERCENTAGE';
     value.percentage = String(discount.value);
   } else {

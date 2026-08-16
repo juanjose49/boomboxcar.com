@@ -339,6 +339,35 @@ test('Square direct payment charges the server total against the created order',
   assert.equal(paymentRequest.body.autocomplete, true);
 });
 
+test('Square receives a fixed discount for a 100 percent test coupon so one cent remains due', async () => {
+  let orderRequest;
+  const fakeFetch = async (url, options) => {
+    orderRequest = { url, body: JSON.parse(options.body) };
+    return new Response(JSON.stringify({ order: { id: 'ORDER-ONE-CENT', state: 'OPEN', version: 1 } }), {
+      status: 200, headers: { 'Content-Type': 'application/json' }
+    });
+  };
+  const service = createSquareService(loadConfig(env), fakeFetch);
+  await service.createOrder({
+    customer: { givenName: 'Test', familyName: 'Customer', phone: '240-555-0100' },
+    customerId: 'CUSTOMER-1', bookingId: 'BOOKING-1', reservationId: 'BBC-2099-ABC123',
+    eventAddress: {
+      addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
+      administrativeDistrictLevel1: 'MD', postalCode: '20910'
+    },
+    packageDetails: { serviceVariationId: 'SERVICE-3H', currency: 'USD' },
+    modifiers: [],
+    discount: {
+      code: 'TEST_SALE', name: 'Coupon TEST_SALE', type: 'PERCENT', value: 100, amount: 548.99
+    }
+  });
+
+  assert.deepEqual(orderRequest.body.order.discounts, [{
+    uid: 'boomboxcar-coupon', name: 'Coupon TEST_SALE', scope: 'ORDER', type: 'FIXED_AMOUNT',
+    amount_money: { amount: 54899, currency: 'USD' }
+  }]);
+});
+
 test('Square booking cancellation rolls back a reservation when checkout fails', async () => {
   let cancellationRequest;
   const fakeFetch = async (url, options) => {
