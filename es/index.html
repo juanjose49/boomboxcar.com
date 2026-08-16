@@ -61,7 +61,7 @@
   <link rel="preconnect" href="https://web.squarecdn.com" crossorigin />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="../index.css?v=20260816-google-pay" />
+  <link rel="stylesheet" href="../index.css?v=20260816-wallet-default" />
 
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
@@ -266,11 +266,14 @@
           </div>
           <button class="apple-pay-button" id="applePayButton" type="button" aria-label="Reservar y pagar con Apple Pay" hidden></button>
           <div class="google-pay-button" id="googlePayButton" aria-label="Reservar y pagar con Google Pay" hidden></div>
-          <div class="card-payment-panel" id="cardPaymentPanel" hidden>
-            <p class="card-payment-label">Tarjeta de crédito o débito</p>
-            <div id="cardPayment"></div>
+          <button class="text-link card-payment-toggle" id="cardPaymentToggle" type="button" hidden>Pagar con tarjeta de crédito o débito</button>
+          <div id="cardCheckout" hidden>
+            <div class="card-payment-panel" id="cardPaymentPanel">
+              <p class="card-payment-label">Tarjeta de crédito o débito</p>
+              <div id="cardPayment"></div>
+            </div>
+            <button class="btn btn-primary booking-submit" id="bookingSubmit" type="submit" disabled>Reservar y pagar</button>
           </div>
-          <button class="btn btn-primary booking-submit" id="bookingSubmit" type="submit" disabled>Reservar y pagar</button>
           <p class="handoff-note" id="handoffNote">Completa el pago aquí para confirmar tu reserva. Square procesa los datos de tu tarjeta de forma segura; BoomBoxCar no recibe ni almacena el número de tarjeta.</p>
           <div class="booking-result" id="bookingResult" role="status" hidden></div>
           <p class="secure-note">Pagos protegidos por Square</p>
@@ -449,6 +452,6 @@
   </footer>
 
   <script src="../index.js?v=20260816-day-night-flow-6" defer></script>
-  <script src="../booking.js?v=20260816-google-pay" defer></script>
+  <script src="../booking.js?v=20260816-wallet-default" defer></script>
 </body>
 </html>

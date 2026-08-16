@@ -405,6 +405,9 @@ main > .contact{order:8}
 .google-pay-button{width:100%;min-height:52px;margin:0 0 10px}
 .google-pay-button[hidden]{display:none}
 .google-pay-button[data-disabled="true"]{pointer-events:none;opacity:.7}
+.card-payment-toggle{display:block;width:100%;margin:0 0 10px;padding:0;text-align:center}
+.card-payment-toggle[hidden],#cardCheckout[hidden]{display:none}
+#cardCheckout[data-initializing="true"]{visibility:hidden}
 .card-payment-panel{margin:0 0 12px;padding:12px;border:1px solid var(--ring);border-radius:12px;background:var(--surface)}
 .card-payment-panel[hidden]{display:none}
 .card-payment-label{margin:0 0 8px;color:var(--ink);font-size:.82rem;font-weight:800}

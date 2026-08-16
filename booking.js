@@ -89,6 +89,8 @@
   const submitButton = document.getElementById('bookingSubmit');
   const applePayButton = document.getElementById('applePayButton');
   const googlePayButton = document.getElementById('googlePayButton');
+  const cardPaymentToggle = document.getElementById('cardPaymentToggle');
+  const cardCheckout = document.getElementById('cardCheckout');
   const cardPaymentPanel = document.getElementById('cardPaymentPanel');
   const couponToggle = document.getElementById('couponToggle');
   const couponPanel = document.getElementById('couponPanel');
@@ -635,22 +637,25 @@
   }
 
   async function initializePayments(config) {
-    if (!cardPaymentPanel || !config.webPaymentsReady || !window.isSecureContext) return false;
+    if (!cardCheckout || !cardPaymentPanel || !config.webPaymentsReady || !window.isSecureContext) return false;
     try {
       await loadSquareSdk(config.webPaymentsSdkUrl);
       squarePayments = window.Square.payments(config.applicationId, config.locationId);
-      cardPaymentPanel.hidden = false;
+      cardCheckout.dataset.initializing = 'true';
+      cardCheckout.hidden = false;
       cardPayment = await squarePayments.card();
       await cardPayment.attach('#cardPayment');
       cardReady = true;
       submitButton.disabled = false;
       walletConfig = config;
-      if (paymentRequestDetails()) await resetDigitalWallet();
+      await resetDigitalWallet();
       return true;
     } catch (_) {
       cardReady = false;
       cardPayment = null;
-      cardPaymentPanel.hidden = true;
+      cardCheckout.hidden = true;
+      delete cardCheckout.dataset.initializing;
+      cardPaymentToggle.hidden = true;
       squarePayments = null;
       applePayRequest = null;
       applePay = null;
@@ -671,6 +676,7 @@
     googlePayRequest = null;
     applePayButton.hidden = true;
     googlePayButton.hidden = true;
+    cardPaymentToggle.hidden = true;
     googlePayButton.replaceChildren();
     if (previousApplePay) {
       try { await previousApplePay.destroy(); } catch (_) {}
@@ -679,12 +685,18 @@
       try { await previousGooglePay.destroy(); } catch (_) {}
     }
     const details = paymentRequestDetails();
-    if (!squarePayments || !details) return false;
+    if (!squarePayments || !details) {
+      showCardCheckout();
+      return false;
+    }
     if (walletConfig?.applePayReady) {
       try {
         applePayRequest = squarePayments.paymentRequest(details);
         applePay = await squarePayments.applePay(applePayRequest);
         applePayButton.hidden = false;
+        cardCheckout.hidden = true;
+        delete cardCheckout.dataset.initializing;
+        cardPaymentToggle.hidden = false;
         return true;
       } catch (_) {
         applePayRequest = null;
@@ -697,6 +709,9 @@
         googlePay = await squarePayments.googlePay(googlePayRequest);
         googlePayButton.hidden = false;
         await googlePay.attach('#googlePayButton', { buttonColor: 'default', buttonType: 'long' });
+        cardCheckout.hidden = true;
+        delete cardCheckout.dataset.initializing;
+        cardPaymentToggle.hidden = false;
         return true;
       } catch (_) {
         googlePayRequest = null;
@@ -705,7 +720,17 @@
         googlePayButton.replaceChildren();
       }
     }
+    showCardCheckout();
     return false;
+  }
+
+  function showCardCheckout() {
+    applePayButton.hidden = true;
+    googlePayButton.hidden = true;
+    cardPaymentToggle.hidden = true;
+    cardCheckout.hidden = false;
+    delete cardCheckout.dataset.initializing;
+    try { cardPayment?.recalculateSize(); } catch (_) {}
   }
 
   function validateNotice() {
@@ -934,6 +959,7 @@
     if (!couponPanel.hidden) couponInput.focus();
   });
   couponApplyButton?.addEventListener('click', applyCouponCode);
+  cardPaymentToggle?.addEventListener('click', showCardCheckout);
   couponInput?.addEventListener('keydown', event => {
     if (event.key === 'Enter') {
       event.preventDefault();
