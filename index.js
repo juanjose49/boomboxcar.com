@@ -12,14 +12,12 @@ function fireGA(eventName, params = {}) {
 const themeStorageKey = 'boomboxcar-theme';
 const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
 
-function syncExperienceOrder(theme) {
+function syncExperienceOrder() {
   const main = document.querySelector('main');
   if (!main) return;
-  const periodOrder = theme === 'dark'
-    ? ['.experience-night', '.experience-day', '.gallery-day', '.gallery-night']
-    : ['.experience-day', '.experience-night', '.gallery-night', '.gallery-day'];
+  const experienceOrder = ['.experience-video', '.gallery-party'];
   const remainingOrder = ['.booking', '.features', '.pricing', '.events', '.faqs', '.contact'];
-  [...periodOrder, ...remainingOrder].forEach(selector => {
+  [...experienceOrder, ...remainingOrder].forEach(selector => {
     const section = main.querySelector(`:scope > ${selector}`);
     if (section) main.append(section);
   });
@@ -50,7 +48,7 @@ function applyTheme(theme) {
     toggle.setAttribute('aria-pressed', String(isDark));
     toggle.title = label;
   }
-  syncExperienceOrder(theme);
+  syncExperienceOrder();
   if (previousTheme !== theme) {
     window.dispatchEvent(new CustomEvent('boomboxcar:themechange', { detail: { theme } }));
   }
@@ -76,70 +74,96 @@ function bindThemeToggle() {
 }
 
 function bindExperienceVideos() {
-  const videos = Array.from(document.querySelectorAll('[data-experience-video]'));
-  if (!videos.length) return;
+  const video = document.querySelector('[data-experience-video]');
+  if (!video) return;
+  const hero = video.closest('.hero');
+  if (!hero) return;
+  const fallback = hero.querySelector('[data-video-fallback]');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const size = window.innerWidth >= 1200 ? 'Large' : (window.innerWidth >= 640 ? 'Medium' : 'Small');
+  let currentPeriod = '';
+  let sourceLoaded = false;
+  let loadRequested = false;
 
-  videos.forEach(video => {
-    const hero = video.closest('.hero');
-    if (!hero) return;
-    const fallback = hero.querySelector('[data-video-fallback]');
+  const showFallback = () => {
+    if (!fallback) return;
+    const sourceKey = currentPeriod === 'night' ? 'srcNight' : 'srcDay';
+    fallback.querySelectorAll('source').forEach(source => {
+      const path = source.dataset[sourceKey];
+      if (path) source.srcset = path;
+    });
+    const image = fallback.querySelector('img');
+    const imagePath = image?.dataset[sourceKey];
+    if (image && imagePath) image.src = imagePath;
+    hero.classList.remove('has-video');
+    hero.classList.add('has-fallback');
+  };
 
-    let sourceLoaded = false;
+  const showVideo = () => {
+    if (reducedMotion.matches || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+    hero.classList.remove('has-fallback');
+    hero.classList.add('has-video');
+  };
 
-    const showFallback = () => {
-      if (!fallback) return;
-      fallback.querySelectorAll('source[data-srcset]').forEach(source => {
-        if (!source.srcset) source.srcset = source.dataset.srcset;
-      });
-      const image = fallback.querySelector('img[data-src]');
-      if (image && !image.src) image.src = image.dataset.src;
-      hero.classList.remove('has-video');
-      hero.classList.add('has-fallback');
-    };
+  const loadVideo = () => {
+    if (reducedMotion.matches || !currentPeriod) return;
+    if (!sourceLoaded) {
+      const period = currentPeriod === 'night' ? 'Night' : 'Day';
+      const source = video.dataset[`src${period}${size}`];
+      if (!source) return;
+      video.src = source;
+      video.load();
+      sourceLoaded = true;
+    }
+    video.play().then(showVideo).catch(() => {});
+  };
 
-    const showVideo = () => {
-      if (reducedMotion.matches || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
-      hero.classList.remove('has-fallback');
-      hero.classList.add('has-video');
-    };
+  const selectThemeMedia = theme => {
+    const nextPeriod = theme === 'dark' ? 'night' : 'day';
+    if (nextPeriod === currentPeriod) return;
+    currentPeriod = nextPeriod;
+    hero.dataset.experience = `${currentPeriod}-video`;
+    sourceLoaded = false;
+    video.pause();
+    video.removeAttribute('src');
+    hero.classList.remove('has-video', 'has-fallback');
+    fallback?.querySelectorAll('source').forEach(source => source.removeAttribute('srcset'));
+    fallback?.querySelector('img')?.removeAttribute('src');
+    if (reducedMotion.matches) showFallback();
+    else if (loadRequested) loadVideo();
+    else video.load();
+  };
 
-    const loadVideo = () => {
-      if (reducedMotion.matches) return;
-      if (!sourceLoaded) {
-        const source = video.dataset[`src${size}`];
-        if (!source) return;
-        video.src = source;
-        video.load();
-        sourceLoaded = true;
-      }
-      video.play().then(showVideo).catch(() => {});
-    };
-
-    video.addEventListener('loadeddata', showVideo);
-    video.addEventListener('error', showFallback);
-
-    const handleReducedMotion = event => {
-      if (event.matches) {
-        video.pause();
-        showFallback();
-      } else loadVideo();
-    };
-    if (typeof reducedMotion.addEventListener === 'function') reducedMotion.addEventListener('change', handleReducedMotion);
-    else reducedMotion.addListener(handleReducedMotion);
-
-    if (!reducedMotion.matches && 'IntersectionObserver' in window) {
-      const loader = new IntersectionObserver(entries => {
-        if (entries.some(entry => entry.isIntersecting)) {
-          loadVideo();
-          loader.disconnect();
-        }
-      }, { rootMargin: '300px' });
-      loader.observe(hero);
-    } else if (!reducedMotion.matches) loadVideo();
-    else showFallback();
+  video.addEventListener('loadeddata', showVideo);
+  video.addEventListener('error', () => {
+    if (sourceLoaded) showFallback();
   });
+
+  const handleReducedMotion = event => {
+    if (event.matches) {
+      video.pause();
+      showFallback();
+    } else loadVideo();
+  };
+  if (typeof reducedMotion.addEventListener === 'function') reducedMotion.addEventListener('change', handleReducedMotion);
+  else reducedMotion.addListener(handleReducedMotion);
+
+  window.addEventListener('boomboxcar:themechange', event => selectThemeMedia(event.detail.theme));
+  selectThemeMedia(document.documentElement.dataset.theme || (systemTheme.matches ? 'dark' : 'light'));
+
+  if (!reducedMotion.matches && 'IntersectionObserver' in window) {
+    const loader = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        loadRequested = true;
+        loadVideo();
+        loader.disconnect();
+      }
+    }, { rootMargin: '300px' });
+    loader.observe(hero);
+  } else if (!reducedMotion.matches) {
+    loadRequested = true;
+    loadVideo();
+  } else showFallback();
 }
 
 // ---- Ensure GA event sends before same-tab navigation (best-effort) ----

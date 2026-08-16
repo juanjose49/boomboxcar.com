@@ -60,7 +60,7 @@
   <link rel="preconnect" href="https://app.squareup.com" crossorigin />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="../index.css?v=20260816-day-night-flow-4" />
+  <link rel="stylesheet" href="../index.css?v=20260816-day-night-flow-5" />
 
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
@@ -164,40 +164,20 @@
   </header>
 
   <main id="top">
-    <!-- Video de día -->
-    <section class="hero experience-video experience-day" data-experience="day-video">
+    <!-- Video de fiesta según el tema -->
+    <section class="hero experience-video" data-experience="theme-video">
       <div class="hero-media">
         <picture data-video-fallback>
-          <source data-srcset="../images/wallpapers/day-l.jpeg" media="(min-width:1200px)" />
-          <source data-srcset="../images/wallpapers/day-m.jpeg" media="(min-width:640px)" />
-          <img data-src="../images/wallpapers/day-s.jpeg" alt="BoomBoxCar animando a un público durante el día" decoding="async" />
+          <source data-src-day="../images/wallpapers/day-l.jpeg" data-src-night="../images/wallpapers/night-l.jpeg" media="(min-width:1200px)" />
+          <source data-src-day="../images/wallpapers/day-m.jpeg" data-src-night="../images/wallpapers/night-m.jpeg" media="(min-width:640px)" />
+          <img data-src-day="../images/wallpapers/day-s.jpeg" data-src-night="../images/wallpapers/night-s.jpeg" alt="Experiencia de fiesta BoomBoxCar" decoding="async" />
         </picture>
-        <video class="hero-video" data-experience-video data-src-small="../videos/boombox-party-day-s.mp4" data-src-medium="../videos/boombox-party-day-m.mp4" data-src-large="../videos/boombox-party-day-l.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video>
+        <video class="hero-video" data-experience-video data-src-day-small="../videos/boombox-party-day-s.mp4" data-src-day-medium="../videos/boombox-party-day-m.mp4" data-src-day-large="../videos/boombox-party-day-l.mp4" data-src-night-small="../videos/boombox-party-night-s.mp4" data-src-night-medium="../videos/boombox-party-night-m.mp4" data-src-night-large="../videos/boombox-party-night-l.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video>
       </div>
       <div class="hero-copy">
-        <p class="hero-eyebrow">BoomBoxCar de día</p>
+        <p class="hero-eyebrow">La experiencia BoomBoxCar</p>
         <h1 class="hero-title">Sonido móvil y amplificación para eventos en el DMV</h1>
         <p class="tagline">La manera más fácil de amplificar cualquier evento</p>
-        <div class="hero-cta">
-          <a class="btn btn-primary" href="#book" data-gtag="booking_builder_click">Reservar BoomBoxCar</a>
-        </div>
-      </div>
-    </section>
-
-    <!-- Video de noche -->
-    <section class="hero experience-video experience-night" data-experience="night-video">
-      <div class="hero-media">
-        <picture data-video-fallback>
-          <source data-srcset="../images/wallpapers/night-l.jpeg" media="(min-width:1200px)" />
-          <source data-srcset="../images/wallpapers/night-m.jpeg" media="(min-width:640px)" />
-          <img data-src="../images/wallpapers/night-s.jpeg" alt="BoomBoxCar iluminado en una fiesta nocturna" decoding="async" />
-        </picture>
-        <video class="hero-video" data-experience-video data-src-small="../videos/boombox-party-night-s.mp4" data-src-medium="../videos/boombox-party-night-m.mp4" data-src-large="../videos/boombox-party-night-l.mp4" autoplay muted loop playsinline preload="metadata" aria-hidden="true"></video>
-      </div>
-      <div class="hero-copy">
-        <p class="hero-eyebrow">BoomBoxCar de noche</p>
-        <h2 class="hero-title">Mira cómo se ilumina la fiesta</h2>
-        <p class="tagline">Burbujas, color, sonido y una pieza central nocturna única.</p>
         <div class="hero-cta">
           <a class="btn btn-primary" href="#book" data-gtag="booking_builder_click">Reservar BoomBoxCar</a>
         </div>
@@ -335,83 +315,75 @@
       </p>
     </section>
 
-    <!-- Galería nocturna -->
-    <section class="gallery gallery-night" data-experience="night-images">
-      <h2>Galería nocturna</h2>
-      <p class="gallery-intro">Color, niebla, burbujas y BoomBoxCar iluminado después del atardecer.</p>
+    <!-- Galería continua de fiestas -->
+    <section class="gallery gallery-party" data-experience="party-images">
+      <h2>Galería de fiestas</h2>
+      <p class="gallery-intro">BoomBoxCar fluye de noches llenas de color a celebraciones durante el día.</p>
       <div class="grid">
-        <figure>
+        <figure class="gallery-night-image">
           <picture>
             <source srcset="../images/night-1l.jpeg" media="(min-width:1200px)" />
             <source srcset="../images/night-1m.jpeg" media="(min-width:640px)" />
             <img src="../images/night-1s.jpeg" alt="BoomBoxCar iluminado en azul y verde por la noche" loading="lazy" decoding="async" />
           </picture>
         </figure>
-        <figure>
+        <figure class="gallery-night-image">
           <picture>
             <source srcset="../images/night-2l.jpeg" media="(min-width:1200px)" />
             <source srcset="../images/night-2m.jpeg" media="(min-width:640px)" />
             <img src="../images/night-2s.jpeg" alt="BoomBoxCar rodeado de luces rojas y azules" loading="lazy" decoding="async" />
           </picture>
         </figure>
-        <figure>
+        <figure class="gallery-night-image">
           <picture>
             <source srcset="../images/night-3l.jpeg" media="(min-width:1200px)" />
             <source srcset="../images/night-3m.jpeg" media="(min-width:640px)" />
             <img src="../images/night-3s.jpeg" alt="Luces verdes y magenta sobre BoomBoxCar de noche" loading="lazy" decoding="async" />
           </picture>
         </figure>
-        <figure>
+        <figure class="gallery-night-image">
           <picture>
             <source srcset="../images/night-4l.jpeg" media="(min-width:1200px)" />
             <source srcset="../images/night-4m.jpeg" media="(min-width:640px)" />
             <img src="../images/night-4s.jpeg" alt="Iluminación morada y verde en el espacio de la fiesta" loading="lazy" decoding="async" />
           </picture>
         </figure>
-        <figure>
+        <figure class="gallery-night-image">
           <picture>
             <source srcset="../images/night-5l.jpeg" media="(min-width:1200px)" />
             <source srcset="../images/night-5m.jpeg" media="(min-width:640px)" />
             <img src="../images/night-5s.jpeg" alt="BoomBoxCar brillando bajo luces nocturnas de colores" loading="lazy" decoding="async" />
           </picture>
         </figure>
-      </div>
-    </section>
-
-    <!-- Galería diurna -->
-    <section class="gallery gallery-day" data-experience="day-images">
-      <h2>Galería diurna</h2>
-      <p class="gallery-intro">Un montaje móvil completo para celebraciones y eventos comunitarios de día.</p>
-      <div class="grid">
-        <figure>
+        <figure class="gallery-day-image">
           <picture>
             <source srcset="../images/day-1l.jpeg" media="(min-width:1200px)" />
             <source srcset="../images/day-1m.jpeg" media="(min-width:640px)" />
             <img src="../images/day-1s.jpeg" alt="Montaje diurno de BoomBoxCar bajo árboles de otoño" loading="lazy" decoding="async" />
           </picture>
         </figure>
-        <figure>
+        <figure class="gallery-day-image">
           <picture>
             <source srcset="../images/day-2l.jpeg" media="(min-width:1200px)" />
             <source srcset="../images/day-2m.jpeg" media="(min-width:640px)" />
             <img src="../images/day-2s.jpeg" alt="BoomBoxCar llegando junto al espacio del evento" loading="lazy" decoding="async" />
           </picture>
         </figure>
-        <figure>
+        <figure class="gallery-day-image">
           <picture>
             <source srcset="../images/day-3l.jpeg" media="(min-width:1200px)" />
             <source srcset="../images/day-3m.jpeg" media="(min-width:640px)" />
             <img src="../images/day-3s.jpeg" alt="BoomBoxCar centrado en un evento al aire libre" loading="lazy" decoding="async" />
           </picture>
         </figure>
-        <figure>
+        <figure class="gallery-day-image">
           <picture>
             <source srcset="../images/day-4l.jpeg" media="(min-width:1200px)" />
             <source srcset="../images/day-4m.jpeg" media="(min-width:640px)" />
             <img src="../images/day-4s.jpeg" alt="Montaje completo de BoomBoxCar durante el día" loading="lazy" decoding="async" />
           </picture>
         </figure>
-        <figure>
+        <figure class="gallery-day-image">
           <picture>
             <source srcset="../images/day-5l.jpeg" media="(min-width:1200px)" />
             <source srcset="../images/day-5m.jpeg" media="(min-width:640px)" />
@@ -469,7 +441,7 @@
     <small>© <span id="year"></span> BoomBoxCar. Todos los derechos reservados.</small>
   </footer>
 
-  <script src="../index.js?v=20260816-day-night-flow-4" defer></script>
+  <script src="../index.js?v=20260816-day-night-flow-5" defer></script>
   <script src="../booking.js?v=20260816-payment-validation" defer></script>
 </body>
 </html>

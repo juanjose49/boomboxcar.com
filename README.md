@@ -4,7 +4,7 @@ BoomBoxCar is a bilingual static website with a dependency-free Node API for Squ
 
 ## Homepage party video
 
-The homepage presents separate daytime and nighttime video sections using responsive, self-hosted MP4 files. Light theme orders the experience as daytime video, nighttime video, nighttime gallery, daytime gallery, then booking. Dark theme reverses the periods: nighttime video, daytime video, daytime gallery, nighttime gallery, then booking. Until a playable file is present, visitors continue to see the existing hero photograph in that video section.
+The homepage presents one theme-driven party video using responsive, self-hosted MP4 files. Light theme selects the daytime video, while dark theme selects the nighttime video. Changing the theme swaps the active video and its matching fallback. A single continuous gallery follows the video: light theme streams nighttime images 1–5 into daytime images 1–5, while dark theme streams daytime images 1–5 into nighttime images 1–5.
 
 ```text
 videos/boombox-party-day-s.mp4    Daytime mobile crop, under 640px
@@ -17,7 +17,7 @@ videos/boombox-party-night-l.mp4  Nighttime desktop crop, 1200px and wider
 
 Export each as a short, loopable H.264 MP4 with the visual subject positioned for its target crop. Each video stays muted, autoplaying, looping, inline, and free of media controls. It loads as its section approaches the viewport. If the file is missing, playback is unavailable, or the visitor prefers reduced motion, the matching still in `images/wallpapers/` loads as a fallback. Wallpaper stills are not displayed as a separate content section.
 
-The two responsive galleries use `images/day-1s.jpeg` through `images/day-5l.jpeg` and `images/night-1s.jpeg` through `images/night-5l.jpeg`. Each numbered frame has 320×400 small, 640×800 medium, and 1200×1500 large variants.
+The responsive gallery uses `images/day-1s.jpeg` through `images/day-5l.jpeg` and `images/night-1s.jpeg` through `images/night-5l.jpeg`. Each numbered frame has 320×400 small, 640×800 medium, and 1200×1500 large variants.
 
 The production `public_html/videos` directory is manually managed. The cPanel deployment script intentionally does not delete, replace, or copy into it, so uploaded video files survive subsequent site deployments.
 
