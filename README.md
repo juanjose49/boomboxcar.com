@@ -4,7 +4,7 @@ BoomBoxCar is a bilingual static website with a dependency-free Node API for Squ
 
 ## Homepage party video
 
-The homepage presents one theme-driven party video using responsive, self-hosted MP4 files. Light theme selects the daytime video, while dark theme selects the nighttime video. Two stacked playback layers make theme changes seamless: the destination video loads and begins playing underneath the current video, then the current layer fades away. A single continuous gallery follows the video: light theme streams nighttime images 1–5 into daytime images 1–5, while dark theme streams daytime images 1–5 into nighttime images 1–5.
+The homepage presents one theme-driven party video using responsive, self-hosted MP4 files. Light theme selects the daytime video, while dark theme selects the nighttime video. Two stacked playback layers make theme changes seamless: the destination video loads and begins playing underneath the current video, then the current layer fades away. A single continuous gallery follows the video: light theme streams daytime images 1–5 into nighttime images 1–5, while dark theme streams nighttime images 1–5 into daytime images 1–5.
 
 ```text
 videos/boombox-party-day-s.mp4    Daytime mobile crop, under 640px

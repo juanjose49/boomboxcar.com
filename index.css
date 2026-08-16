@@ -170,10 +170,10 @@ main > .contact{order:8}
 .gallery-intro{max-width:var(--max);margin:-10px auto 20px;color:var(--muted)}
 .gallery figure{margin:0; background:var(--card); border-radius:8px; overflow:hidden; border:1px solid var(--ring); aspect-ratio:4/5}
 .gallery figure img{display:block; width:100%; height:100%; object-fit:cover}
-.gallery-night-image{order:1}
-.gallery-day-image{order:2}
-:root[data-theme="dark"] .gallery-day-image{order:1}
-:root[data-theme="dark"] .gallery-night-image{order:2}
+.gallery-day-image{order:1}
+.gallery-night-image{order:2}
+:root[data-theme="dark"] .gallery-night-image{order:1}
+:root[data-theme="dark"] .gallery-day-image{order:2}
 @media (min-width:900px){
   .gallery .grid{grid-template-columns:repeat(5,1fr)}
 }
