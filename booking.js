@@ -3,7 +3,6 @@
   if (!form) return;
 
   const apiBase = '/api';
-  const squareBookingUrl = 'https://app.squareup.com/appointments/book/pz9p8fdxiu4g9w/LX5ZE0BPJR0HS/start';
   const isSpanish = (form.dataset.locale || document.documentElement.lang).toLowerCase().startsWith('es');
   const locale = isSpanish ? 'es-US' : 'en-US';
   const apiLocale = isSpanish ? 'es' : 'en';
@@ -17,21 +16,24 @@
     estimatedTotal: 'Total estimado', customQuote: 'cotización personalizada', chooseDateFirst: 'Elige una fecha primero',
     chooseTime: 'Elige una hora de llegada', loading: 'Consultando la disponibilidad de Square…',
     noSlots: 'No hay horas disponibles para esta fecha y duración.',
-    fallback: 'La API aún no está disponible. Elige una hora y confirmarás la disponibilidad en el programador de Square.',
-    apiSubmit: 'Continuar al pago de Square', fallbackSubmit: 'Copiar detalles y continuar a Square',
-    apiHandoff: 'La dirección del evento se guardará como el lugar de la cita. Square completará tus datos de contacto para el pago. Completa el pago en 30 minutos para conservar la hora.',
-    fallbackHandoff: 'Tus detalles se copiarán. Pégalos en las notas de la cita en Square para conservar todos los extras.',
-    submitting: 'Conectando con Square…', checkoutReady: 'Reserva creada. Abriendo el pago de Square…',
+    fallback: 'La disponibilidad en línea no está disponible temporalmente. Inténtalo de nuevo en unos minutos.',
+    apiSubmit: 'Reservar y pagar', fallbackSubmit: 'Pago no disponible',
+    apiHandoff: 'Completa el pago aquí para confirmar tu reserva. Square procesa los datos de tu tarjeta de forma segura; BoomBoxCar no recibe ni almacena el número de tarjeta.',
+    fallbackHandoff: 'El pago en línea no está disponible temporalmente. Inténtalo de nuevo en unos minutos.',
+    submitting: 'Procesando el pago con tarjeta de forma segura…', paymentReady: 'Pago completado. Abriendo tu confirmación…',
+    cardError: 'No se pudo completar el pago con tarjeta. Revisa los datos e inténtalo de nuevo.',
+    paymentUnavailable: 'El pago en línea no está disponible temporalmente. Inténtalo de nuevo en unos minutos.',
     applePayProcessing: 'Procesando Apple Pay de forma segura…', applePayReady: 'Pago completado. Abriendo tu confirmación…',
-    applePayError: 'Apple Pay no pudo completar el pago. Inténtalo de nuevo o usa el pago de Square.',
+    applePayError: 'Apple Pay no pudo completar el pago. Inténtalo de nuevo o paga con tarjeta.',
+    googlePayProcessing: 'Procesando Google Pay de forma segura…', googlePayReady: 'Pago completado. Abriendo tu confirmación…',
+    googlePayError: 'Google Pay no pudo completar el pago. Inténtalo de nuevo o paga con tarjeta.',
     couponApply: 'Aplicando cupón…', couponApplied: amount => `Cupón aplicado: −${amount}`,
     couponInvalid: 'Ese código de cupón no es válido.', couponNeedsApply: 'Aplica el código de cupón antes de continuar.',
     couponExceedsTotal: 'El cupón debe dejar al menos $0.01 por pagar.',
     couponLabel: code => `Cupón ${code}`,
-    checkoutReturn: 'Square Checkout te regresó a BoomBoxCar para la reserva',
     error: 'No pudimos crear la reserva. Revisa los datos o elige otra hora.',
     modifiersLoading: 'Cargando los extras configurados en Square…', noModifiers: 'No hay extras disponibles para este paquete.',
-    modifiersUnavailable: 'Los extras se seleccionarán en el programador de Square.', optional: 'Opcional',
+    modifiersUnavailable: 'Los extras no están disponibles temporalmente.', optional: 'Opcional',
     required: 'Requerido', upTo: 'Hasta', selections: 'selecciones', quantity: 'Cantidad',
     invalidModifiers: 'Revisa la cantidad de extras seleccionados.',
     incompleteForm: 'Completa todos los campos obligatorios antes de continuar al pago.',
@@ -49,21 +51,24 @@
     estimatedTotal: 'Estimated total', customQuote: 'custom quote', chooseDateFirst: 'Choose a date first',
     chooseTime: 'Choose an arrival time', loading: 'Checking live Square availability…',
     noSlots: 'No arrival times are available for this date and duration.',
-    fallback: 'The API is not available yet. Choose a time and confirm availability in the hosted Square scheduler.',
-    apiSubmit: 'Continue to Square Checkout', fallbackSubmit: 'Copy details & continue to Square',
-    apiHandoff: 'Your event address will be saved as the appointment location. Square will prefill your contact details for payment. Complete payment within 30 minutes to keep the time.',
-    fallbackHandoff: 'Your details will be copied. Paste them into Square’s appointment notes to preserve every add-on.',
-    submitting: 'Connecting to Square…', checkoutReady: 'Reservation created. Opening Square Checkout…',
+    fallback: 'Online availability is temporarily unavailable. Please try again in a few minutes.',
+    apiSubmit: 'Book and pay', fallbackSubmit: 'Payment unavailable',
+    apiHandoff: 'Complete payment here to confirm your booking. Square securely handles your card details; BoomBoxCar never receives or stores your card number.',
+    fallbackHandoff: 'Online payment is temporarily unavailable. Please try again in a few minutes.',
+    submitting: 'Securely processing card payment…', paymentReady: 'Payment complete. Opening your confirmation…',
+    cardError: 'The card payment could not be completed. Check the details and try again.',
+    paymentUnavailable: 'Online payment is temporarily unavailable. Please try again in a few minutes.',
     applePayProcessing: 'Securely processing Apple Pay…', applePayReady: 'Payment complete. Opening your confirmation…',
-    applePayError: 'Apple Pay could not complete the payment. Try again or use Square Checkout.',
+    applePayError: 'Apple Pay could not complete the payment. Try again or pay by card.',
+    googlePayProcessing: 'Securely processing Google Pay…', googlePayReady: 'Payment complete. Opening your confirmation…',
+    googlePayError: 'Google Pay could not complete the payment. Try again or pay by card.',
     couponApply: 'Applying coupon…', couponApplied: amount => `Coupon applied: −${amount}`,
     couponInvalid: 'That coupon code is not valid.', couponNeedsApply: 'Apply the coupon code before continuing.',
     couponExceedsTotal: 'The coupon must leave at least $0.01 due for payment.',
     couponLabel: code => `Coupon ${code}`,
-    checkoutReturn: 'Square Checkout returned you to BoomBoxCar for reservation',
     error: 'We could not create the reservation. Check the details or choose another time.',
     modifiersLoading: 'Loading your Square add-ons…', noModifiers: 'No add-ons are available for this package.',
-    modifiersUnavailable: 'Add-ons will be selected in the hosted Square scheduler.', optional: 'Optional',
+    modifiersUnavailable: 'Add-ons are temporarily unavailable.', optional: 'Optional',
     required: 'Required', upTo: 'Up to', selections: 'selections', quantity: 'Quantity',
     invalidModifiers: 'Review the number of add-ons selected.',
     incompleteForm: 'Complete all required fields before continuing to payment.',
@@ -83,6 +88,8 @@
   const availabilityStatus = document.getElementById('availabilityStatus');
   const submitButton = document.getElementById('bookingSubmit');
   const applePayButton = document.getElementById('applePayButton');
+  const googlePayButton = document.getElementById('googlePayButton');
+  const cardPaymentPanel = document.getElementById('cardPaymentPanel');
   const couponToggle = document.getElementById('couponToggle');
   const couponPanel = document.getElementById('couponPanel');
   const couponInput = document.getElementById('couponCode');
@@ -98,8 +105,13 @@
   let modifierController = null;
   let currentPackage = null;
   let squarePayments = null;
+  let cardPayment = null;
+  let cardReady = false;
   let applePay = null;
   let applePayRequest = null;
+  let googlePay = null;
+  let googlePayRequest = null;
+  let walletConfig = null;
   let appliedCoupon = null;
   let bookingDraftTimer = null;
   let bookingDraftExpiryTimer = null;
@@ -114,14 +126,6 @@
     'givenName', 'familyName', 'email', 'phone', 'couponCode'
   ];
   const bookingDraftFieldNames = new Set([...bookingDraftFields, 'duration', 'eventDate', 'eventTime']);
-
-  const checkoutParams = new URLSearchParams(window.location.search);
-  const returnedReservationId = checkoutParams.get('reservation') || '';
-  if (checkoutParams.get('checkout') === 'complete' && /^BBC-\d{4}-[A-F0-9]{6}$/.test(returnedReservationId)) {
-    bookingResult.textContent = `${copy.checkoutReturn} ${returnedReservationId}.`;
-    bookingResult.dataset.state = 'success';
-    bookingResult.hidden = false;
-  }
 
   function localDateValue(date) {
     const year = date.getFullYear();
@@ -526,7 +530,7 @@
       linesOutput.replaceChildren();
       dateOutput.textContent = copy.chooseDurationFirst;
       quoteNote.hidden = true;
-      updateApplePayRequest();
+      updateDigitalWalletRequest();
       return;
     }
     const hours = Number(duration.value);
@@ -566,7 +570,7 @@
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
       }).format(date);
     } else dateOutput.textContent = copy.chooseDate;
-    updateApplePayRequest();
+    updateDigitalWalletRequest();
   }
 
   function couponDiscountAmount(subtotal) {
@@ -602,10 +606,15 @@
     };
   }
 
-  function updateApplePayRequest() {
+  function updateDigitalWalletRequest() {
     const details = paymentRequestDetails();
-    if (!applePayRequest || !details) return;
-    try { applePayRequest.update(details); } catch (_) {}
+    if (!details) return;
+    if (applePayRequest) {
+      try { applePayRequest.update(details); } catch (_) {}
+    }
+    if (googlePayRequest) {
+      try { googlePayRequest.update(details); } catch (_) {}
+    }
   }
 
   function loadSquareSdk(url) {
@@ -625,42 +634,78 @@
     });
   }
 
-  async function initializeApplePay(config) {
-    if (!applePayButton || !config.applePayReady || !window.isSecureContext) return;
-    const details = paymentRequestDetails();
-    if (!details) return;
+  async function initializePayments(config) {
+    if (!cardPaymentPanel || !config.webPaymentsReady || !window.isSecureContext) return false;
     try {
       await loadSquareSdk(config.webPaymentsSdkUrl);
       squarePayments = window.Square.payments(config.applicationId, config.locationId);
-      await resetApplePay();
+      cardPaymentPanel.hidden = false;
+      cardPayment = await squarePayments.card();
+      await cardPayment.attach('#cardPayment');
+      cardReady = true;
+      submitButton.disabled = false;
+      walletConfig = config;
+      if (paymentRequestDetails()) await resetDigitalWallet();
+      return true;
     } catch (_) {
+      cardReady = false;
+      cardPayment = null;
+      cardPaymentPanel.hidden = true;
       squarePayments = null;
       applePayRequest = null;
       applePay = null;
+      googlePayRequest = null;
+      googlePay = null;
       applePayButton.hidden = true;
+      googlePayButton.hidden = true;
+      return false;
     }
   }
 
-  async function resetApplePay() {
+  async function resetDigitalWallet() {
     const previousApplePay = applePay;
+    const previousGooglePay = googlePay;
     applePay = null;
     applePayRequest = null;
+    googlePay = null;
+    googlePayRequest = null;
+    applePayButton.hidden = true;
+    googlePayButton.hidden = true;
+    googlePayButton.replaceChildren();
     if (previousApplePay) {
       try { await previousApplePay.destroy(); } catch (_) {}
     }
+    if (previousGooglePay) {
+      try { await previousGooglePay.destroy(); } catch (_) {}
+    }
     const details = paymentRequestDetails();
     if (!squarePayments || !details) return false;
-    try {
-      applePayRequest = squarePayments.paymentRequest(details);
-      applePay = await squarePayments.applePay(applePayRequest);
-      applePayButton.hidden = false;
-      return true;
-    } catch (_) {
-      applePayRequest = null;
-      applePay = null;
-      applePayButton.hidden = true;
-      return false;
+    if (walletConfig?.applePayReady) {
+      try {
+        applePayRequest = squarePayments.paymentRequest(details);
+        applePay = await squarePayments.applePay(applePayRequest);
+        applePayButton.hidden = false;
+        return true;
+      } catch (_) {
+        applePayRequest = null;
+        applePay = null;
+      }
     }
+    if (walletConfig?.googlePayReady) {
+      try {
+        googlePayRequest = squarePayments.paymentRequest(details);
+        googlePay = await squarePayments.googlePay(googlePayRequest);
+        googlePayButton.hidden = false;
+        await googlePay.attach('#googlePayButton', { buttonColor: 'default', buttonType: 'long' });
+        return true;
+      } catch (_) {
+        googlePayRequest = null;
+        googlePay = null;
+        googlePayButton.hidden = true;
+        googlePayButton.replaceChildren();
+      }
+    }
+    return false;
   }
 
   function validateNotice() {
@@ -724,18 +769,45 @@
     };
   }
 
-  function buildSquareNote(draft) {
-    const date = draft.startAt ? new Date(draft.startAt) : new Date(`${draft.eventDate}T${draft.eventTime}`);
-    const formattedDate = new Intl.DateTimeFormat(locale, {
-      timeZone: draft.startAt ? 'America/New_York' : undefined,
-      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
-    }).format(date);
-    const addonLines = draft.modifiers.length
-      ? draft.modifiers.map(modifier => `- ${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}: +${money.format(modifier.price * modifier.quantity)}`).join('\n')
-      : `- ${copy.none}`;
-    const eventAddress = [draft.address.addressLine1, draft.address.addressLine2, draft.address.locality,
-      `${draft.address.administrativeDistrictLevel1} ${draft.address.postalCode}`].filter(Boolean).join(', ');
-    return [copy.noteTitle, `${copy.date}: ${formattedDate}`, `${copy.duration}: ${draft.durationHours} ${draft.durationHours === 1 ? copy.hour : copy.hours} (${money.format(draft.basePrice)})`, `${copy.includedLabel}: ${copy.includedItems}`, copy.staffScope, `${copy.addons}:`, addonLines, ...(draft.discount ? [`${copy.couponLabel(draft.discount.code)}: -${money.format(draft.discount.amount)}`] : []), `${copy.estimatedTotal}: ${money.format(draft.total)}`, `${copy.address}: ${eventAddress}`, `${copy.eventType}: ${draft.eventType}`, `${copy.setting}: ${draft.setting}`, `${copy.attendance}: ${draft.attendance}`, `${copy.requests}: ${draft.requests || copy.none}`].join('\n');
+  function cardVerificationDetails(draft) {
+    return {
+      amount: draft.total.toFixed(2),
+      billingContact: {
+        givenName: draft.customer.givenName,
+        familyName: draft.customer.familyName,
+        email: draft.customer.email,
+        phone: draft.customer.phone,
+        addressLines: [draft.address.addressLine1, draft.address.addressLine2].filter(Boolean),
+        city: draft.address.locality,
+        state: draft.address.administrativeDistrictLevel1,
+        postalCode: draft.address.postalCode,
+        countryCode: 'US'
+      },
+      currencyCode: currentPackage?.currency || 'USD',
+      intent: 'CHARGE',
+      customerInitiated: true,
+      sellerKeyedIn: false
+    };
+  }
+
+  async function completePayment({ draft, sourceToken, paymentMethod, errorCopy }) {
+    const response = await fetch(`${apiBase}/reservations/payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...reservationPayload(draft),
+        sourceToken,
+        paymentMethod,
+        expectedTotalCents: Math.round(draft.total * 100)
+      })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || errorCopy);
+    const confirmationUrl = new URL(result.confirmationUrl);
+    if (confirmationUrl.origin !== window.location.origin || confirmationUrl.pathname !== '/confirmation/') {
+      throw new Error(errorCopy);
+    }
+    return { result, confirmationUrl };
   }
 
   function couponIsReady() {
@@ -816,22 +888,6 @@
     }
   }
 
-  async function copyText(text) {
-    try { await navigator.clipboard.writeText(text); return true; }
-    catch (_) {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.setAttribute('readonly', '');
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      const copied = document.execCommand('copy');
-      textarea.remove();
-      return copied;
-    }
-  }
-
   async function initializeBackend() {
     let publicConfiguration = null;
     try {
@@ -845,7 +901,9 @@
     const duration = selectedDuration();
     dateInput.disabled = !duration;
     await loadModifiers();
-    if (publicConfiguration) await initializeApplePay(publicConfiguration);
+    const paymentsReady = publicConfiguration ? await initializePayments(publicConfiguration) : false;
+    backendReady = backendReady && paymentsReady;
+    submitButton.disabled = !backendReady;
     if (duration && dateInput.value) {
       loadAvailability({ preferredSelection: restoredTimeSelection });
       restoredTimeSelection = null;
@@ -890,56 +948,69 @@
     if (event.target.name === 'duration') {
       dateInput.disabled = false;
       loadAvailability({ preserveSelection: true });
-      loadModifiers();
+      void loadModifiers().then(() => {
+        if (squarePayments && !applePay && !googlePay) void resetDigitalWallet();
+      });
     }
   });
+
+  function setDigitalWalletsDisabled(disabled) {
+    applePayButton.disabled = disabled;
+    googlePayButton.dataset.disabled = String(disabled);
+    googlePayButton.setAttribute('aria-disabled', String(disabled));
+  }
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (!validateBeforePayment()) return;
     const draft = buildDraft();
-    const squareNote = buildSquareNote(draft);
     persistBookingDraft();
 
-    if (!backendReady || !draft.startAt) {
-      const detailsCopied = await copyText(squareNote);
-      if (typeof fireGA === 'function') fireGA('square_availability_handoff', { duration_hours: draft.durationHours, addon_count: draft.modifiers.length, event_type: draft.eventType, details_copied: detailsCopied, lang: document.documentElement.lang || 'en' });
-      window.location.href = squareBookingUrl;
+    if (!backendReady || !cardReady || !cardPayment || !draft.startAt) {
+      bookingResult.textContent = copy.paymentUnavailable;
+      bookingResult.dataset.state = 'error';
+      bookingResult.hidden = false;
+      return;
+    }
+    if (Math.round(draft.total * 100) < 1) {
+      bookingResult.textContent = copy.couponExceedsTotal;
+      bookingResult.dataset.state = 'error';
+      bookingResult.hidden = false;
       return;
     }
 
     submitButton.disabled = true;
+    setDigitalWalletsDisabled(true);
     submitButton.textContent = copy.submitting;
-    bookingResult.hidden = true;
+    bookingResult.textContent = copy.submitting;
+    bookingResult.dataset.state = '';
+    bookingResult.hidden = false;
     try {
-      const response = await fetch(`${apiBase}/reservations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reservationPayload(draft))
+      const tokenResult = await cardPayment.tokenize(cardVerificationDetails(draft));
+      if (tokenResult.status !== 'OK' || !tokenResult.token) throw new Error(copy.cardError);
+      const { result, confirmationUrl } = await completePayment({
+        draft,
+        sourceToken: tokenResult.token,
+        paymentMethod: 'card',
+        errorCopy: copy.cardError
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error?.message || copy.error);
-      const checkoutUrl = new URL(result.checkoutUrl);
-      if (checkoutUrl.protocol !== 'https:' || !['square.link', 'sandbox.square.link'].includes(checkoutUrl.hostname)) throw new Error(copy.error);
-      bookingResult.textContent = copy.checkoutReady;
+      bookingResult.textContent = copy.paymentReady;
       bookingResult.dataset.state = 'success';
-      bookingResult.hidden = false;
       handoffNote.hidden = true;
-      if (typeof fireGA === 'function') fireGA('booking_created', { reservation_id: result.reservationId, duration_hours: draft.durationHours, addon_count: draft.modifiers.length, order_id: result.orderId || '', lang: document.documentElement.lang || 'en' });
-      window.location.assign(checkoutUrl.href);
+      if (typeof fireGA === 'function') fireGA('card_booking_completed', { reservation_id: result.reservationId, duration_hours: draft.durationHours, addon_count: draft.modifiers.length, order_id: result.orderId || '', lang: document.documentElement.lang || 'en' });
+      window.location.assign(confirmationUrl.href);
     } catch (error) {
-      bookingResult.textContent = error.message || copy.error;
+      bookingResult.textContent = error.message || copy.cardError;
       bookingResult.dataset.state = 'error';
-      bookingResult.hidden = false;
-      submitButton.disabled = false;
+      submitButton.disabled = !cardReady;
       submitButton.textContent = copy.apiSubmit;
+      setDigitalWalletsDisabled(false);
       loadAvailability({ preserveSelection: true });
     }
   });
 
-  applePayButton?.addEventListener('click', async event => {
-    event.preventDefault();
-    if (!validateBeforePayment() || !applePay) return;
+  async function processDigitalWalletPayment({ payment, paymentMethod, processingCopy, readyCopy, errorCopy, analyticsEvent }) {
+    if (!validateBeforePayment() || !payment) return;
     const draft = buildDraft();
     if (!draft.startAt) return;
     const expectedTotalCents = Math.round(draft.total * 100);
@@ -953,41 +1024,32 @@
 
     let tokenization;
     try {
-      tokenization = applePay.tokenize();
+      tokenization = payment.tokenize();
     } catch (_) {
-      bookingResult.textContent = copy.applePayError;
+      bookingResult.textContent = errorCopy;
       bookingResult.dataset.state = 'error';
       bookingResult.hidden = false;
-      await resetApplePay();
+      await resetDigitalWallet();
       return;
     }
-    applePayButton.disabled = true;
+    setDigitalWalletsDisabled(true);
     submitButton.disabled = true;
-    bookingResult.textContent = copy.applePayProcessing;
+    bookingResult.textContent = processingCopy;
     bookingResult.dataset.state = '';
     bookingResult.hidden = false;
     try {
       const tokenResult = await tokenization;
-      if (tokenResult.status !== 'OK' || !tokenResult.token) throw new Error(copy.applePayError);
-      const response = await fetch(`${apiBase}/reservations/apple-pay`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...reservationPayload(draft),
-          sourceToken: tokenResult.token,
-          expectedTotalCents
-        })
+      if (tokenResult.status !== 'OK' || !tokenResult.token) throw new Error(errorCopy);
+      const { result, confirmationUrl } = await completePayment({
+        draft,
+        sourceToken: tokenResult.token,
+        paymentMethod,
+        errorCopy
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error?.message || copy.applePayError);
-      const confirmationUrl = new URL(result.confirmationUrl);
-      if (confirmationUrl.origin !== window.location.origin || confirmationUrl.pathname !== '/confirmation/') {
-        throw new Error(copy.applePayError);
-      }
-      bookingResult.textContent = copy.applePayReady;
+      bookingResult.textContent = readyCopy;
       bookingResult.dataset.state = 'success';
       handoffNote.hidden = true;
-      if (typeof fireGA === 'function') fireGA('apple_pay_booking_completed', {
+      if (typeof fireGA === 'function') fireGA(analyticsEvent, {
         reservation_id: result.reservationId,
         duration_hours: draft.durationHours,
         addon_count: draft.modifiers.length,
@@ -996,14 +1058,39 @@
       });
       window.location.assign(confirmationUrl.href);
     } catch (error) {
-      bookingResult.textContent = error.message || copy.applePayError;
+      bookingResult.textContent = error.message || errorCopy;
       bookingResult.dataset.state = 'error';
       bookingResult.hidden = false;
-      const applePayReset = await resetApplePay();
-      applePayButton.disabled = !applePayReset;
-      submitButton.disabled = false;
+      await resetDigitalWallet();
+      setDigitalWalletsDisabled(false);
+      submitButton.disabled = !cardReady;
       loadAvailability({ preserveSelection: true });
     }
+  }
+
+  applePayButton?.addEventListener('click', event => {
+    event.preventDefault();
+    void processDigitalWalletPayment({
+      payment: applePay,
+      paymentMethod: 'applePay',
+      processingCopy: copy.applePayProcessing,
+      readyCopy: copy.applePayReady,
+      errorCopy: copy.applePayError,
+      analyticsEvent: 'apple_pay_booking_completed'
+    });
+  });
+
+  googlePayButton?.addEventListener('click', event => {
+    event.preventDefault();
+    if (googlePayButton.dataset.disabled === 'true') return;
+    void processDigitalWalletPayment({
+      payment: googlePay,
+      paymentMethod: 'googlePay',
+      processingCopy: copy.googlePayProcessing,
+      readyCopy: copy.googlePayReady,
+      errorCopy: copy.googlePayError,
+      analyticsEvent: 'google_pay_booking_completed'
+    });
   });
 
   restoreBookingDraft();

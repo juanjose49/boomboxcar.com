@@ -326,77 +326,6 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     return payload.booking;
   }
 
-  async function createPaymentLink({ customer, customerId, bookingId, reservationId, confirmationToken, eventAddress, packageDetails, modifiers, discount }) {
-    const contactName = `${customer.givenName} ${customer.familyName}`.trim();
-    const eventAddressLabel = formattedAppointmentAddress(eventAddress);
-    const lineItem = {
-      catalog_object_id: packageDetails.serviceVariationId,
-      quantity: '1',
-      note: [
-        `Event contact: ${contactName}`,
-        `Phone: ${customer.phone}`,
-        `Event address: ${eventAddressLabel}`,
-        `Square booking: ${bookingId}`
-      ].join('\n').slice(0, 2000)
-    };
-    if (modifiers.length) {
-      lineItem.modifiers = modifiers.map(modifier => ({
-        ...(modifier.catalogObjectId || !modifier.included ? { catalog_object_id: modifier.catalogObjectId || modifier.id } : { name: modifier.name }),
-        ...(modifier.included ? { base_price_money: { amount: 0, currency: packageDetails.currency || 'USD' } } : {}),
-        quantity: String(modifier.quantity)
-      }));
-    }
-    const confirmationUrl = new URL('/confirmation/', config.appBaseUrl);
-    confirmationUrl.searchParams.set('reservation', reservationId);
-    confirmationUrl.searchParams.set('token', confirmationToken);
-    const orderDiscount = squareOrderDiscount(discount, packageDetails.currency || 'USD');
-    const order = {
-      location_id: config.squareLocationId,
-      reference_id: reservationId,
-      customer_id: customerId,
-      line_items: [lineItem]
-    };
-    if (orderDiscount) order.discounts = [orderDiscount];
-    const payload = await request('/v2/online-checkout/payment-links', {
-      method: 'POST',
-      body: {
-        idempotency_key: randomUUID(),
-        description: `BoomBoxCar reservation ${reservationId}`,
-        order,
-        checkout_options: {
-          allow_tipping: false,
-          enable_coupon: false,
-          ask_for_shipping_address: false,
-          redirect_url: confirmationUrl.toString(),
-          merchant_support_email: 'booking@boomboxcar.com',
-          accepted_payment_methods: {
-            apple_pay: true,
-            google_pay: true,
-            cash_app_pay: true,
-            afterpay_clearpay: false
-          }
-        },
-        pre_populated_data: {
-          buyer_email: customer.email,
-          buyer_phone_number: checkoutPhoneNumber(customer.phone),
-          buyer_address: {
-            first_name: customer.givenName,
-            last_name: customer.familyName
-          }
-        },
-        payment_note: `BoomBoxCar ${reservationId}; Square booking ${bookingId}`
-      }
-    });
-    const paymentLink = payload.payment_link;
-    let checkoutUrl;
-    try { checkoutUrl = new URL(paymentLink?.url); } catch (_) {}
-    const expectedCheckoutHost = config.squareEnvironment === 'production' ? 'square.link' : 'sandbox.square.link';
-    if (!paymentLink?.id || !paymentLink?.order_id || checkoutUrl?.protocol !== 'https:' || checkoutUrl.hostname !== expectedCheckoutHost) {
-      throw new AppError(502, 'INVALID_PAYMENT_LINK_RESPONSE', 'Square did not return a usable checkout link.');
-    }
-    return paymentLink;
-  }
-
   async function createOrder({ customer, customerId, bookingId, reservationId, eventAddress, packageDetails, modifiers, discount }) {
     const contactName = `${customer.givenName} ${customer.familyName}`.trim();
     const lineItem = {
@@ -458,7 +387,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
       }
     });
     if (!payload.payment?.id || payload.payment.status !== 'COMPLETED') {
-      throw new AppError(502, 'PAYMENT_NOT_COMPLETED', 'Square did not complete the Apple Pay payment.');
+      throw new AppError(502, 'PAYMENT_NOT_COMPLETED', 'Square did not complete the payment.');
     }
     return payload.payment;
   }
@@ -487,6 +416,6 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
 
   return {
     searchAvailability, getPackage, getPackages, findOrCreateCustomer, createBooking,
-    createPaymentLink, createOrder, createPayment, cancelBooking, retrieveOrder, deletePaymentLink
+    createOrder, createPayment, cancelBooking, retrieveOrder, deletePaymentLink
   };
 }

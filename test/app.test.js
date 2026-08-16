@@ -38,7 +38,9 @@ test('health and public config never expose the access token', async () => {
     assert.equal(health.squareConfigured, false);
     const config = await fetch(`${baseUrl}/api/config`).then(response => response.json());
     assert.equal(config.ready, false);
+    assert.equal(config.webPaymentsReady, false);
     assert.equal(config.applePayReady, false);
+    assert.equal(config.googlePayReady, false);
     assert.equal(config.webPaymentsSdkUrl, 'https://sandbox.web.squarecdn.com/v1/square.js');
     assert.equal(config.paymentTtlMinutes, 30);
     assert.equal(JSON.stringify(config).includes('ACCESS_TOKEN'), false);
@@ -57,7 +59,17 @@ test('availability reports an unconfigured Sandbox without contacting Square', a
   });
 });
 
-test('Apple Pay rejects a stale displayed total before creating a booking or charge', async () => {
+test('hosted checkout reservation creation is no longer exposed', async () => {
+  await withServer(placeholderEnv, async baseUrl => {
+    const response = await fetch(`${baseUrl}/api/reservations`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+    });
+    assert.equal(response.status, 404);
+    assert.equal((await response.json()).error.code, 'NOT_FOUND');
+  });
+});
+
+test('embedded Google Pay checkout rejects a stale displayed total before creating a booking or charge', async () => {
   const squareRequests = [];
   const configuredEnv = {
     ...placeholderEnv,
@@ -103,11 +115,11 @@ test('Apple Pay rejects a stale displayed total before creating a booking or cha
     assert.equal(couponResult.coupon.amount, 54.9);
     assert.equal(couponResult.pricing.total, 494.1);
 
-    const response = await fetch(`${baseUrl}/api/reservations/apple-pay`, {
+    const response = await fetch(`${baseUrl}/api/reservations/payment`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sourceToken: 'cnon:apple-pay-token', expectedTotalCents: 54800,
+        sourceToken: 'cnon:google-pay-token', paymentMethod: 'googlePay', expectedTotalCents: 54800,
         locale: 'en', eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00Z', durationHours: 3,
         modifiers: [],
         address: {

@@ -215,68 +215,6 @@ test('Square Catalog supplies live prices for every booking duration', async () 
   assert.deepEqual(cachedPackages, packages);
 });
 
-test('Square checkout references the booking package and selected Catalog modifiers', async () => {
-  let checkoutRequest;
-  const fakeFetch = async (url, options) => {
-    checkoutRequest = { url, body: JSON.parse(options.body) };
-    return new Response(JSON.stringify({
-      payment_link: { id: 'LINK-1', order_id: 'ORDER-1', url: 'https://sandbox.square.link/u/TEST' }
-    }), {
-      status: 200, headers: { 'Content-Type': 'application/json' }
-    });
-  };
-  const service = createSquareService(loadConfig(env), fakeFetch);
-  const paymentLink = await service.createPaymentLink({
-    customer: {
-      givenName: 'Test', familyName: 'Customer', email: 'buyer@example.com', phone: '(301) 555-0199'
-    },
-    customerId: 'CUSTOMER-1', reservationId: 'BBC-2099-ABC123',
-    bookingId: 'BOOKING-1',
-    confirmationToken: 'abcdefghijklmnopqrstuvwxyzABCDEF',
-    eventAddress: {
-      addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
-      administrativeDistrictLevel1: 'MD', postalCode: '20910'
-    },
-    packageDetails: { serviceVariationId: 'SERVICE-1H', currency: 'USD' },
-    modifiers: [
-      { id: 'SITE-INCLUDED-RGB-PANELS', name: 'RGB Panels', catalogObjectId: null, included: true, quantity: 1 },
-      { id: 'BUBBLE', name: 'Bubble Machine', catalogObjectId: 'BUBBLE', included: true, quantity: 1 },
-      { id: 'LASER', quantity: 2 }
-    ],
-    discount: { code: 'SAVE10', name: 'Coupon SAVE10', type: 'PERCENT', value: 10, amount: 39.9 }
-  });
-
-  assert.equal(paymentLink.order_id, 'ORDER-1');
-  assert.equal(checkoutRequest.url, 'https://connect.squareupsandbox.com/v2/online-checkout/payment-links');
-  assert.equal(checkoutRequest.body.order.reference_id, 'BBC-2099-ABC123');
-  assert.equal(checkoutRequest.body.order.customer_id, 'CUSTOMER-1');
-  assert.equal(checkoutRequest.body.order.line_items[0].catalog_object_id, 'SERVICE-1H');
-  assert.deepEqual(checkoutRequest.body.order.line_items[0].modifiers, [
-    { name: 'RGB Panels', base_price_money: { amount: 0, currency: 'USD' }, quantity: '1' },
-    { catalog_object_id: 'BUBBLE', base_price_money: { amount: 0, currency: 'USD' }, quantity: '1' },
-    { catalog_object_id: 'LASER', quantity: '2' }
-  ]);
-  assert.equal(checkoutRequest.body.checkout_options.redirect_url, 'http://localhost:3100/confirmation/?reservation=BBC-2099-ABC123&token=abcdefghijklmnopqrstuvwxyzABCDEF');
-  assert.equal(checkoutRequest.body.checkout_options.accepted_payment_methods.apple_pay, true);
-  assert.equal(checkoutRequest.body.checkout_options.allow_tipping, false);
-  assert.equal(checkoutRequest.body.checkout_options.ask_for_shipping_address, false);
-  assert.equal(checkoutRequest.body.checkout_options.enable_coupon, false);
-  assert.deepEqual(checkoutRequest.body.order.discounts, [{
-    uid: 'boomboxcar-coupon', name: 'Coupon SAVE10', scope: 'ORDER',
-    type: 'FIXED_PERCENTAGE', percentage: '10'
-  }]);
-  assert.equal(checkoutRequest.body.pre_populated_data.buyer_email, 'buyer@example.com');
-  assert.equal(checkoutRequest.body.pre_populated_data.buyer_phone_number, '+13015550199');
-  assert.deepEqual(checkoutRequest.body.pre_populated_data.buyer_address, {
-    first_name: 'Test', last_name: 'Customer'
-  });
-  assert.equal(checkoutRequest.body.pre_populated_data.buyer_address.address_line_1, undefined);
-  assert.match(checkoutRequest.body.order.line_items[0].note, /Event contact: Test Customer/);
-  assert.match(checkoutRequest.body.order.line_items[0].note, /Phone: \(301\) 555-0199/);
-  assert.match(checkoutRequest.body.order.line_items[0].note, /Event address: 123 Test Street/);
-  assert.match(checkoutRequest.body.payment_note, /BOOKING-1/);
-});
-
 test('Square direct order preserves the booking item, modifiers, and event details', async () => {
   let orderRequest;
   const fakeFetch = async (url, options) => {

@@ -389,7 +389,7 @@ main > .contact{order:8}
 .booking-includes strong{color:var(--brand);text-transform:uppercase;letter-spacing:.04em}
 .quote-note{padding:10px;border-radius:8px;color:#5d3a20;background:#fff0e4;font-size:.82rem}
 .booking-submit{width:100%;min-height:52px;border:0;cursor:pointer;font:inherit}
-.booking-submit:disabled{cursor:wait;opacity:.7}
+.booking-submit:disabled{cursor:not-allowed;opacity:.7}
 .coupon-toggle{display:inline-block;margin:14px 0 10px;padding:0;border:0;background:none;color:var(--accent);font:inherit;font-size:.84rem;text-decoration:underline;cursor:pointer}
 .coupon-panel{margin:0 0 12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .coupon-panel>label{display:block;margin-bottom:6px;font-size:.78rem;font-weight:700}
@@ -402,12 +402,18 @@ main > .contact{order:8}
 .apple-pay-button{display:block;width:100%;height:52px;margin:0 0 10px;border:0;border-radius:12px;cursor:pointer;-webkit-appearance:-apple-pay-button;-apple-pay-button-type:plain;-apple-pay-button-style:black}
 .apple-pay-button[hidden]{display:none}
 .apple-pay-button:disabled{cursor:wait;opacity:.7}
+.google-pay-button{width:100%;min-height:52px;margin:0 0 10px}
+.google-pay-button[hidden]{display:none}
+.google-pay-button[data-disabled="true"]{pointer-events:none;opacity:.7}
+.card-payment-panel{margin:0 0 12px;padding:12px;border:1px solid var(--ring);border-radius:12px;background:var(--surface)}
+.card-payment-panel[hidden]{display:none}
+.card-payment-label{margin:0 0 8px;color:var(--ink);font-size:.82rem;font-weight:800}
+#cardPayment{min-height:48px}
 .handoff-note{margin:10px 0 0;color:var(--muted);font-size:.78rem;line-height:1.45}
 .booking-result{margin:12px 0 0;padding:12px;border-radius:9px;font-size:.88rem;font-weight:700}
 .booking-result[data-state="success"]{color:#174c29;background:#dff6e6}
 .booking-result[data-state="error"]{color:#762b20;background:#ffe1dc}
 .secure-note{display:flex;align-items:center;justify-content:center;gap:6px;margin:11px 0 0;color:var(--muted);font-size:.76rem}
-.secure-note img{width:14px;height:14px;object-fit:contain}
 
 @media (min-width:560px){
   .field-grid,.field-grid-date{grid-template-columns:repeat(2,minmax(0,1fr))}

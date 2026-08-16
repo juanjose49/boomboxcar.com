@@ -20,7 +20,7 @@ test('finds expired pending reservations and excludes completed payments', () =>
   }], now), []);
 });
 
-test('expires an unpaid Square checkout and cancels its appointment', async () => {
+test('expires a legacy unpaid Square checkout and cancels its appointment', async () => {
   const dataDir = await mkdtemp(path.join(os.tmpdir(), 'boomboxcar-expiry-'));
   const calls = [];
   const square = {

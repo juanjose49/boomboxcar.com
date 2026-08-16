@@ -59,8 +59,10 @@ async function readJson(request) {
 
 function publicConfig(config) {
   return {
-    ready: config.squareConfigured,
+    ready: config.squareConfigured && config.squareWebPaymentsConfigured,
+    webPaymentsReady: config.squareConfigured && config.squareWebPaymentsConfigured,
     applePayReady: config.squareConfigured && config.squareWebPaymentsConfigured,
+    googlePayReady: config.squareConfigured && config.squareWebPaymentsConfigured,
     environment: config.squareEnvironment,
     applicationId: config.squareApplicationId,
     locationId: config.squareLocationId,
@@ -294,111 +296,22 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         );
         return sendJson(response, 200, { coupon: pricing.discount, pricing }, corsHeaders);
       }
-      if (request.method === 'POST' && pathname === '/reservations') {
-        if (!allowRequest(`${ip}:reservations`, 10)) throw new AppError(429, 'RATE_LIMITED', 'Too many reservation attempts.');
-        if (!config.squareConfigured) throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square Sandbox credentials are not configured yet.');
-        const reservation = validateReservation(await readJson(request));
-        const coupon = resolveCoupon(config, reservation.couponCode);
-        const packageDetails = await square.getPackage(reservation.durationHours);
-        const pricing = applyCoupon(
-          calculatePricing(packageDetails, reservation.modifiers),
-          coupon
-        );
-        const availableSlots = await square.searchAvailability({
-          date: reservation.eventDate,
-          durationHours: reservation.durationHours,
-          locale: reservation.locale
-        });
-        const slot = findAvailableSlot(availableSlots, reservation.startAt);
-        if (!slot) throw new AppError(409, 'SLOT_NO_LONGER_AVAILABLE', 'That arrival time is no longer available. Choose another time.');
-
-        const reservationId = createReservationId();
-        const confirmationToken = createConfirmationToken();
-        const customerNote = buildCustomerNote({ reservationId, reservation, pricing });
-        const customer = await square.findOrCreateCustomer(reservation.customer, reservationId);
-        const booking = await square.createBooking({
-          customerId: customer.id,
-          slot,
-          customerNote,
-          eventAddress: reservation.details.address
-        });
-        let paymentLink;
-        try {
-          paymentLink = await square.createPaymentLink({
-            customer: reservation.customer,
-            customerId: customer.id,
-            bookingId: booking.id,
-            reservationId,
-            confirmationToken,
-            eventAddress: reservation.details.address,
-            packageDetails,
-            modifiers: pricing.modifiers,
-            discount: pricing.discount
-          });
-        } catch (checkoutError) {
-          let canceledBooking = null;
-          let cancellationError = null;
-          try {
-            canceledBooking = await square.cancelBooking(booking);
-          } catch (error) {
-            cancellationError = { code: error.code || 'BOOKING_CANCELLATION_FAILED', message: error.message };
-            console.error('[boomboxcar-api] checkout rollback', cancellationError.code, cancellationError.message);
-          }
-          await persistReservation(config.dataDir, {
-            reservationId,
-            createdAt: new Date().toISOString(),
-            squareEnvironment: config.squareEnvironment,
-            squareBookingId: booking.id,
-            squareCustomerId: customer.id,
-            bookingStatus: canceledBooking?.status || booking.status,
-            paymentStatus: 'CHECKOUT_CREATION_FAILED',
-            checkoutError: { code: checkoutError.code || 'PAYMENT_SETUP_FAILED', message: checkoutError.message },
-            cancellationError,
-            reservation,
-            pricing
-          });
-          if (cancellationError) {
-            throw new AppError(502, 'PAYMENT_SETUP_FAILED_REVIEW_REQUIRED', 'The appointment was created, but payment setup failed. Contact booking@boomboxcar.com before trying again.');
-          }
-          throw new AppError(checkoutError.status || 502, 'PAYMENT_SETUP_FAILED', 'Square checkout could not be started. The appointment was canceled, so you can safely try again.');
+      if (request.method === 'POST' && (pathname === '/reservations/payment' || pathname === '/reservations/apple-pay')) {
+        if (!allowRequest(`${ip}:payment`, 10)) throw new AppError(429, 'RATE_LIMITED', 'Too many payment attempts.');
+        if (!config.squareConfigured || !config.squareWebPaymentsConfigured) {
+          throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square payments are not configured yet.');
         }
-        const paymentExpiresAt = new Date(Date.now() + PAYMENT_TTL_MINUTES * 60 * 1000).toISOString();
-        await persistReservation(config.dataDir, {
-          reservationId,
-          confirmationToken,
-          createdAt: new Date().toISOString(),
-          expiresAt: paymentExpiresAt,
-          squareEnvironment: config.squareEnvironment,
-          squareBookingId: booking.id,
-          bookingVersion: booking.version,
-          squarePaymentLinkId: paymentLink.id,
-          squareOrderId: paymentLink.order_id,
-          squareCustomerId: customer.id,
-          bookingStatus: booking.status,
-          paymentStatus: 'PENDING',
-          reservation,
-          pricing
-        });
-        return sendJson(response, 201, {
-          reservationId,
-          bookingId: booking.id,
-          paymentLinkId: paymentLink.id,
-          orderId: paymentLink.order_id,
-          checkoutUrl: paymentLink.url,
-          paymentStatus: 'PENDING',
-          paymentExpiresAt,
-          status: booking.status,
-          startAt: booking.start_at,
-          pricing
-        }, corsHeaders);
-      }
-      if (request.method === 'POST' && pathname === '/reservations/apple-pay') {
-        if (!allowRequest(`${ip}:apple-pay`, 10)) throw new AppError(429, 'RATE_LIMITED', 'Too many payment attempts.');
-        if (!config.squareConfigured) throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square credentials are not configured yet.');
         const input = await readJson(request);
+        const paymentMethod = pathname === '/reservations/apple-pay' ? 'applePay' : input.paymentMethod;
+        if (!['card', 'applePay', 'googlePay'].includes(paymentMethod)) {
+          throw new AppError(400, 'INVALID_PAYMENT_METHOD', 'Choose a valid payment method.');
+        }
+        const paymentLabel = paymentMethod === 'applePay'
+          ? 'Apple Pay'
+          : paymentMethod === 'googlePay' ? 'Google Pay' : 'Card payment';
         const sourceToken = typeof input.sourceToken === 'string' ? input.sourceToken.trim() : '';
         if (!sourceToken || sourceToken.length > 2048 || /[\s\x00-\x1F]/.test(sourceToken)) {
-          throw new AppError(400, 'INVALID_PAYMENT_TOKEN', 'Apple Pay did not return a valid payment token.');
+          throw new AppError(400, 'INVALID_PAYMENT_TOKEN', `${paymentLabel} did not return a valid payment token.`);
         }
         const expectedTotalCents = Number(input.expectedTotalCents);
         if (!Number.isSafeInteger(expectedTotalCents) || expectedTotalCents < 0) {
@@ -412,7 +325,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           coupon
         );
         if (Math.round(pricing.total * 100) !== expectedTotalCents) {
-          throw new AppError(409, 'PRICE_CHANGED', 'Square pricing changed. Review the updated total and try Apple Pay again.');
+          throw new AppError(409, 'PRICE_CHANGED', 'Square pricing changed. Review the updated total and try payment again.');
         }
         const availableSlots = await square.searchAvailability({
           date: reservation.eventDate,
@@ -457,6 +370,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
             squareCustomerId: customer.id,
             bookingStatus: booking.status,
             paymentStatus: 'PROCESSING',
+            paymentMethod,
             reservation,
             pricing
           });
@@ -475,7 +389,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
             canceledBooking = await square.cancelBooking(booking);
           } catch (error) {
             cancellationError = { code: error.code || 'BOOKING_CANCELLATION_FAILED', message: error.message };
-            console.error('[boomboxcar-api] Apple Pay rollback', cancellationError.code, cancellationError.message);
+            console.error('[boomboxcar-api] payment rollback', cancellationError.code, cancellationError.message);
           }
           await persistReservation(config.dataDir, {
             reservationId,
@@ -485,16 +399,17 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
             squareOrderId: order?.id || null,
             squareCustomerId: customer.id,
             bookingStatus: canceledBooking?.status || booking.status,
-            paymentStatus: 'APPLE_PAY_FAILED',
+            paymentStatus: 'PAYMENT_FAILED',
+            paymentMethod,
             paymentError: { code: paymentError.code || 'PAYMENT_FAILED', message: paymentError.message },
             cancellationError,
             reservation,
             pricing
           });
           if (cancellationError) {
-            throw new AppError(502, 'APPLE_PAY_FAILED_REVIEW_REQUIRED', 'Payment was not completed and the appointment could not be canceled automatically. Contact booking@boomboxcar.com before trying again.');
+            throw new AppError(502, 'PAYMENT_FAILED_REVIEW_REQUIRED', 'Payment was not completed and the appointment could not be canceled automatically. Contact booking@boomboxcar.com before trying again.');
           }
-          throw new AppError(paymentError.status || 502, 'APPLE_PAY_FAILED', 'Apple Pay was not completed. The appointment was canceled, so you can safely try again.');
+          throw new AppError(paymentError.status || 502, 'PAYMENT_FAILED', 'Payment was not completed. The appointment was canceled, so you can safely try again.');
         }
         try {
           await persistReservation(config.dataDir, {
@@ -505,11 +420,12 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
             squareOrderId: order.id,
             squarePaymentId: payment.id,
             paymentStatus: payment.status,
+            paymentMethod,
             amountMoney: payment.amount_money || null,
             receiptUrl: payment.receipt_url || null
           });
         } catch (error) {
-          console.error('[boomboxcar-api] Apple Pay completion log', error.code || error.name, error.message);
+          console.error('[boomboxcar-api] payment completion log', error.code || error.name, error.message);
         }
         const confirmationUrl = new URL('/confirmation/', config.appBaseUrl);
         confirmationUrl.searchParams.set('reservation', reservationId);
@@ -520,6 +436,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           orderId: order.id,
           paymentId: payment.id,
           paymentStatus: payment.status,
+          paymentMethod,
           confirmationUrl: confirmationUrl.toString(),
           status: booking.status,
           startAt: booking.start_at,
