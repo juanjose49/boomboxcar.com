@@ -151,6 +151,11 @@ export function findAvailableSlot(slots, startAt) {
 
 export function calculatePricing(packageDetails, selections) {
   const selectedById = new Map(selections.map(selection => [selection.id, selection]));
+  for (const group of packageDetails.modifierGroups) {
+    for (const modifier of group.modifiers) {
+      if (modifier.included) selectedById.set(modifier.id, { id: modifier.id, quantity: 1 });
+    }
+  }
   const modifiers = [];
   for (const group of packageDetails.modifierGroups) {
     const groupSelections = group.modifiers
@@ -169,10 +174,13 @@ export function calculatePricing(packageDetails, selections) {
       name: modifier.name,
       quantity: modifier.quantity,
       unitPrice: modifier.price,
-      price: modifier.price * modifier.quantity
+      price: modifier.price * modifier.quantity,
+      catalogObjectId: modifier.catalogObjectId || null,
+      included: Boolean(modifier.included)
     })));
   }
-  if (modifiers.length !== selections.length) {
+  const selectedIncludedCount = modifiers.filter(modifier => modifier.included && selections.some(selection => selection.id === modifier.id)).length;
+  if (modifiers.length - modifiers.filter(modifier => modifier.included).length !== selections.length - selectedIncludedCount) {
     throw new AppError(400, 'INVALID_MODIFIER', 'One or more modifiers are not available for this package.');
   }
   const total = modifiers.reduce((sum, modifier) => sum + modifier.price, packageDetails.basePrice);
@@ -206,13 +214,14 @@ export function applyCoupon(pricing, coupon) {
 export function buildCustomerNote({ reservationId, reservation, pricing }) {
   const money = value => `$${value.toLocaleString('en-US')}`;
   const addonLines = pricing.modifiers.length
-    ? pricing.modifiers.map(modifier => `- ${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}: +${money(modifier.price)}`)
+    ? pricing.modifiers.map(modifier => `- ${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}: ${modifier.included ? 'Included ($0)' : `+${money(modifier.price)}`}`)
     : ['- None'];
   return [
     `BOOMBOXCAR RESERVATION ${reservationId}`,
     `Duration: ${reservation.durationHours} hour${reservation.durationHours === 1 ? '' : 's'} (${money(pricing.basePrice)})`,
-    'Included with every booking: Two powerful speakers, the inflatable BoomBox, two wireless microphones, and licensed background music through Soundtrack Your Brand.',
-    'Staff scope: Sound-system setup and operation only. DJ and MC services are not included; the client team controls announcements, programming, and the event message.',
+    'Included with every booking: Professional-grade audio equipment, the inflatable BoomBox, two wireless microphones, licensed music and commercial insurance, daytime bubbles, nighttime RGB light panels, MC support and announcements, and on-board power with no outlets required.',
+    'Optional add-ons: Shade awning and laser and haze effects are available for an additional charge.',
+    'Staff scope: BoomBoxCar staff set up and operate the system and provide MC support and announcements. Dedicated DJ service is not included; the client controls music selections, programming, and the event message.',
     'Add-ons:',
     ...addonLines,
     ...(pricing.discount ? [`Coupon ${pricing.discount.code}: -${money(pricing.discount.amount)}`] : []),

@@ -104,10 +104,30 @@ test('calculates catalog pricing and writes modifiers into the Square booking no
   assert.match(note, /Laser & Haze Effects: \+\$50/);
   assert.match(note, /Estimated total: \$324/);
   assert.match(note, /Event address: 123 Test Street, Silver Spring, MD 20910/);
-  assert.match(note, /Two powerful speakers, the inflatable BoomBox, two wireless microphones/);
-  assert.match(note, /DJ and MC services are not included/);
+  assert.match(note, /Professional-grade audio equipment, the inflatable BoomBox, two wireless microphones/);
+  assert.match(note, /MC support and announcements/);
+  assert.match(note, /Dedicated DJ service is not included/);
   assert.match(note, /Event contact: Test Customer/);
   assert.match(note, /Contact phone: \+1 301 555 0100/);
+});
+
+test('automatically includes locked zero-cost equipment in every purchase', () => {
+  const details = {
+    durationHours: 1, basePrice: 249, currency: 'USD',
+    modifierGroups: [{
+      id: 'SITE-INCLUDED-EQUIPMENT', name: 'Included with every booking', minSelections: 2, maxSelections: 2,
+      allowQuantities: false,
+      modifiers: [
+        { id: 'SITE-INCLUDED-RGB-PANELS', name: 'RGB Panels', price: 0, included: true },
+        { id: 'BUBBLE', catalogObjectId: 'BUBBLE', name: 'Bubble Machine', price: 0, included: true }
+      ]
+    }]
+  };
+  const pricing = calculatePricing(details, []);
+  assert.equal(pricing.total, 249);
+  assert.deepEqual(pricing.modifiers.map(modifier => [modifier.name, modifier.price, modifier.included]), [
+    ['RGB Panels', 0, true], ['Bubble Machine', 0, true]
+  ]);
 });
 
 test('applies coupons in cents and rejects discounts that cover the entire payment', () => {

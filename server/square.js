@@ -148,6 +148,54 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     };
   }
 
+  const includedModifierDefinitions = [
+    { id: 'SITE-INCLUDED-RGB-PANELS', name: 'RGB Panels', matches: ['rgb panels', 'rgb light panels'] },
+    { id: 'SITE-INCLUDED-BUBBLE-MACHINE', name: 'Bubble Machine', matches: ['bubble machine'] }
+  ];
+  const includedCoveredModifierNames = new Set([
+    'mc announcements', 'mc support announcements', 'on board power'
+  ]);
+
+  function normalizeModifierName(value) {
+    return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
+  function applyIncludedModifiers(groups) {
+    const found = new Map();
+    const remainingGroups = groups.map(group => ({
+      ...group,
+      modifiers: group.modifiers.filter(modifier => {
+        const normalizedName = normalizeModifierName(modifier.name);
+        const definition = includedModifierDefinitions.find(entry => entry.matches.includes(normalizedName));
+        if (definition && !found.has(definition.id)) found.set(definition.id, modifier);
+        return !definition && !includedCoveredModifierNames.has(normalizedName);
+      })
+    })).filter(group => group.modifiers.length);
+    const includedModifiers = includedModifierDefinitions.map(definition => {
+      const catalogEntry = found.get(definition.id);
+      return {
+        id: catalogEntry?.id || definition.id,
+        catalogObjectId: catalogEntry?.id || null,
+        name: definition.name,
+        price: 0,
+        currency: catalogEntry?.currency || 'USD',
+        preselected: true,
+        locked: true,
+        included: true,
+        ordinal: 0
+      };
+    });
+    return [{
+      id: 'SITE-INCLUDED-EQUIPMENT',
+      name: 'Included with every booking',
+      minSelections: includedModifiers.length,
+      maxSelections: includedModifiers.length,
+      allowQuantities: false,
+      included: true,
+      modifiers: includedModifiers
+    }, ...remainingGroups];
+  }
+
   async function getPackage(durationHours) {
     const hours = Number(durationHours);
     const cached = catalogCache.get(hours);
@@ -173,7 +221,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
       .filter(object => object.type === 'MODIFIER_LIST')
       .map(object => [object.id, object]));
 
-    const modifierGroups = (item?.item_data?.modifier_list_info || [])
+    const catalogModifierGroups = (item?.item_data?.modifier_list_info || [])
       .filter(info => info.enabled !== false)
       .map(info => {
         const list = listObjects.get(info.modifier_list_id);
@@ -195,6 +243,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
         };
       })
       .filter(group => group && group.modifiers.length);
+    const modifierGroups = applyIncludedModifiers(catalogModifierGroups);
     const baseMoney = locationPrice(currentVariation.item_variation_data || {});
     const value = {
       durationHours: hours,
@@ -291,7 +340,8 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     };
     if (modifiers.length) {
       lineItem.modifiers = modifiers.map(modifier => ({
-        catalog_object_id: modifier.id,
+        ...(modifier.catalogObjectId || !modifier.included ? { catalog_object_id: modifier.catalogObjectId || modifier.id } : { name: modifier.name }),
+        ...(modifier.included ? { base_price_money: { amount: 0, currency: packageDetails.currency || 'USD' } } : {}),
         quantity: String(modifier.quantity)
       }));
     }
@@ -360,7 +410,8 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     };
     if (modifiers.length) {
       lineItem.modifiers = modifiers.map(modifier => ({
-        catalog_object_id: modifier.id,
+        ...(modifier.catalogObjectId || !modifier.included ? { catalog_object_id: modifier.catalogObjectId || modifier.id } : { name: modifier.name }),
+        ...(modifier.included ? { base_price_money: { amount: 0, currency: packageDetails.currency || 'USD' } } : {}),
         quantity: String(modifier.quantity)
       }));
     }

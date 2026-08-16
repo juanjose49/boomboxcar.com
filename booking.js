@@ -35,8 +35,9 @@
     required: 'Requerido', upTo: 'Hasta', selections: 'selecciones', quantity: 'Cantidad',
     invalidModifiers: 'Revisa la cantidad de extras seleccionados.',
     includedLabel: 'Incluido en cada reserva',
-    includedItems: 'Dos bocinas potentes, el BoomBox inflable, dos micrófonos inalámbricos y música ambiental con licencia a través de Soundtrack Your Brand.',
-    staffScope: 'El personal instala y opera el sistema de sonido. Los servicios de DJ y maestro de ceremonias no están incluidos; tu equipo controla los anuncios, la programación y el mensaje del evento.'
+    includedItems: 'Equipo de audio profesional, BoomBox inflable, dos micrófonos inalámbricos, música con licencia y seguro comercial, burbujas de día, paneles de luz RGB de noche, apoyo de maestro de ceremonias y anuncios, y energía a bordo sin necesidad de tomacorrientes. El toldo y los efectos de láser y niebla son extras opcionales.',
+    staffScope: 'El personal instala y opera el sistema y brinda apoyo de maestro de ceremonias y anuncios. El servicio dedicado de DJ no está incluido; tú controlas la selección musical, la programación y el mensaje del evento.',
+    included: 'Incluido'
   } : {
     chooseDate: 'Choose a date and arrival time', chooseDuration: 'Choose a duration',
     chooseDurationFirst: 'Choose a duration first', chooseDurationForAddons: 'Choose a duration to see add-ons.',
@@ -65,8 +66,9 @@
     required: 'Required', upTo: 'Up to', selections: 'selections', quantity: 'Quantity',
     invalidModifiers: 'Review the number of add-ons selected.',
     includedLabel: 'Included with every booking',
-    includedItems: 'Two powerful speakers, the inflatable BoomBox, two wireless microphones, and licensed background music through Soundtrack Your Brand.',
-    staffScope: 'Staff set up and operate the sound system. DJ and MC services are not included; your team controls announcements, programming, and the event message.'
+    includedItems: 'Professional-grade audio equipment, the inflatable BoomBox, two wireless microphones, licensed music and commercial insurance, daytime bubbles, nighttime RGB light panels, MC support and announcements, and on-board power with no outlets required. The shade awning and laser and haze effects are optional add-ons.',
+    staffScope: 'Staff set up and operate the system and provide MC support and announcements. Dedicated DJ service is not included; you control music selections, programming, and the event message.',
+    included: 'Included'
   };
 
   const dateInput = form.elements.eventDate;
@@ -256,6 +258,7 @@
   }
 
   function modifierRuleLabel(group) {
+    if (group.included) return copy.included;
     if (group.minSelections > 0 && group.maxSelections > 0) return `${copy.required}: ${group.minSelections}–${group.maxSelections}`;
     if (group.minSelections > 0) return `${copy.required}: ${group.minSelections}+`;
     if (group.maxSelections > 0) return `${copy.upTo} ${group.maxSelections} ${copy.selections}`;
@@ -296,11 +299,12 @@
         input.dataset.name = modifier.name;
         input.dataset.price = modifier.price;
         input.checked = modifier.preselected;
+        input.disabled = modifier.locked;
         const card = document.createElement('span');
         const name = document.createElement('strong');
         name.textContent = modifier.name;
         const price = document.createElement('small');
-        price.textContent = modifier.price ? `+${money.format(modifier.price)}` : money.format(0);
+        price.textContent = modifier.included ? `${copy.included} • ${money.format(0)}` : (modifier.price ? `+${money.format(modifier.price)}` : money.format(0));
         card.append(name, price);
         if (group.allowQuantities) {
           const quantityLabel = document.createElement('div');

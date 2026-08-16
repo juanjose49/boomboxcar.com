@@ -148,7 +148,8 @@ test('Square Catalog resolves package-specific modifier names, prices, and rules
       allow_quantities: false,
       modifiers: [
         { type: 'MODIFIER', id: 'BUBBLE', modifier_data: { name: 'Bubble Machine', price_money: { amount: 2500, currency: 'USD' }, ordinal: 1 } },
-        { type: 'MODIFIER', id: 'LASER', modifier_data: { name: 'Laser & Haze Effects', price_money: { amount: 5000, currency: 'USD' }, ordinal: 2 } }
+        { type: 'MODIFIER', id: 'RGB', modifier_data: { name: 'RGB Light Panels', price_money: { amount: 4000, currency: 'USD' }, ordinal: 2 } },
+        { type: 'MODIFIER', id: 'LASER', modifier_data: { name: 'Laser & Haze Effects', price_money: { amount: 5000, currency: 'USD' }, ordinal: 3 } }
       ]
     }
   };
@@ -167,9 +168,14 @@ test('Square Catalog resolves package-specific modifier names, prices, and rules
   assert.equal(requests.length, 2);
   assert.equal(cached, pkg);
   assert.equal(pkg.basePrice, 249);
-  assert.equal(pkg.modifierGroups[0].name, 'BoomBoxCar 1 Hour Add-Ons');
-  assert.deepEqual(pkg.modifierGroups[0].modifiers.map(modifier => [modifier.id, modifier.price]), [
-    ['BUBBLE', 25], ['LASER', 50]
+  assert.equal(pkg.modifierGroups[0].name, 'Included with every booking');
+  assert.deepEqual(pkg.modifierGroups[0].modifiers.map(modifier => [modifier.name, modifier.price, modifier.preselected, modifier.locked]), [
+    ['RGB Panels', 0, true, true], ['Bubble Machine', 0, true, true]
+  ]);
+  assert.equal(pkg.modifierGroups[0].modifiers[0].catalogObjectId, 'RGB');
+  assert.equal(pkg.modifierGroups[0].modifiers[1].catalogObjectId, 'BUBBLE');
+  assert.deepEqual(pkg.modifierGroups[1].modifiers.map(modifier => [modifier.id, modifier.price]), [
+    ['LASER', 50]
   ]);
 });
 
@@ -231,7 +237,11 @@ test('Square checkout references the booking package and selected Catalog modifi
       administrativeDistrictLevel1: 'MD', postalCode: '20910'
     },
     packageDetails: { serviceVariationId: 'SERVICE-1H', currency: 'USD' },
-    modifiers: [{ id: 'BUBBLE', quantity: 1 }, { id: 'LASER', quantity: 2 }],
+    modifiers: [
+      { id: 'SITE-INCLUDED-RGB-PANELS', name: 'RGB Panels', catalogObjectId: null, included: true, quantity: 1 },
+      { id: 'BUBBLE', name: 'Bubble Machine', catalogObjectId: 'BUBBLE', included: true, quantity: 1 },
+      { id: 'LASER', quantity: 2 }
+    ],
     discount: { code: 'SAVE10', name: 'Coupon SAVE10', type: 'PERCENT', value: 10, amount: 39.9 }
   });
 
@@ -241,7 +251,8 @@ test('Square checkout references the booking package and selected Catalog modifi
   assert.equal(checkoutRequest.body.order.customer_id, 'CUSTOMER-1');
   assert.equal(checkoutRequest.body.order.line_items[0].catalog_object_id, 'SERVICE-1H');
   assert.deepEqual(checkoutRequest.body.order.line_items[0].modifiers, [
-    { catalog_object_id: 'BUBBLE', quantity: '1' },
+    { name: 'RGB Panels', base_price_money: { amount: 0, currency: 'USD' }, quantity: '1' },
+    { catalog_object_id: 'BUBBLE', base_price_money: { amount: 0, currency: 'USD' }, quantity: '1' },
     { catalog_object_id: 'LASER', quantity: '2' }
   ]);
   assert.equal(checkoutRequest.body.checkout_options.redirect_url, 'http://localhost:3100/confirmation/?reservation=BBC-2099-ABC123&token=abcdefghijklmnopqrstuvwxyzABCDEF');
