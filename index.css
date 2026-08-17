@@ -324,6 +324,8 @@ main > .contact{order:8}
 .field-grid label>span small{color:#aaa;font-weight:500}
 .field-grid input,.field-grid select,.field-grid textarea{
   width:100%;
+  min-width:0;
+  max-width:100%;
   min-height:48px;
   padding:.72rem .8rem;
   border:1px solid #555;
