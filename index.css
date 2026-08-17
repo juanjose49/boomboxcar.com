@@ -334,6 +334,15 @@ main > .contact{order:8}
   background:var(--input-bg);
   font:inherit;
 }
+@supports (-webkit-touch-callout:none){
+  .field-grid input[type="date"]{
+    display:block;
+    box-sizing:border-box;
+    -webkit-appearance:none;
+    appearance:none;
+    text-align:center;
+  }
+}
 .field-grid textarea{resize:vertical}
 .field-grid input:focus,.field-grid select:focus,.field-grid textarea:focus{
   outline:3px solid rgba(255,106,0,.32);
