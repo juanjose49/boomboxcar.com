@@ -315,6 +315,60 @@ function bindGalleryThemeTransition() {
   });
 }
 
+function bindEngagementTracking() {
+  const language = document.documentElement.lang || 'en';
+  const pagePath = window.location.pathname;
+  const scrollMilestones = [25, 50, 75, 90];
+  const recordedMilestones = new Set();
+  let scrollFrame = 0;
+
+  const measureScrollDepth = () => {
+    scrollFrame = 0;
+    const documentHeight = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+    if (documentHeight <= window.innerHeight) return;
+    const visibleBottom = window.scrollY + window.innerHeight;
+    const percentScrolled = Math.min(100, Math.floor(visibleBottom / documentHeight * 100));
+    scrollMilestones.forEach(milestone => {
+      if (percentScrolled < milestone || recordedMilestones.has(milestone)) return;
+      recordedMilestones.add(milestone);
+      fireGA('scroll_depth', {
+        percent_scrolled: milestone,
+        page_path: pagePath,
+        language
+      });
+    });
+  };
+
+  const scheduleScrollMeasurement = () => {
+    if (!scrollFrame) scrollFrame = requestAnimationFrame(measureScrollDepth);
+  };
+  window.addEventListener('scroll', scheduleScrollMeasurement, { passive: true });
+  window.addEventListener('resize', scheduleScrollMeasurement, { passive: true });
+  scheduleScrollMeasurement();
+
+  if (!('IntersectionObserver' in window)) return;
+  const sections = [
+    ['gallery', document.querySelector('.gallery-party')],
+    ['booking', document.querySelector('.booking')],
+    ['pricing', document.querySelector('.pricing')],
+    ['faq', document.querySelector('.faqs')]
+  ].filter(([, section]) => section);
+  const sectionObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const match = sections.find(([, section]) => section === entry.target);
+      if (!match) return;
+      fireGA('section_view', {
+        section_id: match[0],
+        page_path: pagePath,
+        language
+      });
+      sectionObserver.unobserve(entry.target);
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -20% 0px' });
+  sections.forEach(([, section]) => sectionObserver.observe(section));
+}
+
 // ---- Ensure GA event sends before same-tab navigation (best-effort) ----
 function bindTrackedLink(el, eventName) {
   if (!el || el.dataset.gaBound === '1') return;
@@ -358,6 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindThemeToggle();
   bindExperienceVideos();
   bindGalleryThemeTransition();
+  bindEngagementTracking();
 
   // Year in footer
   const y = document.getElementById('year');
