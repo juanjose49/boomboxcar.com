@@ -2,12 +2,13 @@
 function fireGA(eventName, params = {}) {
   try {
     if (typeof gtag === 'function') {
-      gtag('event', eventName, params);
+      gtag('event', eventName, { transport_type: 'beacon', ...params });
     } else if (window.dataLayer) {
       window.dataLayer.push({ event: eventName, ...params });
     }
   } catch (_) {}
 }
+window.fireGA = fireGA;
 
 const themeStorageKey = 'boomboxcar-theme';
 const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
@@ -329,9 +330,6 @@ function bindTrackedLink(el, eventName) {
       lang: document.documentElement.lang || 'en'
     };
 
-    // Always record the click
-    fireGA(eventName, params);
-
     // Respect new-tab/middle-clicks and modifier keys
     const modified = e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
     const nonLeft = e.button !== 0;
@@ -340,21 +338,18 @@ function bindTrackedLink(el, eventName) {
     const isHash = href.startsWith('#');
 
     if (modified || nonLeft || isTel || isMail || isHash) {
-      // Let the browser handle default behavior
+      fireGA(eventName, params);
       return;
     }
 
-    // Same-tab link: delay briefly so GA can send, then navigate
     e.preventDefault();
-    const t = setTimeout(() => { window.location.href = href; }, 120);
-    try {
-      if (typeof gtag === 'function') {
-        gtag('event', eventName, {
-          ...params,
-          event_callback: () => { clearTimeout(t); window.location.href = href; }
-        });
-      }
-    } catch (_) {}
+    const navigate = () => { window.location.href = href; };
+    const timer = setTimeout(navigate, 500);
+    fireGA(eventName, {
+      ...params,
+      event_callback: () => { clearTimeout(timer); navigate(); },
+      event_timeout: 500
+    });
   });
 }
 

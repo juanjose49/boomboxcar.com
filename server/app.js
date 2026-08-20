@@ -239,6 +239,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           bookingStatus: reservationRecord.bookingStatus,
           squareBookingId: reservationRecord.squareBookingId,
           squareOrderId: reservationRecord.squareOrderId,
+          paymentMethod: reservationRecord.paymentMethod,
           receiptUrl: completedRecord?.receiptUrl || null,
           reservation: reservationRecord.reservation,
           pricing: pricingWithPaidAmount(reservationRecord.pricing, completedRecord?.amountMoney)

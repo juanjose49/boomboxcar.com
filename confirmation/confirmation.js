@@ -11,6 +11,59 @@
   const retryButton = document.getElementById('retry-confirmation');
   let attempts = 0;
 
+  function fireGA(eventName, eventParams = {}) {
+    try {
+      if (typeof gtag === 'function') gtag('event', eventName, { transport_type: 'beacon', ...eventParams });
+      else if (window.dataLayer) window.dataLayer.push({ event: eventName, ...eventParams });
+    } catch (_) {}
+  }
+
+  function purchaseItems(reservation, pricing) {
+    return [
+      {
+        item_id: `boomboxcar_${reservation.durationHours}h`,
+        item_name: `${reservation.durationHours}-hour BoomBoxCar booking`,
+        item_brand: 'BoomBoxCar',
+        item_category: 'Event service',
+        item_variant: `${reservation.durationHours} hours`,
+        price: pricing.basePrice,
+        quantity: 1
+      },
+      ...pricing.modifiers.map(modifier => ({
+        item_id: modifier.id,
+        item_name: modifier.name,
+        item_brand: 'BoomBoxCar',
+        item_category: modifier.price > 0 ? 'Add-on' : 'Included equipment',
+        price: modifier.unitPrice ?? modifier.price,
+        quantity: modifier.quantity || 1
+      }))
+    ];
+  }
+
+  function trackConfirmedPurchase(data) {
+    const transactionId = data.squareOrderId || data.reservationId;
+    const pricing = data.pricing;
+    const reservation = data.reservation;
+    fireGA('page_view', {
+      page_title: document.title,
+      page_location: `${window.location.origin}/confirmation/`,
+      page_path: '/confirmation/',
+      language: reservation.locale
+    });
+    fireGA('purchase', {
+      transaction_id: transactionId,
+      affiliation: 'BoomBoxCar direct booking',
+      value: pricing.total,
+      currency: pricing.currency || 'USD',
+      coupon: pricing.discount?.code || undefined,
+      payment_type: data.paymentMethod || undefined,
+      duration_hours: reservation.durationHours,
+      addon_count: pricing.modifiers.filter(modifier => modifier.price > 0).length,
+      language: reservation.locale,
+      items: purchaseItems(reservation, pricing)
+    });
+  }
+
   const copy = {
     en: {
       locale: 'en-US', eyebrow: 'BoomBoxCar booking confirmation', title: 'Your event is confirmed.',
@@ -176,6 +229,7 @@
     loading.hidden = true;
     errorPanel.hidden = true;
     documentPanel.hidden = false;
+    trackConfirmedPurchase(data);
   }
 
   function showError(error, status) {
@@ -186,6 +240,11 @@
     loading.hidden = true;
     documentPanel.hidden = true;
     errorPanel.hidden = false;
+    fireGA('confirmation_error', {
+      page_location: `${window.location.origin}/confirmation/`,
+      error_status: status || 0,
+      language: isSpanish ? 'es' : 'en'
+    });
   }
 
   async function loadConfirmation() {
@@ -211,6 +270,12 @@
   }
 
   retryButton.addEventListener('click', () => { attempts = 0; loadConfirmation(); });
-  document.getElementById('download-confirmation').addEventListener('click', () => window.print());
+  document.getElementById('download-confirmation').addEventListener('click', () => {
+    fireGA('confirmation_download_click', { language: document.documentElement.lang });
+    window.print();
+  });
+  document.getElementById('square-receipt').addEventListener('click', () => {
+    fireGA('square_receipt_click', { language: document.documentElement.lang });
+  });
   loadConfirmation();
 })();

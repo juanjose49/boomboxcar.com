@@ -777,6 +777,46 @@
     };
   }
 
+  function analyticsItems(draft) {
+    return [
+      {
+        item_id: `boomboxcar_${draft.durationHours}h`,
+        item_name: `${draft.durationHours}-hour BoomBoxCar booking`,
+        item_brand: 'BoomBoxCar',
+        item_category: 'Event service',
+        item_variant: `${draft.durationHours} hours`,
+        price: draft.basePrice,
+        quantity: 1
+      },
+      ...draft.modifiers.map(modifier => ({
+        item_id: modifier.id,
+        item_name: modifier.name,
+        item_brand: 'BoomBoxCar',
+        item_category: modifier.price > 0 ? 'Add-on' : 'Included equipment',
+        price: modifier.price,
+        quantity: modifier.quantity
+      }))
+    ];
+  }
+
+  function checkoutAnalytics(draft, paymentType) {
+    return {
+      currency: currentPackage?.currency || 'USD',
+      value: draft.total,
+      coupon: draft.couponCode || undefined,
+      payment_type: paymentType,
+      duration_hours: draft.durationHours,
+      addon_count: draft.modifiers.filter(modifier => modifier.price > 0).length,
+      language: draft.locale,
+      items: analyticsItems(draft)
+    };
+  }
+
+  function trackCheckout(eventName, draft, paymentType, extra = {}) {
+    if (typeof window.fireGA !== 'function') return;
+    window.fireGA(eventName, { ...checkoutAnalytics(draft, paymentType), ...extra });
+  }
+
   function reservationPayload(draft) {
     return {
       locale: draft.locale,
@@ -972,6 +1012,27 @@
     updateSummary();
     if (event.target === dateInput) loadAvailability();
     if (event.target.name === 'duration') {
+      const duration = selectedDuration();
+      if (duration && typeof window.fireGA === 'function') {
+        const hours = Number(duration.value);
+        const price = Number(duration.dataset.price);
+        window.fireGA('select_item', {
+          currency: currentPackage?.currency || 'USD',
+          value: price,
+          item_list_id: 'booking_packages',
+          item_list_name: 'Booking packages',
+          language: apiLocale,
+          items: [{
+            item_id: `boomboxcar_${hours}h`,
+            item_name: `${hours}-hour BoomBoxCar booking`,
+            item_brand: 'BoomBoxCar',
+            item_category: 'Event service',
+            item_variant: `${hours} hours`,
+            price,
+            quantity: 1
+          }]
+        });
+      }
       dateInput.disabled = false;
       loadAvailability({ preserveSelection: true });
       void loadModifiers().then(() => {
@@ -991,6 +1052,7 @@
     if (!validateBeforePayment()) return;
     const draft = buildDraft();
     persistBookingDraft();
+    trackCheckout('begin_checkout', draft, 'card');
 
     if (!backendReady || !cardReady || !cardPayment || !draft.startAt) {
       bookingResult.textContent = copy.paymentUnavailable;
@@ -1014,6 +1076,7 @@
     try {
       const tokenResult = await cardPayment.tokenize(cardVerificationDetails(draft));
       if (tokenResult.status !== 'OK' || !tokenResult.token) throw new Error(copy.cardError);
+      trackCheckout('add_payment_info', draft, 'card');
       const { result, confirmationUrl } = await completePayment({
         draft,
         sourceToken: tokenResult.token,
@@ -1023,9 +1086,13 @@
       bookingResult.textContent = copy.paymentReady;
       bookingResult.dataset.state = 'success';
       handoffNote.hidden = true;
-      if (typeof fireGA === 'function') fireGA('card_booking_completed', { reservation_id: result.reservationId, duration_hours: draft.durationHours, addon_count: draft.modifiers.length, order_id: result.orderId || '', lang: document.documentElement.lang || 'en' });
+      trackCheckout('card_booking_completed', draft, 'card', {
+        reservation_id: result.reservationId,
+        order_id: result.orderId || ''
+      });
       window.location.assign(confirmationUrl.href);
     } catch (error) {
+      trackCheckout('payment_error', draft, 'card', { checkout_stage: 'payment' });
       bookingResult.textContent = error.message || copy.cardError;
       bookingResult.dataset.state = 'error';
       submitButton.disabled = !cardReady;
@@ -1039,6 +1106,7 @@
     if (!validateBeforePayment() || !payment) return;
     const draft = buildDraft();
     if (!draft.startAt) return;
+    trackCheckout('begin_checkout', draft, paymentMethod);
     const expectedTotalCents = Math.round(draft.total * 100);
     if (expectedTotalCents < 1) {
       bookingResult.textContent = copy.couponExceedsTotal;
@@ -1066,6 +1134,7 @@
     try {
       const tokenResult = await tokenization;
       if (tokenResult.status !== 'OK' || !tokenResult.token) throw new Error(errorCopy);
+      trackCheckout('add_payment_info', draft, paymentMethod);
       const { result, confirmationUrl } = await completePayment({
         draft,
         sourceToken: tokenResult.token,
@@ -1075,15 +1144,13 @@
       bookingResult.textContent = readyCopy;
       bookingResult.dataset.state = 'success';
       handoffNote.hidden = true;
-      if (typeof fireGA === 'function') fireGA(analyticsEvent, {
+      trackCheckout(analyticsEvent, draft, paymentMethod, {
         reservation_id: result.reservationId,
-        duration_hours: draft.durationHours,
-        addon_count: draft.modifiers.length,
-        order_id: result.orderId || '',
-        lang: document.documentElement.lang || 'en'
+        order_id: result.orderId || ''
       });
       window.location.assign(confirmationUrl.href);
     } catch (error) {
+      trackCheckout('payment_error', draft, paymentMethod, { checkout_stage: 'payment' });
       bookingResult.textContent = error.message || errorCopy;
       bookingResult.dataset.state = 'error';
       bookingResult.hidden = false;

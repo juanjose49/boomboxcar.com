@@ -146,6 +146,7 @@ test('returns a paid confirmation only with its private token', async () => {
     await persistReservation(dataDir, {
       reservationId, confirmationToken: token, createdAt: '2099-08-20T18:00:00Z',
       squareBookingId: 'BOOKING-1', squareOrderId: 'ORDER-1', bookingStatus: 'ACCEPTED', paymentStatus: 'PENDING',
+      paymentMethod: 'card',
       reservation: {
         locale: 'en', eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00Z', durationHours: 1,
         customer: { givenName: 'Test', familyName: 'Customer', email: 'test@example.com', phone: '240-555-0100' },
@@ -167,6 +168,7 @@ test('returns a paid confirmation only with its private token', async () => {
       assert.equal(response.status, 200);
       const confirmation = await response.json();
       assert.equal(confirmation.paymentStatus, 'COMPLETED');
+      assert.equal(confirmation.paymentMethod, 'card');
       assert.equal(confirmation.reservation.customer.familyName, 'Customer');
       assert.equal(confirmation.pricing.total, 199);
       assert.deepEqual(confirmation.pricing.squareAdjustment, { amount: -50 });
