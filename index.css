@@ -111,13 +111,14 @@ a:hover{text-decoration:underline}
 /* Hero */
 main{display:flex;flex-direction:column}
 main > .experience-video{order:1}
-main > .gallery-party{order:2}
-main > .booking{order:3}
-main > .features{order:4}
-main > .pricing{order:5}
-main > .events{order:6}
-main > .faqs{order:7}
-main > .contact{order:8}
+main > .value-proposition{order:2}
+main > .gallery-party{order:3}
+main > .booking{order:4}
+main > .features{order:5}
+main > .pricing{order:6}
+main > .events{order:7}
+main > .faqs{order:8}
+main > .contact{order:9}
 .hero{position:relative; display:grid; min-height:56vh; overflow:hidden; background:#111}
 .hero::after{
   content:"";
@@ -156,7 +157,19 @@ main > .contact{order:8}
 .btn-primary:hover{filter:brightness(.95); text-decoration:none}
 
 /* Sections */
-.features,.pricing,.events,.gallery,.faqs,.contact,.booking{padding:24px 16px}
+.value-proposition,.features,.pricing,.events,.gallery,.faqs,.contact,.booking{padding:24px 16px}
+.value-proposition{background:var(--soft)}
+.value-inner{max-width:var(--max);margin:0 auto}
+.value-intro{max-width:760px;margin-bottom:20px}
+.value-intro .eyebrow{margin:0 0 6px;color:var(--brand);font-size:.78rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+.value-intro h2{margin:0 0 10px}
+.value-intro p:last-child{margin-bottom:0;color:var(--muted);font-size:1.05rem}
+.value-grid{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.value-grid li{position:relative;padding:16px 16px 16px 20px;border:1px solid var(--ring);border-radius:10px;background:var(--surface);box-shadow:0 8px 20px var(--shadow)}
+.value-grid li::before{content:"";position:absolute;top:16px;bottom:16px;left:0;width:4px;border-radius:0 4px 4px 0;background:var(--brand)}
+.value-grid strong,.value-grid span{display:block}
+.value-grid strong{margin-bottom:4px;color:var(--ink)}
+.value-grid span{color:var(--muted);line-height:1.5}
 .features>.feature-list{display:grid; gap:.6rem; list-style:none; padding:0; max-width:1000px; margin:0 auto}
 .service-boundary{max-width:1000px;margin:18px auto 0;padding:14px 16px;border-left:4px solid var(--brand);border-radius:0 8px 8px 0;background:var(--card)}
 .pricing p{max-width:1000px; margin:0 auto 8px}
@@ -225,9 +238,15 @@ main > .contact{order:8}
   .hero-cta{margin-top:24px}
   .btn{padding:.85rem 1.15rem}
 
-  .features,.pricing,.events,.gallery,.faqs,.contact,.booking{
+  .value-proposition,.features,.pricing,.events,.gallery,.faqs,.contact,.booking{
     padding:48px max(28px, calc((100vw - var(--max)) / 2 + 24px));
   }
+  .value-proposition{padding-top:56px;padding-bottom:56px}
+  .value-intro{margin-bottom:28px}
+  .value-intro h2{font-size:2.25rem}
+  .value-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  .value-grid li{min-height:154px;padding:20px 20px 20px 24px}
+  .value-grid li::before{top:20px;bottom:20px}
   .features,.events,.faqs{background:var(--bg)}
   .pricing,.gallery,.contact{background:var(--soft)}
   h2{

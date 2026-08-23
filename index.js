@@ -16,7 +16,7 @@ const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
 function syncExperienceOrder() {
   const main = document.querySelector('main');
   if (!main) return;
-  const experienceOrder = ['.experience-video', '.gallery-party'];
+  const experienceOrder = ['.experience-video', '.value-proposition', '.gallery-party'];
   const remainingOrder = ['.booking', '.features', '.pricing', '.events', '.faqs', '.contact'];
   [...experienceOrder, ...remainingOrder].forEach(selector => {
     const section = main.querySelector(`:scope > ${selector}`);
@@ -348,6 +348,7 @@ function bindEngagementTracking() {
 
   if (!('IntersectionObserver' in window)) return;
   const sections = [
+    ['value', document.querySelector('.value-proposition')],
     ['gallery', document.querySelector('.gallery-party')],
     ['booking', document.querySelector('.booking')],
     ['pricing', document.querySelector('.pricing')],
