@@ -1,4 +1,5 @@
 import { createReadStream } from 'node:fs';
+import { timingSafeEqual } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,9 +22,12 @@ import {
 import { paymentEventRecord, verifySquareWebhook } from './webhooks.js';
 import QRCode from 'qrcode';
 import {
-  applyPartnerPass, applyPartnerRate, campaignBookingUrl, normalizePartnerPermissions, partnerClaimId,
+  applyPartnerPass, applyPartnerRate, campaignBookingUrl, normalizePartnerPermissions, partnerClaimId, partnerConfigEntry,
   partnerRedemptionStatus, publicCampaign, publicPartner, resolveCampaign, resolvePartner, validatePartnerVenue
 } from './partners.js';
+import { createPartnerStore } from './partner-store.js';
+import { createCouponStore } from './coupon-store.js';
+import { couponConfigEntry, resolveCoupon } from './coupons.js';
 import {
   localCustomerHasCompletedBooking, newCustomerOfferClaimId, newCustomerOfferStatus,
   normalizeOfferContact, offerContactKey
@@ -56,6 +60,45 @@ function sendSvg(response, status, body) {
     'X-Content-Type-Options': 'nosniff'
   });
   response.end(body);
+}
+
+function safeCredentialEqual(received, expected) {
+  const left = Buffer.from(received || '', 'utf8');
+  const right = Buffer.from(expected || '', 'utf8');
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+function adminAuthorized(request, config) {
+  if (!config.adminConfigured) throw new AppError(503, 'ADMIN_NOT_CONFIGURED', 'Partner administration is not configured.');
+  const authorization = String(request.headers.authorization || '');
+  if (!authorization.startsWith('Basic ')) return false;
+  let decoded = '';
+  try { decoded = Buffer.from(authorization.slice(6), 'base64').toString('utf8'); }
+  catch (_) { return false; }
+  const separator = decoded.indexOf(':');
+  if (separator < 0) return false;
+  return safeCredentialEqual(decoded.slice(0, separator), config.adminUsername)
+    && safeCredentialEqual(decoded.slice(separator + 1), config.adminPassword);
+}
+
+function requireAdmin(request, response, config, corsHeaders) {
+  if (adminAuthorized(request, config)) return true;
+  const headers = { ...corsHeaders };
+  if (!request.headers.authorization) headers['WWW-Authenticate'] = 'Basic realm="BoomBoxCar Partner Admin", charset="UTF-8"';
+  sendJson(response, 401, { error: { code: 'ADMIN_AUTH_REQUIRED', message: 'Valid administrator credentials are required.' } }, headers);
+  return false;
+}
+
+function adminPartnerView(partner, redemptionStatus, baseUrl) {
+  const privateUrl = new URL('/partner/', baseUrl);
+  privateUrl.searchParams.set('pass', partner.token);
+  const qrImageUrl = new URL(`/api/partners/${encodeURIComponent(partner.token)}/qr.svg`, baseUrl);
+  return {
+    ...partnerConfigEntry(partner),
+    redemptionStatus,
+    privateUrl: privateUrl.toString(),
+    qrImageUrl: qrImageUrl.toString()
+  };
 }
 
 async function readBody(request) {
@@ -108,13 +151,6 @@ function createRateLimiter() {
   };
 }
 
-function resolveCoupon(config, code) {
-  if (!code) return null;
-  const coupon = config.coupons.get(code);
-  if (!coupon) throw new AppError(400, 'COUPON_NOT_RECOGNIZED', 'That coupon code is not recognized.');
-  return coupon;
-}
-
 function pricingWithPaidAmount(pricing, amountMoney) {
   const paidCents = Number(amountMoney?.amount);
   const currency = typeof amountMoney?.currency === 'string' ? amountMoney.currency : pricing.currency;
@@ -153,6 +189,8 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
   const config = loadConfig(env);
   const square = createSquareService(config, fetchImpl);
   const allowRequest = createRateLimiter();
+  const partnerStore = createPartnerStore(config.dataDir, config.partners);
+  const couponStore = createCouponStore(config.dataDir);
 
   async function checkNewCustomerEligibility(contact, records) {
     const contactKey = offerContactKey(contact);
@@ -169,7 +207,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
     const corsHeaders = origin === config.allowedOrigin ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {};
     if (origin && origin !== config.allowedOrigin) return sendJson(response, 403, { error: { code: 'ORIGIN_NOT_ALLOWED', message: 'Origin is not allowed.' } });
     if (request.method === 'OPTIONS') {
-      response.writeHead(204, { ...corsHeaders, 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
+      response.writeHead(204, { ...corsHeaders, 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS' });
       return response.end();
     }
 
@@ -189,6 +227,51 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
       if (request.method === 'GET' && pathname === '/config') {
         return sendJson(response, 200, publicConfig(config), corsHeaders);
       }
+      if (pathname === '/admin/partners' && request.method === 'GET') {
+        if (!allowRequest(`${ip}:admin`, 120)) throw new AppError(429, 'RATE_LIMITED', 'Too many administrator requests.');
+        if (!requireAdmin(request, response, config, corsHeaders)) return;
+        const records = await readReservationRecords(config.dataDir);
+        const partners = await partnerStore.list();
+        return sendJson(response, 200, {
+          partners: partners.map(partner => adminPartnerView(partner, partnerRedemptionStatus(records, partner.code), config.appBaseUrl))
+        }, corsHeaders);
+      }
+      if (pathname === '/admin/partners' && request.method === 'POST') {
+        if (!allowRequest(`${ip}:admin-write`, 30)) throw new AppError(429, 'RATE_LIMITED', 'Too many administrator changes.');
+        if (!requireAdmin(request, response, config, corsHeaders)) return;
+        const partner = await partnerStore.create(await readJson(request));
+        return sendJson(response, 201, {
+          partner: adminPartnerView(partner, 'available', config.appBaseUrl)
+        }, corsHeaders);
+      }
+      if (pathname === '/admin/coupons' && request.method === 'GET') {
+        if (!allowRequest(`${ip}:admin`, 120)) throw new AppError(429, 'RATE_LIMITED', 'Too many administrator requests.');
+        if (!requireAdmin(request, response, config, corsHeaders)) return;
+        return sendJson(response, 200, { coupons: (await couponStore.list()).map(couponConfigEntry) }, corsHeaders);
+      }
+      if (pathname === '/admin/coupons' && request.method === 'POST') {
+        if (!allowRequest(`${ip}:admin-write`, 30)) throw new AppError(429, 'RATE_LIMITED', 'Too many administrator changes.');
+        if (!requireAdmin(request, response, config, corsHeaders)) return;
+        return sendJson(response, 201, { coupon: couponConfigEntry(await couponStore.create(await readJson(request))) }, corsHeaders);
+      }
+      const adminCouponMatch = pathname.match(/^\/admin\/coupons\/([A-Z0-9_-]{3,40})$/i);
+      if (adminCouponMatch && request.method === 'PUT') {
+        if (!allowRequest(`${ip}:admin-write`, 30)) throw new AppError(429, 'RATE_LIMITED', 'Too many administrator changes.');
+        if (!requireAdmin(request, response, config, corsHeaders)) return;
+        return sendJson(response, 200, {
+          coupon: couponConfigEntry(await couponStore.update(adminCouponMatch[1], await readJson(request)))
+        }, corsHeaders);
+      }
+      const adminPartnerMatch = pathname.match(/^\/admin\/partners\/([A-Z0-9_-]{3,40})$/i);
+      if (adminPartnerMatch && request.method === 'PUT') {
+        if (!allowRequest(`${ip}:admin-write`, 30)) throw new AppError(429, 'RATE_LIMITED', 'Too many administrator changes.');
+        if (!requireAdmin(request, response, config, corsHeaders)) return;
+        const partner = await partnerStore.update(adminPartnerMatch[1], await readJson(request));
+        const records = await readReservationRecords(config.dataDir);
+        return sendJson(response, 200, {
+          partner: adminPartnerView(partner, partnerRedemptionStatus(records, partner.code), config.appBaseUrl)
+        }, corsHeaders);
+      }
       if (request.method === 'GET' && pathname === '/packages') {
         if (!allowRequest(`${ip}:packages`, 60)) throw new AppError(429, 'RATE_LIMITED', 'Too many package requests.');
         if (!config.squareConfigured) throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square Sandbox credentials are not configured yet.');
@@ -205,28 +288,29 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
       const partnerMatch = pathname.match(/^\/partners\/([A-Za-z0-9_-]{22,128})$/);
       if (request.method === 'GET' && partnerMatch) {
         if (!allowRequest(`${ip}:partner-pass`, 30)) throw new AppError(429, 'RATE_LIMITED', 'Too many Partner Pass requests.');
-        const partner = resolvePartner(config.partners, partnerMatch[1]);
+        const partner = resolvePartner(await partnerStore.all(), partnerMatch[1]);
         const records = await readReservationRecords(config.dataDir);
         return sendJson(response, 200, { partner: publicPartner(partner, partnerRedemptionStatus(records, partner.code)) }, corsHeaders);
       }
       const partnerQrMatch = pathname.match(/^\/partners\/([A-Za-z0-9_-]{22,128})\/qr\.svg$/);
       if (request.method === 'GET' && partnerQrMatch) {
         if (!allowRequest(`${ip}:partner-qr`, 30)) throw new AppError(429, 'RATE_LIMITED', 'Too many QR requests.');
-        const partner = resolvePartner(config.partners, partnerQrMatch[1]);
-        const campaign = resolveCampaign(config.partners, partner.qrCampaignId);
+        const partners = await partnerStore.all();
+        const partner = resolvePartner(partners, partnerQrMatch[1]);
+        const campaign = resolveCampaign(partners, partner.qrCampaignId);
         const svg = await QRCode.toString(campaignBookingUrl(config.appBaseUrl, campaign), { type: 'svg', margin: 2, width: 512, errorCorrectionLevel: 'M' });
         return sendSvg(response, 200, svg);
       }
       const campaignMatch = pathname.match(/^\/campaigns\/([A-Za-z0-9_.:-]{3,100})$/);
       if (request.method === 'GET' && campaignMatch) {
         if (!allowRequest(`${ip}:campaign`, 60)) throw new AppError(429, 'RATE_LIMITED', 'Too many campaign requests.');
-        return sendJson(response, 200, { campaign: publicCampaign(resolveCampaign(config.partners, campaignMatch[1])) }, corsHeaders);
+        return sendJson(response, 200, { campaign: publicCampaign(resolveCampaign(await partnerStore.all(), campaignMatch[1])) }, corsHeaders);
       }
       const campaignEligibilityMatch = pathname.match(/^\/campaigns\/([A-Za-z0-9_.:-]{3,100})\/eligibility$/);
       if (request.method === 'POST' && campaignEligibilityMatch) {
         if (!allowRequest(`${ip}:campaign-eligibility`, 12)) throw new AppError(429, 'RATE_LIMITED', 'Too many eligibility checks.');
         if (!config.squareConfigured) throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square is not configured yet.');
-        const campaign = resolveCampaign(config.partners, campaignEligibilityMatch[1]);
+        const campaign = resolveCampaign(await partnerStore.all(), campaignEligibilityMatch[1]);
         const contact = normalizeOfferContact(await readJson(request));
         const result = await checkNewCustomerEligibility(contact, await readReservationRecords(config.dataDir));
         return sendJson(response, 200, {
@@ -355,7 +439,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         const couponCode = normalizeCouponCode(input.couponCode);
         if (!couponCode) throw new AppError(400, 'INVALID_COUPON', 'Enter a coupon code.');
         const selections = normalizeModifierSelections(input.modifiers);
-        const coupon = resolveCoupon(config, couponCode);
+        const coupon = resolveCoupon(await couponStore.all(), couponCode);
         const packageDetails = await square.getPackage(durationHours);
         const pricing = applyCoupon(
           calculatePricing(packageDetails, selections),
@@ -385,8 +469,9 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           throw new AppError(400, 'INVALID_EXPECTED_TOTAL', 'The displayed payment total is invalid.');
         }
         const reservation = validateReservation(input);
-        const partner = input.partnerToken ? resolvePartner(config.partners, input.partnerToken) : null;
-        const campaign = input.campaignId ? resolveCampaign(config.partners, input.campaignId) : null;
+        const partners = await partnerStore.all();
+        const partner = input.partnerToken ? resolvePartner(partners, input.partnerToken) : null;
+        const campaign = input.campaignId ? resolveCampaign(partners, input.campaignId) : null;
         if (partner && reservation.couponCode) throw new AppError(400, 'PARTNER_COUPON_NOT_ALLOWED', 'Coupons cannot be combined with a Partner Pass.');
         if (campaign && (partner || reservation.couponCode || reservation.attribution.qrCampaignId !== campaign.id)) {
           throw new AppError(400, 'CAMPAIGN_NOT_ELIGIBLE', 'This event offer cannot be combined with another offer.');
@@ -403,7 +488,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           const eligibility = await checkNewCustomerEligibility(campaignContact, await readReservationRecords(config.dataDir));
           if (!eligibility.eligible) throw new AppError(409, 'NEW_CUSTOMER_OFFER_NOT_ELIGIBLE', `This ${campaign.discountPercent}% offer is limited to customers without a previous completed BoomBoxCar purchase.`);
         }
-        const coupon = resolveCoupon(config, reservation.couponCode);
+        const coupon = resolveCoupon(await couponStore.all(), reservation.couponCode);
         const packageDetails = await square.getPackage(reservation.durationHours);
         let pricing = applyCoupon(
           calculatePricing(packageDetails, reservation.modifiers),
@@ -598,7 +683,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
       if (request.method === 'POST' && partnerReservationMatch) {
         if (!allowRequest(`${ip}:partner-reservation`, 6)) throw new AppError(429, 'RATE_LIMITED', 'Too many Partner Pass attempts.');
         if (!config.squareConfigured) throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square is not configured yet.');
-        const partner = resolvePartner(config.partners, partnerReservationMatch[1]);
+        const partner = resolvePartner(await partnerStore.all(), partnerReservationMatch[1]);
         const input = await readJson(request);
         const permissions = normalizePartnerPermissions(input.partnerPermissions);
         const reservation = validateReservation({ ...input, couponCode: '' });

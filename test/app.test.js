@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createApp } from '../server/app.js';
@@ -27,7 +27,6 @@ const placeholderEnv = {
   SQUARE_SERVICE_VARIATION_3H: 'REPLACE_WITH_3H_VARIATION_ID',
   SQUARE_SERVICE_VARIATION_4H: 'REPLACE_WITH_4H_VARIATION_ID',
   SQUARE_SERVICE_VARIATION_8H: 'REPLACE_WITH_8H_VARIATION_ID',
-  BOOMBOXCAR_COUPONS: 'PRIVATE50:FIXED:50',
   APP_BASE_URL: 'http://localhost', ALLOWED_ORIGIN: 'http://localhost'
 };
 
@@ -101,6 +100,90 @@ test('private Partner Pass lookup returns safe invitation details and rejects in
   }
 });
 
+test('business admin requires Basic Authentication and persists partners and coupons', async () => {
+  const dataDir = await mkdtemp(path.join(os.tmpdir(), 'boomboxcar-admin-'));
+  const adminEnv = {
+    ...placeholderEnv, DATA_DIR: dataDir, BOOMBOXCAR_PARTNERS: '[]',
+    BOOMBOXCAR_ADMIN_USERNAME: 'partner-admin', BOOMBOXCAR_ADMIN_PASSWORD: 'test-password-123'
+  };
+  const authorization = `Basic ${Buffer.from('partner-admin:test-password-123').toString('base64')}`;
+  const partnerInput = {
+    code: 'VENUE26', name: 'Test Venue', venueAddress: {
+      addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
+      administrativeDistrictLevel1: 'MD', postalCode: '20910'
+    },
+    maxHours: 4, valueCap: 599, futureDiscountPercent: 15,
+    newCustomerDiscountPercent: 10, newCustomerOfferEndsOn: '2099-11-30', expiresOn: '2099-12-31',
+    sourceReferralId: 'VENUE26', qrCampaignId: 'VENUE26-EVENT', active: true
+  };
+  try {
+    let createdToken = '';
+    await withServer(adminEnv, async baseUrl => {
+      const unauthorized = await fetch(`${baseUrl}/api/admin/partners`);
+      assert.equal(unauthorized.status, 401);
+      assert.match(unauthorized.headers.get('www-authenticate'), /Basic realm=/);
+      const rejected = await fetch(`${baseUrl}/api/admin/partners`, {
+        headers: { Authorization: `Basic ${Buffer.from('partner-admin:wrong-password').toString('base64')}` }
+      });
+      assert.equal(rejected.status, 401);
+      assert.equal(rejected.headers.get('www-authenticate'), null);
+
+      const created = await fetch(`${baseUrl}/api/admin/partners`, {
+        method: 'POST', headers: { Authorization: authorization, 'Content-Type': 'application/json' },
+        body: JSON.stringify(partnerInput)
+      });
+      assert.equal(created.status, 201);
+      const payload = await created.json();
+      createdToken = payload.partner.token;
+      assert.match(createdToken, /^[A-Za-z0-9_-]{22,128}$/);
+      assert.match(payload.partner.privateUrl, /\/partner\/\?pass=/);
+      assert.match(payload.partner.qrImageUrl, /\/api\/partners\/.+\/qr\.svg$/);
+      assert.equal(JSON.stringify(payload).includes('test-password-123'), false);
+
+      const publicPartner = await fetch(`${baseUrl}/api/partners/${createdToken}`);
+      assert.equal(publicPartner.status, 200);
+
+      const updated = await fetch(`${baseUrl}/api/admin/partners/VENUE26`, {
+        method: 'PUT', headers: { Authorization: authorization, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...partnerInput, name: 'Updated Test Venue', active: false })
+      });
+      assert.equal(updated.status, 200);
+      assert.equal((await updated.json()).partner.active, false);
+      assert.equal((await fetch(`${baseUrl}/api/partners/${createdToken}`)).status, 404);
+
+      const createdCoupon = await fetch(`${baseUrl}/api/admin/coupons`, {
+        method: 'POST', headers: { Authorization: authorization, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: 'SAVE10', type: 'PERCENT', value: 10, active: true })
+      });
+      assert.equal(createdCoupon.status, 201);
+      assert.deepEqual((await createdCoupon.json()).coupon, { code: 'SAVE10', type: 'PERCENT', value: 10, active: true });
+      const updatedCoupon = await fetch(`${baseUrl}/api/admin/coupons/SAVE10`, {
+        method: 'PUT', headers: { Authorization: authorization, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'FIXED', value: 25, active: false })
+      });
+      assert.equal(updatedCoupon.status, 200);
+      assert.deepEqual((await updatedCoupon.json()).coupon, { code: 'SAVE10', type: 'FIXED', value: 25, active: false });
+    });
+
+    const stored = JSON.parse(await readFile(path.join(dataDir, 'partners.json'), 'utf8'));
+    assert.equal(stored[0].name, 'Updated Test Venue');
+    assert.equal(stored[0].active, false);
+    const storedCoupons = JSON.parse(await readFile(path.join(dataDir, 'coupons.json'), 'utf8'));
+    assert.deepEqual(storedCoupons, [{ code: 'SAVE10', type: 'FIXED', value: 25, active: false }]);
+
+    await withServer(adminEnv, async baseUrl => {
+      const payload = await fetch(`${baseUrl}/api/admin/partners`, { headers: { Authorization: authorization } }).then(response => response.json());
+      assert.equal(payload.partners.length, 1);
+      assert.equal(payload.partners[0].name, 'Updated Test Venue');
+      assert.equal(payload.partners[0].token, createdToken);
+      const couponPayload = await fetch(`${baseUrl}/api/admin/coupons`, { headers: { Authorization: authorization } }).then(response => response.json());
+      assert.deepEqual(couponPayload.coupons, [{ code: 'SAVE10', type: 'FIXED', value: 25, active: false }]);
+    });
+  } finally {
+    await rm(dataDir, { recursive: true, force: true });
+  }
+});
+
 test('event QR eligibility accepts a new contact and rejects completed local customers', async () => {
   const token = 'abcdefghijklmnopqrstuv';
   const dataDir = await mkdtemp(path.join(os.tmpdir(), 'boomboxcar-campaign-'));
@@ -151,8 +234,10 @@ test('hosted checkout reservation creation is no longer exposed', async () => {
 
 test('embedded Google Pay checkout rejects a stale displayed total before creating a booking or charge', async () => {
   const squareRequests = [];
+  const dataDir = await mkdtemp(path.join(os.tmpdir(), 'boomboxcar-coupon-payment-'));
   const configuredEnv = {
     ...placeholderEnv,
+    DATA_DIR: dataDir,
     SQUARE_ACCESS_TOKEN: 'sandbox-token',
     SQUARE_APPLICATION_ID: 'sandbox-sq0idb-app',
     SQUARE_LOCATION_ID: 'LOCATION-1',
@@ -161,8 +246,7 @@ test('embedded Google Pay checkout rejects a stale displayed total before creati
     SQUARE_SERVICE_VARIATION_2H: 'SERVICE-2H',
     SQUARE_SERVICE_VARIATION_3H: 'SERVICE-3H',
     SQUARE_SERVICE_VARIATION_4H: 'SERVICE-4H',
-    SQUARE_SERVICE_VARIATION_8H: 'SERVICE-8H',
-    BOOMBOXCAR_COUPONS: 'SAVE10:PERCENT:10'
+    SQUARE_SERVICE_VARIATION_8H: 'SERVICE-8H'
   };
   const variation = {
     type: 'ITEM_VARIATION', id: 'SERVICE-3H',
@@ -183,39 +267,44 @@ test('embedded Google Pay checkout rejects a stale displayed total before creati
     return new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } });
   };
 
-  await withServer(configuredEnv, async baseUrl => {
-    const couponResponse = await fetch(`${baseUrl}/api/coupons/validate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ couponCode: 'save10', durationHours: 3, modifiers: [] })
-    });
-    assert.equal(couponResponse.status, 200);
-    const couponResult = await couponResponse.json();
-    assert.equal(couponResult.coupon.code, 'SAVE10');
-    assert.equal(couponResult.coupon.amount, 54.9);
-    assert.equal(couponResult.pricing.total, 494.1);
+  try {
+    await writeFile(path.join(dataDir, 'coupons.json'), `${JSON.stringify([{ code: 'SAVE10', type: 'PERCENT', value: 10, active: true }])}\n`);
+    await withServer(configuredEnv, async baseUrl => {
+      const couponResponse = await fetch(`${baseUrl}/api/coupons/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ couponCode: 'save10', durationHours: 3, modifiers: [] })
+      });
+      assert.equal(couponResponse.status, 200);
+      const couponResult = await couponResponse.json();
+      assert.equal(couponResult.coupon.code, 'SAVE10');
+      assert.equal(couponResult.coupon.amount, 54.9);
+      assert.equal(couponResult.pricing.total, 494.1);
 
-    const response = await fetch(`${baseUrl}/api/reservations/payment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sourceToken: 'cnon:google-pay-token', paymentMethod: 'googlePay', expectedTotalCents: 54800,
-        locale: 'en', eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00Z', durationHours: 3,
-        modifiers: [],
-        address: {
-          addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
-          administrativeDistrictLevel1: 'MD', postalCode: '20910'
-        },
-        eventType: 'Community event', setting: 'Outdoor', attendance: 100, requests: '',
-        customer: { givenName: 'Test', familyName: 'Customer', email: 'buyer@example.com', phone: '240-555-0100' }
-      })
-    });
-    assert.equal(response.status, 409);
-    assert.equal((await response.json()).error.code, 'PRICE_CHANGED');
-  }, fakeFetch);
-  assert.equal(squareRequests.length, 2);
-  assert.equal(squareRequests.some(url => url.includes('/v2/bookings')), false);
-  assert.equal(squareRequests.some(url => url.includes('/v2/payments')), false);
+      const response = await fetch(`${baseUrl}/api/reservations/payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceToken: 'cnon:google-pay-token', paymentMethod: 'googlePay', expectedTotalCents: 54800,
+          locale: 'en', eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00Z', durationHours: 3,
+          modifiers: [],
+          address: {
+            addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
+            administrativeDistrictLevel1: 'MD', postalCode: '20910'
+          },
+          eventType: 'Community event', setting: 'Outdoor', attendance: 100, requests: '',
+          customer: { givenName: 'Test', familyName: 'Customer', email: 'buyer@example.com', phone: '240-555-0100' }
+        })
+      });
+      assert.equal(response.status, 409);
+      assert.equal((await response.json()).error.code, 'PRICE_CHANGED');
+    }, fakeFetch);
+    assert.equal(squareRequests.length, 2);
+    assert.equal(squareRequests.some(url => url.includes('/v2/bookings')), false);
+    assert.equal(squareRequests.some(url => url.includes('/v2/payments')), false);
+  } finally {
+    await rm(dataDir, { recursive: true, force: true });
+  }
 });
 
 test('returns a paid confirmation only with its private token', async () => {

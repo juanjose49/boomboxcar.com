@@ -15,20 +15,6 @@ function configured(value) {
   return Boolean(value && !String(value).startsWith('REPLACE_WITH_'));
 }
 
-function parseCoupons(value) {
-  const coupons = new Map();
-  for (const entry of String(value || '').split(',').map(part => part.trim()).filter(Boolean)) {
-    const [rawCode, rawType, rawValue, ...extra] = entry.split(':').map(part => part.trim());
-    const code = rawCode?.toUpperCase();
-    const type = rawType?.toUpperCase();
-    const amount = Number(rawValue);
-    if (extra.length || !/^[A-Z0-9_-]{3,40}$/.test(code || '') || !Number.isFinite(amount) || amount <= 0) continue;
-    if (type === 'PERCENT' && amount <= 100) coupons.set(code, { code, type: 'PERCENT', value: amount });
-    if (type === 'FIXED') coupons.set(code, { code, type: 'FIXED', value: Math.round(amount * 100) / 100 });
-  }
-  return coupons;
-}
-
 export function loadConfig(env = process.env) {
   const packages = Object.fromEntries(Object.entries(PACKAGES).map(([hours, pkg]) => [hours, {
     ...pkg,
@@ -61,8 +47,12 @@ export function loadConfig(env = process.env) {
     appBaseUrl: env.APP_BASE_URL || 'http://localhost:3100',
     allowedOrigin: env.ALLOWED_ORIGIN || 'http://localhost:3100',
     dataDir: env.DATA_DIR || `${process.cwd()}/data`,
-    coupons: parseCoupons(env.BOOMBOXCAR_COUPONS),
     partners: parsePartners(env.BOOMBOXCAR_PARTNERS),
+    adminUsername: env.BOOMBOXCAR_ADMIN_USERNAME || '',
+    adminPassword: env.BOOMBOXCAR_ADMIN_PASSWORD || '',
+    adminConfigured: configured(env.BOOMBOXCAR_ADMIN_USERNAME)
+      && configured(env.BOOMBOXCAR_ADMIN_PASSWORD)
+      && String(env.BOOMBOXCAR_ADMIN_PASSWORD).length >= 12,
     squareWebhookSignatureKey: env.SQUARE_WEBHOOK_SIGNATURE_KEY || '',
     squareWebhookNotificationUrl: env.SQUARE_WEBHOOK_NOTIFICATION_URL || '',
     squareWebhookConfigured: configured(env.SQUARE_WEBHOOK_SIGNATURE_KEY) && configured(env.SQUARE_WEBHOOK_NOTIFICATION_URL),

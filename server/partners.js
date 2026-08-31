@@ -12,6 +12,56 @@ function clean(value, max = 100) {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
+function normalizePartnerEntry(entry) {
+  const token = clean(entry?.token, 128);
+  const code = clean(entry?.code, 40).toUpperCase();
+  const name = clean(entry?.name, 120);
+  const maxHours = Number(entry?.maxHours ?? 2);
+  const valueCap = Number(entry?.valueCap ?? DEFAULT_VALUE_CAP);
+  const futureDiscountPercent = Number(entry?.futureDiscountPercent ?? DEFAULT_FUTURE_DISCOUNT_PERCENT);
+  const venueAddress = normalizeEventAddress(entry?.venueAddress);
+  const expiresOn = clean(entry?.expiresOn, 10);
+  const newCustomerDiscountPercent = Number(entry?.newCustomerDiscountPercent ?? 10);
+  const newCustomerOfferEndsOn = clean(entry?.newCustomerOfferEndsOn, 10);
+  const sourceReferralId = clean(entry?.sourceReferralId || code, 100);
+  const qrCampaignId = clean(entry?.qrCampaignId || `${code}-EVENT`, 100);
+  if (!TOKEN_PATTERN.test(token)) throw new AppError(400, 'INVALID_PARTNER_TOKEN', 'Partner token is invalid.');
+  if (!CODE_PATTERN.test(code)) throw new AppError(400, 'INVALID_PARTNER_CODE', 'Partner code must be 3 to 40 letters, numbers, underscores, or hyphens.');
+  if (!name) throw new AppError(400, 'INVALID_PARTNER_NAME', 'Partner name is required.');
+  if (![2, 3, 4].includes(maxHours)) throw new AppError(400, 'INVALID_PARTNER_HOURS', 'Maximum activation hours must be 2, 3, or 4.');
+  if (!Number.isFinite(valueCap) || valueCap <= 0 || valueCap > DEFAULT_VALUE_CAP) throw new AppError(400, 'INVALID_PARTNER_VALUE', 'Partner value must be greater than 0 and no more than $599.');
+  if (!Number.isFinite(futureDiscountPercent) || futureDiscountPercent <= 0 || futureDiscountPercent > 50) throw new AppError(400, 'INVALID_PARTNER_RATE', 'Future discount must be greater than 0 and no more than 50 percent.');
+  if (expiresOn && !/^\d{4}-\d{2}-\d{2}$/.test(expiresOn)) throw new AppError(400, 'INVALID_PARTNER_EXPIRATION', 'Partner expiration must use YYYY-MM-DD.');
+  if (!Number.isFinite(newCustomerDiscountPercent) || newCustomerDiscountPercent <= 0 || newCustomerDiscountPercent > 50) throw new AppError(400, 'INVALID_CAMPAIGN_RATE', 'New-customer discount must be greater than 0 and no more than 50 percent.');
+  if (newCustomerOfferEndsOn && !/^\d{4}-\d{2}-\d{2}$/.test(newCustomerOfferEndsOn)) throw new AppError(400, 'INVALID_CAMPAIGN_EXPIRATION', 'Event offer expiration must use YYYY-MM-DD.');
+  if (newCustomerOfferEndsOn && expiresOn && newCustomerOfferEndsOn > expiresOn) throw new AppError(400, 'INVALID_CAMPAIGN_EXPIRATION', 'Event offer expiration cannot be later than the partner expiration.');
+  if (!/^[A-Za-z0-9_.:-]{3,100}$/.test(sourceReferralId) || !/^[A-Za-z0-9_.:-]{3,100}$/.test(qrCampaignId)) {
+    throw new AppError(400, 'INVALID_PARTNER_ATTRIBUTION', 'Source and QR campaign identifiers may use letters, numbers, periods, colons, underscores, and hyphens.');
+  }
+  return Object.freeze({
+    token, code, name, maxHours, valueCap: Math.round(valueCap * 100) / 100,
+    futureDiscountPercent: Math.round(futureDiscountPercent * 100) / 100,
+    venueAddress: Object.freeze(venueAddress), expiresOn,
+    newCustomerDiscountPercent: Math.round(newCustomerDiscountPercent * 100) / 100,
+    newCustomerOfferEndsOn, active: entry.active !== false, sourceReferralId, qrCampaignId
+  });
+}
+
+export function createPartnerEntry(input, token = randomBytes(24).toString('base64url')) {
+  return normalizePartnerEntry({ ...input, token });
+}
+
+export function partnerConfigEntry(partner) {
+  return {
+    token: partner.token, code: partner.code, name: partner.name, venueAddress: partner.venueAddress,
+    maxHours: partner.maxHours, valueCap: partner.valueCap,
+    futureDiscountPercent: partner.futureDiscountPercent,
+    newCustomerDiscountPercent: partner.newCustomerDiscountPercent,
+    newCustomerOfferEndsOn: partner.newCustomerOfferEndsOn, expiresOn: partner.expiresOn,
+    sourceReferralId: partner.sourceReferralId, qrCampaignId: partner.qrCampaignId, active: partner.active
+  };
+}
+
 export function parsePartners(value) {
   if (!value) return new Map();
   let entries;
@@ -20,33 +70,10 @@ export function parsePartners(value) {
   if (!Array.isArray(entries)) return new Map();
   const partners = new Map();
   for (const entry of entries) {
-    const token = clean(entry?.token, 128);
-    const code = clean(entry?.code, 40).toUpperCase();
-    const name = clean(entry?.name, 120);
-    const maxHours = Number(entry?.maxHours ?? 2);
-    const valueCap = Number(entry?.valueCap ?? DEFAULT_VALUE_CAP);
-    const futureDiscountPercent = Number(entry?.futureDiscountPercent ?? DEFAULT_FUTURE_DISCOUNT_PERCENT);
-    let venueAddress;
-    try { venueAddress = normalizeEventAddress(entry?.venueAddress); }
-    catch (_) { continue; }
-    const expiresOn = clean(entry?.expiresOn, 10);
-    const newCustomerDiscountPercent = Number(entry?.newCustomerDiscountPercent ?? 10);
-    const newCustomerOfferEndsOn = clean(entry?.newCustomerOfferEndsOn, 10);
-    if (!TOKEN_PATTERN.test(token) || !CODE_PATTERN.test(code) || !name || ![2, 3, 4].includes(maxHours)
-      || !Number.isFinite(valueCap) || valueCap <= 0 || valueCap > DEFAULT_VALUE_CAP) continue;
-    if (!Number.isFinite(futureDiscountPercent) || futureDiscountPercent <= 0 || futureDiscountPercent > 50) continue;
-    if (expiresOn && !/^\d{4}-\d{2}-\d{2}$/.test(expiresOn)) continue;
-    if (!Number.isFinite(newCustomerDiscountPercent) || newCustomerDiscountPercent <= 0 || newCustomerDiscountPercent > 50) continue;
-    if (newCustomerOfferEndsOn && !/^\d{4}-\d{2}-\d{2}$/.test(newCustomerOfferEndsOn)) continue;
-    partners.set(token, Object.freeze({
-      token, code, name, maxHours, valueCap: Math.round(valueCap * 100) / 100,
-      futureDiscountPercent: Math.round(futureDiscountPercent * 100) / 100, venueAddress: Object.freeze(venueAddress), expiresOn,
-      newCustomerDiscountPercent: Math.round(newCustomerDiscountPercent * 100) / 100,
-      newCustomerOfferEndsOn,
-      active: entry.active !== false,
-      sourceReferralId: clean(entry.sourceReferralId || code, 100),
-      qrCampaignId: clean(entry.qrCampaignId || `${code}-ACTIVATION`, 100)
-    }));
+    try {
+      const partner = normalizePartnerEntry(entry);
+      if (![...partners.values()].some(existing => existing.code === partner.code)) partners.set(partner.token, partner);
+    } catch (_) {}
   }
   return partners;
 }
