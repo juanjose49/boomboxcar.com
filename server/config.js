@@ -1,6 +1,7 @@
 export const EVENT_TIME_ZONE = 'America/New_York';
 export const MINIMUM_NOTICE_HOURS = 18;
 export const PAYMENT_TTL_MINUTES = 30;
+import { parsePartners } from './partners.js';
 
 export const PACKAGES = Object.freeze({
   1: { hours: 1, price: 249, envKey: 'SQUARE_SERVICE_VARIATION_1H' },
@@ -61,6 +62,7 @@ export function loadConfig(env = process.env) {
     allowedOrigin: env.ALLOWED_ORIGIN || 'http://localhost:3100',
     dataDir: env.DATA_DIR || `${process.cwd()}/data`,
     coupons: parseCoupons(env.BOOMBOXCAR_COUPONS),
+    partners: parsePartners(env.BOOMBOXCAR_PARTNERS),
     squareWebhookSignatureKey: env.SQUARE_WEBHOOK_SIGNATURE_KEY || '',
     squareWebhookNotificationUrl: env.SQUARE_WEBHOOK_NOTIFICATION_URL || '',
     squareWebhookConfigured: configured(env.SQUARE_WEBHOOK_SIGNATURE_KEY) && configured(env.SQUARE_WEBHOOK_NOTIFICATION_URL),

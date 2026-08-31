@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applyCoupon, buildCustomerNote, calculatePricing, createConfirmationToken, findAvailableSlot, validateReservation } from '../server/reservations.js';
+import { applyPartnerPass, applyPartnerRate, campaignBookingUrl, normalizePartnerPermissions, parsePartners, partnerAlreadyRedeemed, partnerRedemptionStatus, publicPartner, resolveCampaign, resolvePartner, validatePartnerVenue } from '../server/partners.js';
 
 const validInput = {
   locale: 'en', eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00.000Z', durationHours: 1,
@@ -153,4 +154,55 @@ test('normalizes coupon codes and rejects unsupported characters', () => {
   const reservation = validateReservation({ ...validInput, couponCode: ' save-10 ' });
   assert.equal(reservation.couponCode, 'SAVE-10');
   assert.throws(() => validateReservation({ ...validInput, couponCode: 'save 10' }), /valid coupon code/i);
+});
+
+test('partner configuration stays private and limits eligible durations', () => {
+  const token = 'abcdefghijklmnopqrstuv';
+  const partners = parsePartners(JSON.stringify([{
+    token, code: 'DTSS26', name: 'Downtown Silver Spring', maxHours: 4,
+    venueAddress: validInput.address, futureDiscountPercent: 15,
+    expiresOn: '2099-12-31', sourceReferralId: 'DTSS26', qrCampaignId: 'DTSS26-A1',
+    newCustomerDiscountPercent: 10, newCustomerOfferEndsOn: '2099-11-30'
+  }]));
+  const partner = resolvePartner(partners, token, new Date('2099-01-01T00:00:00Z'));
+  assert.deepEqual(publicPartner(partner).eligibleDurations, [2, 3, 4]);
+  assert.deepEqual(publicPartner(partner).venueAddress, validInput.address);
+  assert.equal(publicPartner(partner).formattedVenueAddress, '123 Test Street, Silver Spring, MD 20910');
+  assert.deepEqual(publicPartner(partner).eventOffer, { campaignId: 'DTSS26-A1', discountPercent: 10, endsOn: '2099-11-30' });
+  assert.equal(JSON.stringify(publicPartner(partner)).includes(token), false);
+  const campaign = resolveCampaign(partners, 'DTSS26-A1', new Date('2099-01-01T00:00:00Z'));
+  assert.equal(campaignBookingUrl('https://boomboxcar.com', campaign), 'https://boomboxcar.com/?ref=DTSS26&qr=DTSS26-A1&utm_source=event_qr&utm_medium=offline&utm_campaign=DTSS26-A1#campaignOffer');
+});
+
+test('redeemed partners receive the ongoing rate for the configured venue regardless of customer email', () => {
+  const pricing = { basePrice: 399, modifiers: [{ name: 'Add-on', price: 100 }], total: 499, currency: 'USD' };
+  const partner = { code: 'TEST26', futureDiscountPercent: 15, venueAddress: validInput.address };
+  const discounted = applyPartnerRate(pricing, partner);
+  assert.equal(discounted.partnerDiscount.amount, 74.85);
+  assert.equal(discounted.total, 424.15);
+  assert.deepEqual(validatePartnerVenue(partner, { ...validInput.address, addressLine1: '123 TEST STREET' }), validInput.address);
+  assert.throws(() => validatePartnerVenue(partner, { ...validInput.address, addressLine1: '125 Test Street' }), /partner venue address/i);
+  assert.equal(partnerRedemptionStatus([{ recordType: 'PARTNER_REDEMPTION_COMPLETED', partnerCode: 'TEST26' }], 'TEST26'), 'redeemed');
+});
+
+test('Partner Pass applies up to $599 across duration and add-ons, then leaves only the excess due', () => {
+  const pricing = calculatePricing(packageDetails, [{ id: 'LASER', quantity: 1 }]);
+  const partnerPricing = applyPartnerPass(pricing, { code: 'TEST26', maxHours: 2, valueCap: 599 }, 2);
+  assert.equal(partnerPricing.partnerDiscount.amount, 299);
+  assert.equal(partnerPricing.partnerDiscount.retailValue, 299);
+  assert.equal(partnerPricing.total, 0);
+
+  const excessPricing = applyPartnerPass({ ...pricing, basePrice: 399, total: 674 }, { code: 'TEST26', maxHours: 2, valueCap: 599 }, 2);
+  assert.equal(excessPricing.partnerDiscount.amount, 599);
+  assert.equal(excessPricing.total, 75);
+  assert.throws(() => applyPartnerPass(pricing, { code: 'TEST26', maxHours: 2 }, 3), /covers up to 2 hours/i);
+});
+
+test('Partner Pass requires every onsite permission and enforces one active redemption', () => {
+  assert.throws(() => normalizePartnerPermissions({ signageAndQr: true }), /Accept all Partner Pass/i);
+  assert.deepEqual(normalizePartnerPermissions({ signageAndQr: true, photoVideo: true, publicIdentification: true, safetyAndVenue: true }), {
+    signageAndQr: true, photoVideo: true, publicIdentification: true, safetyAndVenue: true
+  });
+  assert.equal(partnerAlreadyRedeemed([{ recordType: 'PARTNER_REDEMPTION_COMPLETED', partnerCode: 'TEST26' }], 'TEST26'), true);
+  assert.equal(partnerAlreadyRedeemed([{ recordType: 'PARTNER_REDEMPTION_CLAIM', partnerCode: 'TEST26', claimId: 'claim', expiresAt: '2000-01-01T00:00:00Z' }], 'TEST26'), false);
 });

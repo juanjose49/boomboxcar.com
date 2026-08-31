@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>BoomBoxCar Partner</title>
+  <link rel="stylesheet" href="/index.css?v=20260830-event-qr-v2" />
+</head>
+<body>
+  <main class="partner-portal-main">
+    <section class="partner-pass partner-portal" aria-labelledby="partnerTitle">
+      <p class="eyebrow">Private partner page</p>
+      <h1 id="partnerTitle">BoomBoxCar Partner</h1>
+      <p id="status">Validating your partner link…</p>
+      <div id="partnerContent" hidden>
+        <p class="partner-benefit" id="partnerBenefit"></p>
+        <p id="partnerVenue"></p>
+        <button class="btn btn-primary" id="bookPartner" type="button">Book with your partner benefit</button>
+        <div class="partner-share">
+          <h2>Your private partner link</h2>
+          <p>Use this link for your complimentary activation and future Partner Rate bookings. Share it only with authorized partner staff.</p>
+          <div class="partner-link-row"><input id="partnerLink" type="text" readonly aria-label="Partner link" /><button class="btn btn-secondary" id="copyPartnerLink" type="button">Copy link</button></div>
+          <div id="eventQrSection">
+            <h2>Public event QR code</h2>
+            <p id="eventQrOffer"></p>
+            <img id="partnerQr" width="256" height="256" alt="Public BoomBoxCar event QR code" />
+            <a class="btn btn-secondary" id="downloadPartnerQr" download="boomboxcar-event-qr.svg">Download event QR code</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/partner/partner.js?v=20260830-venue-partner" defer></script>
+</body>
+</html>

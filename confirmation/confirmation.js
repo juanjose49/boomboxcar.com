@@ -62,6 +62,25 @@
       language: reservation.locale,
       items: purchaseItems(reservation, pricing)
     });
+    if (data.partner) fireGA(data.partner.benefitType === 'activation' ? 'partner_activation_booked' : 'partner_rate_booking', {
+      partner_code: data.partner.code,
+      partner_benefit_type: data.partner.benefitType === 'activation' ? 'activation' : 'future_rate',
+      duration_hours: reservation.durationHours,
+      retail_value_redeemed: pricing.partnerDiscount?.amount,
+      event_type: reservation.details.eventType,
+      addon_count: pricing.modifiers.filter(modifier => modifier.price > 0).length,
+      value: pricing.total,
+      currency: pricing.currency || 'USD'
+    });
+    if (data.campaign) fireGA('event_qr_booking_completed', {
+      qr_campaign_id: data.campaign.id,
+      source_referral_id: data.campaign.sourceReferralId,
+      discount_percent: data.campaign.discountPercent,
+      discount_amount: pricing.discount?.amount,
+      event_type: reservation.details.eventType,
+      value: pricing.total,
+      currency: pricing.currency || 'USD'
+    });
   }
 
   const copy = {
@@ -195,7 +214,8 @@
     const lines = [
       { name: c.baseService(reservation.durationHours), quantity: 1, price: pricing.basePrice },
       ...pricing.modifiers,
-      ...(pricing.discount ? [{ name: c.coupon(pricing.discount.code), quantity: 1, price: -pricing.discount.amount }] : []),
+      ...(pricing.discount ? [{ name: pricing.discount.benefitType === 'newCustomer' ? pricing.discount.name : c.coupon(pricing.discount.code), quantity: 1, price: -pricing.discount.amount }] : []),
+      ...(pricing.partnerDiscount ? [{ name: pricing.partnerDiscount.name || 'BoomBoxCar Partner benefit', quantity: 1, price: -pricing.partnerDiscount.amount }] : []),
       ...(pricing.squareAdjustment ? [{
         name: pricing.squareAdjustment.amount < 0 ? c.squareDiscount : c.squareAdjustment,
         quantity: 1,

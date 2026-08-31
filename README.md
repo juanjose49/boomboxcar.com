@@ -1,6 +1,6 @@
 # BoomBoxCar.com
 
-BoomBoxCar is a bilingual static website with a dependency-free Node API for Square availability, booking creation, and embedded payment processing.
+BoomBoxCar is a bilingual static website with a Node API for Square availability, booking creation, and embedded payment processing.
 
 ## Homepage party video
 
@@ -40,6 +40,11 @@ GET  /api/packages
 GET  /api/modifiers?durationHours=1
 POST /api/availability
 POST /api/coupons/validate
+GET  /api/partners/:token
+GET  /api/partners/:token/qr.svg
+POST /api/partners/:token/reservations
+GET  /api/campaigns/:campaignId
+POST /api/campaigns/:campaignId/eligibility
 POST /api/reservations/payment
 GET  /api/confirmations/:reservationId?token=...
 POST /api/webhooks/square
@@ -60,6 +65,22 @@ The Square access token must permit Catalog reads, booking/customer operations, 
 Card, Apple Pay, and Google Pay payments use the same Orders and Payments API path. Register `boomboxcar.com` in the production Square application and keep Square's association file available at `https://boomboxcar.com/.well-known/apple-developer-merchantid-domain-association`. The Web Payments SDK requires HTTPS and the payment-page Content Security Policy in `index.html` and `es/index.html`. Apple Pay additionally requires a supported Safari and Apple Wallet device. Google Pay is rendered only through Square's Web Payments SDK and requires a supported browser and wallet. Sandbox Apple Pay testing still requires a real card in Apple Wallet, but Square does not charge it in the sandbox environment.
 
 Reservation records are appended to `data/reservations.jsonl` with owner-only permissions. The directory is ignored by Git and must remain outside `public_html` in production.
+
+## Partner onboarding
+
+Each partner has one permanent private page tied to its venue address. Before the complimentary activation is redeemed, the page applies up to the configured value cap across an eligible 2-, 3-, or 4-hour service and add-ons. The partner pays only the amount above that cap. After the activation, the same page automatically applies the configured partner rate, normally 15 percent, to future eligible services and add-ons. Different customers may use the page, but every discounted event must take place at the configured partner venue.
+
+Generate a partner entry and its permanent link with one command:
+
+```sh
+npm run partner:create -- --code DTSS26 --name "Downtown Silver Spring" --address-line1 "123 Main St" --city "Silver Spring" --state MD --postal-code 20910 --max-hours 4 --expires 2027-12-31
+```
+
+The command prints a ready-to-add JSON object and the private partner URL. Add that object to the server-only `BOOMBOXCAR_PARTNERS` JSON array in the cPanel environment, save the environment, and restart the Node application. Open the generated link once to verify the partner name, offer, and venue address. Send the private link to the partner for the activation and later partner-rate reservations. The booking form prefills and locks the venue address, and the server independently verifies it before applying either benefit.
+
+The partner page also generates a separate public event QR code for BoomBoxCar signage. It opens the normal booking page with `ref`, `qr`, and UTM attribution, shows a dated 10 percent new-customer offer, and records GA4 campaign events. The customer verifies the offer with their email and mobile number before checkout. The server searches Square customers by both fields, searches completed Square orders, checks completed BoomBoxCar reservation records, and repeats the eligibility check before creating the discounted order. The offer cannot be combined with a coupon or Partner Pass.
+
+Use `--address-line2` when a suite, unit, or clubhouse designation is part of the event address. The generated public event offer ends 14 days after onboarding by default. Use `--offer-expires YYYY-MM-DD` to choose the event deadline. The optional `--new-customer-discount`, `--future-discount`, `--value-cap`, `--source`, and `--qr-campaign` arguments override their defaults. The private token stays server-side and is not included in the public event QR. The page is not linked from the public site, is marked `noindex`, and requires the private token plus the configured venue address before either partner benefit is accepted.
 
 ## Square payment webhooks
 
@@ -95,7 +116,7 @@ Application URL: https://boomboxcar.com/api
 Startup file: server.js
 ```
 
-The application uses the environment variables listed in `.env.example`. Do not put the access token in Git or `public_html`.
+The application uses the environment variables listed in `.env.example`. Do not put the access token in Git or `public_html`. After the first deployment, and whenever `package-lock.json` changes, run cPanel's NPM Install action or run `npm install --omit=dev` in the application root before restarting the application.
 
 ## First server deployment
 

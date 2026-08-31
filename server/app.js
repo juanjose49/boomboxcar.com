@@ -6,7 +6,7 @@ import { MINIMUM_NOTICE_HOURS, PACKAGES, PAYMENT_TTL_MINUTES, loadConfig } from 
 import { AppError } from './errors.js';
 import { createSquareService } from './square.js';
 import {
-  applyCoupon,
+  applyCoupon, applyNewCustomerOffer,
   buildCustomerNote,
   calculatePricing,
   createConfirmationToken,
@@ -19,6 +19,15 @@ import {
   validateReservation
 } from './reservations.js';
 import { paymentEventRecord, verifySquareWebhook } from './webhooks.js';
+import QRCode from 'qrcode';
+import {
+  applyPartnerPass, applyPartnerRate, campaignBookingUrl, normalizePartnerPermissions, partnerClaimId,
+  partnerRedemptionStatus, publicCampaign, publicPartner, resolveCampaign, resolvePartner, validatePartnerVenue
+} from './partners.js';
+import {
+  localCustomerHasCompletedBooking, newCustomerOfferClaimId, newCustomerOfferStatus,
+  normalizeOfferContact, offerContactKey
+} from './campaigns.js';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const contentTypes = {
@@ -35,6 +44,16 @@ function sendJson(response, status, payload, extraHeaders = {}) {
     'Content-Length': Buffer.byteLength(body),
     'Cache-Control': 'no-store',
     ...extraHeaders
+  });
+  response.end(body);
+}
+
+function sendSvg(response, status, body) {
+  response.writeHead(status, {
+    'Content-Type': 'image/svg+xml; charset=utf-8',
+    'Content-Length': Buffer.byteLength(body),
+    'Cache-Control': 'private, max-age=300',
+    'X-Content-Type-Options': 'nosniff'
   });
   response.end(body);
 }
@@ -135,6 +154,16 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
   const square = createSquareService(config, fetchImpl);
   const allowRequest = createRateLimiter();
 
+  async function checkNewCustomerEligibility(contact, records) {
+    const contactKey = offerContactKey(contact);
+    if (newCustomerOfferStatus(records, contactKey) !== 'available' || localCustomerHasCompletedBooking(records, contact)) {
+      return { eligible: false, contactKey };
+    }
+    const customers = await square.findCustomersByContact(contact);
+    const hasCompletedOrders = await square.customersHaveCompletedOrders(customers.map(customer => customer.id));
+    return { eligible: !hasCompletedOrders, contactKey };
+  }
+
   return async function app(request, response) {
     const origin = request.headers.origin;
     const corsHeaders = origin === config.allowedOrigin ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {};
@@ -173,6 +202,41 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           }))
         }, corsHeaders);
       }
+      const partnerMatch = pathname.match(/^\/partners\/([A-Za-z0-9_-]{22,128})$/);
+      if (request.method === 'GET' && partnerMatch) {
+        if (!allowRequest(`${ip}:partner-pass`, 30)) throw new AppError(429, 'RATE_LIMITED', 'Too many Partner Pass requests.');
+        const partner = resolvePartner(config.partners, partnerMatch[1]);
+        const records = await readReservationRecords(config.dataDir);
+        return sendJson(response, 200, { partner: publicPartner(partner, partnerRedemptionStatus(records, partner.code)) }, corsHeaders);
+      }
+      const partnerQrMatch = pathname.match(/^\/partners\/([A-Za-z0-9_-]{22,128})\/qr\.svg$/);
+      if (request.method === 'GET' && partnerQrMatch) {
+        if (!allowRequest(`${ip}:partner-qr`, 30)) throw new AppError(429, 'RATE_LIMITED', 'Too many QR requests.');
+        const partner = resolvePartner(config.partners, partnerQrMatch[1]);
+        const campaign = resolveCampaign(config.partners, partner.qrCampaignId);
+        const svg = await QRCode.toString(campaignBookingUrl(config.appBaseUrl, campaign), { type: 'svg', margin: 2, width: 512, errorCorrectionLevel: 'M' });
+        return sendSvg(response, 200, svg);
+      }
+      const campaignMatch = pathname.match(/^\/campaigns\/([A-Za-z0-9_.:-]{3,100})$/);
+      if (request.method === 'GET' && campaignMatch) {
+        if (!allowRequest(`${ip}:campaign`, 60)) throw new AppError(429, 'RATE_LIMITED', 'Too many campaign requests.');
+        return sendJson(response, 200, { campaign: publicCampaign(resolveCampaign(config.partners, campaignMatch[1])) }, corsHeaders);
+      }
+      const campaignEligibilityMatch = pathname.match(/^\/campaigns\/([A-Za-z0-9_.:-]{3,100})\/eligibility$/);
+      if (request.method === 'POST' && campaignEligibilityMatch) {
+        if (!allowRequest(`${ip}:campaign-eligibility`, 12)) throw new AppError(429, 'RATE_LIMITED', 'Too many eligibility checks.');
+        if (!config.squareConfigured) throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square is not configured yet.');
+        const campaign = resolveCampaign(config.partners, campaignEligibilityMatch[1]);
+        const contact = normalizeOfferContact(await readJson(request));
+        const result = await checkNewCustomerEligibility(contact, await readReservationRecords(config.dataDir));
+        return sendJson(response, 200, {
+          eligible: result.eligible,
+          campaign: publicCampaign(campaign),
+          message: result.eligible
+            ? `${campaign.discountPercent}% new customer offer verified.`
+            : 'This offer is limited to customers without a previous completed BoomBoxCar purchase.'
+        }, corsHeaders);
+      }
       const confirmationMatch = pathname.match(/^\/confirmations\/(BBC-\d{4}-[A-F0-9]{6})$/);
       if (request.method === 'GET' && confirmationMatch) {
         if (!allowRequest(`${ip}:confirmation`, 60)) throw new AppError(429, 'RATE_LIMITED', 'Too many confirmation requests.');
@@ -187,7 +251,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         if (!reservationRecord) throw new AppError(404, 'CONFIRMATION_NOT_FOUND', 'Confirmation not found.');
 
         let completedRecord = [...records].reverse().find(record => record.reservationId === reservationId
-          && ['PAYMENT_EVENT', 'PAYMENT_RECONCILIATION'].includes(record.recordType)
+          && ['PAYMENT_EVENT', 'PAYMENT_RECONCILIATION', 'PARTNER_REDEMPTION_COMPLETED'].includes(record.recordType)
           && record.paymentStatus === 'COMPLETED');
         const expiredRecord = [...records].reverse().find(record => record.reservationId === reservationId
           && record.recordType === 'PAYMENT_EXPIRATION' && record.paymentStatus === 'EXPIRED');
@@ -242,7 +306,9 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           paymentMethod: reservationRecord.paymentMethod,
           receiptUrl: completedRecord?.receiptUrl || null,
           reservation: reservationRecord.reservation,
-          pricing: pricingWithPaidAmount(reservationRecord.pricing, completedRecord?.amountMoney)
+          pricing: pricingWithPaidAmount(reservationRecord.pricing, completedRecord?.amountMoney),
+          partner: reservationRecord.partner || null,
+          campaign: reservationRecord.campaign || null
         }, corsHeaders);
       }
       if (request.method === 'POST' && pathname === '/webhooks/square') {
@@ -319,12 +385,34 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           throw new AppError(400, 'INVALID_EXPECTED_TOTAL', 'The displayed payment total is invalid.');
         }
         const reservation = validateReservation(input);
+        const partner = input.partnerToken ? resolvePartner(config.partners, input.partnerToken) : null;
+        const campaign = input.campaignId ? resolveCampaign(config.partners, input.campaignId) : null;
+        if (partner && reservation.couponCode) throw new AppError(400, 'PARTNER_COUPON_NOT_ALLOWED', 'Coupons cannot be combined with a Partner Pass.');
+        if (campaign && (partner || reservation.couponCode || reservation.attribution.qrCampaignId !== campaign.id)) {
+          throw new AppError(400, 'CAMPAIGN_NOT_ELIGIBLE', 'This event offer cannot be combined with another offer.');
+        }
+        let partnerStatus = null;
+        if (partner) {
+          validatePartnerVenue(partner, reservation.details.address);
+          partnerStatus = partnerRedemptionStatus(await readReservationRecords(config.dataDir), partner.code);
+          if (partnerStatus === 'claimed') throw new AppError(409, 'PARTNER_PASS_PROCESSING', 'The complimentary activation is currently being processed. Try again shortly.');
+        }
+        let campaignContact = null;
+        if (campaign) {
+          campaignContact = normalizeOfferContact(reservation.customer);
+          const eligibility = await checkNewCustomerEligibility(campaignContact, await readReservationRecords(config.dataDir));
+          if (!eligibility.eligible) throw new AppError(409, 'NEW_CUSTOMER_OFFER_NOT_ELIGIBLE', `This ${campaign.discountPercent}% offer is limited to customers without a previous completed BoomBoxCar purchase.`);
+        }
         const coupon = resolveCoupon(config, reservation.couponCode);
         const packageDetails = await square.getPackage(reservation.durationHours);
-        const pricing = applyCoupon(
+        let pricing = applyCoupon(
           calculatePricing(packageDetails, reservation.modifiers),
           coupon
         );
+        if (partner) pricing = partnerStatus === 'available'
+          ? applyPartnerPass(pricing, partner, reservation.durationHours)
+          : applyPartnerRate(pricing, partner);
+        if (campaign) pricing = applyNewCustomerOffer(pricing, campaign);
         if (Math.round(pricing.total * 100) !== expectedTotalCents) {
           throw new AppError(409, 'PRICE_CHANGED', 'Square pricing changed. Review the updated total and try payment again.');
         }
@@ -336,16 +424,48 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         const slot = findAvailableSlot(availableSlots, reservation.startAt);
         if (!slot) throw new AppError(409, 'SLOT_NO_LONGER_AVAILABLE', 'That arrival time is no longer available. Choose another time.');
 
+        let claimId = null;
+        let campaignClaimId = null;
+        let campaignContactKey = null;
+        if (partnerStatus === 'available') {
+          normalizePartnerPermissions(input.partnerPermissions);
+          const currentStatus = partnerRedemptionStatus(await readReservationRecords(config.dataDir), partner.code);
+          if (currentStatus !== 'available') throw new AppError(409, 'PARTNER_PASS_PROCESSING', 'The complimentary activation is currently being processed. Try again shortly.');
+          claimId = partnerClaimId();
+          await persistReservation(config.dataDir, {
+            recordType: 'PARTNER_REDEMPTION_CLAIM', claimId, partnerCode: partner.code,
+            recordedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + PAYMENT_TTL_MINUTES * 60_000).toISOString()
+          });
+        }
+        if (campaign) {
+          const eligibility = await checkNewCustomerEligibility(campaignContact, await readReservationRecords(config.dataDir));
+          if (!eligibility.eligible) throw new AppError(409, 'NEW_CUSTOMER_OFFER_NOT_ELIGIBLE', 'This new customer offer is no longer available.');
+          campaignClaimId = newCustomerOfferClaimId();
+          campaignContactKey = eligibility.contactKey;
+          await persistReservation(config.dataDir, {
+            recordType: 'NEW_CUSTOMER_OFFER_CLAIM', claimId: campaignClaimId, contactKey: campaignContactKey,
+            campaignId: campaign.id, recordedAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + PAYMENT_TTL_MINUTES * 60_000).toISOString()
+          });
+        }
         const reservationId = createReservationId();
         const confirmationToken = createConfirmationToken();
-        const customerNote = buildCustomerNote({ reservationId, reservation, pricing });
-        const customer = await square.findOrCreateCustomer(reservation.customer, reservationId);
-        const booking = await square.createBooking({
-          customerId: customer.id,
-          slot,
-          customerNote,
-          eventAddress: reservation.details.address
-        });
+        const customerNote = buildCustomerNote({ reservationId, reservation, pricing, partner });
+        let customer;
+        let booking;
+        try {
+          customer = await square.findOrCreateCustomer(reservation.customer, reservationId);
+          booking = await square.createBooking({
+            customerId: customer.id,
+            slot,
+            customerNote,
+            eventAddress: reservation.details.address
+          });
+        } catch (error) {
+          if (claimId) await persistReservation(config.dataDir, { recordType: 'PARTNER_REDEMPTION_RELEASED', claimId, partnerCode: partner.code, recordedAt: new Date().toISOString() });
+          if (campaignClaimId) await persistReservation(config.dataDir, { recordType: 'NEW_CUSTOMER_OFFER_RELEASED', claimId: campaignClaimId, contactKey: campaignContactKey, recordedAt: new Date().toISOString() });
+          throw error;
+        }
         const createdAt = new Date().toISOString();
         let order;
         let payment;
@@ -358,7 +478,8 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
             eventAddress: reservation.details.address,
             packageDetails,
             modifiers: pricing.modifiers,
-            discount: pricing.discount
+            discount: pricing.discount,
+            partnerDiscount: pricing.partnerDiscount
           });
           await persistReservation(config.dataDir, {
             reservationId,
@@ -373,7 +494,9 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
             paymentStatus: 'PROCESSING',
             paymentMethod,
             reservation,
-            pricing
+            pricing,
+            ...(partner ? { partner: { code: partner.code, name: partner.name, benefitType: pricing.partnerDiscount.benefitType, sourceReferralId: partner.sourceReferralId, qrCampaignId: partner.qrCampaignId } } : {}),
+            ...(campaign ? { campaign: { id: campaign.id, sourceReferralId: campaign.sourceReferralId, discountPercent: campaign.discountPercent } } : {})
           });
           payment = await square.createPayment({
             sourceId: sourceToken,
@@ -407,6 +530,8 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
             reservation,
             pricing
           });
+          if (claimId) await persistReservation(config.dataDir, { recordType: 'PARTNER_REDEMPTION_RELEASED', claimId, partnerCode: partner.code, recordedAt: new Date().toISOString() });
+          if (campaignClaimId) await persistReservation(config.dataDir, { recordType: 'NEW_CUSTOMER_OFFER_RELEASED', claimId: campaignClaimId, contactKey: campaignContactKey, recordedAt: new Date().toISOString() });
           if (cancellationError) {
             throw new AppError(502, 'PAYMENT_FAILED_REVIEW_REQUIRED', 'Payment was not completed and the appointment could not be canceled automatically. Contact booking@boomboxcar.com before trying again.');
           }
@@ -428,6 +553,30 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         } catch (error) {
           console.error('[boomboxcar-api] payment completion log', error.code || error.name, error.message);
         }
+        if (claimId) await persistReservation(config.dataDir, {
+          recordType: 'PARTNER_REDEMPTION_COMPLETED', claimId, reservationId, recordedAt: new Date().toISOString(),
+          paymentStatus: 'COMPLETED', partnerCode: partner.code, partnerName: partner.name,
+          activationLength: reservation.durationHours, retailValueRedeemed: pricing.partnerDiscount.amount,
+          activationDate: reservation.eventDate, eventType: reservation.details.eventType,
+          bookedAddons: pricing.modifiers.filter(modifier => !modifier.included && modifier.price > 0),
+          sourceReferralId: partner.sourceReferralId, qrCampaignId: partner.qrCampaignId
+        });
+        if (partner && !claimId) await persistReservation(config.dataDir, {
+          recordType: 'PARTNER_RATE_BOOKING', reservationId, recordedAt: new Date().toISOString(),
+          partnerCode: partner.code, partnerName: partner.name, discountPercent: partner.futureDiscountPercent,
+          discountAmount: pricing.partnerDiscount.amount, activationDate: reservation.eventDate,
+          eventType: reservation.details.eventType, bookedAddons: pricing.modifiers.filter(modifier => !modifier.included && modifier.price > 0),
+          sourceReferralId: partner.sourceReferralId, qrCampaignId: partner.qrCampaignId
+        });
+        if (campaignClaimId) await persistReservation(config.dataDir, {
+          recordType: 'NEW_CUSTOMER_OFFER_COMPLETED', claimId: campaignClaimId, contactKey: campaignContactKey,
+          reservationId, recordedAt: new Date().toISOString(), paymentStatus: 'COMPLETED',
+          campaignId: campaign.id, partnerCode: campaign.partnerCode, partnerName: campaign.partnerName,
+          discountPercent: campaign.discountPercent, discountAmount: pricing.discount.amount,
+          bookingDate: reservation.eventDate, eventType: reservation.details.eventType,
+          bookedAddons: pricing.modifiers.filter(modifier => !modifier.included && modifier.price > 0),
+          sourceReferralId: campaign.sourceReferralId, qrCampaignId: campaign.id
+        });
         const confirmationUrl = new URL('/confirmation/', config.appBaseUrl);
         confirmationUrl.searchParams.set('reservation', reservationId);
         confirmationUrl.searchParams.set('token', confirmationToken);
@@ -443,6 +592,73 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           startAt: booking.start_at,
           pricing
         }, corsHeaders);
+      }
+
+      const partnerReservationMatch = pathname.match(/^\/partners\/([A-Za-z0-9_-]{22,128})\/reservations$/);
+      if (request.method === 'POST' && partnerReservationMatch) {
+        if (!allowRequest(`${ip}:partner-reservation`, 6)) throw new AppError(429, 'RATE_LIMITED', 'Too many Partner Pass attempts.');
+        if (!config.squareConfigured) throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square is not configured yet.');
+        const partner = resolvePartner(config.partners, partnerReservationMatch[1]);
+        const input = await readJson(request);
+        const permissions = normalizePartnerPermissions(input.partnerPermissions);
+        const reservation = validateReservation({ ...input, couponCode: '' });
+        validatePartnerVenue(partner, reservation.details.address);
+        const packageDetails = await square.getPackage(reservation.durationHours);
+        const pricing = applyPartnerPass(calculatePricing(packageDetails, reservation.modifiers), partner, reservation.durationHours);
+        if (Math.round(pricing.total * 100) !== 0) throw new AppError(409, 'PARTNER_PAYMENT_REQUIRED', 'Complete Square payment for the selected paid add-ons.');
+        const records = await readReservationRecords(config.dataDir);
+        if (partnerRedemptionStatus(records, partner.code) !== 'available') throw new AppError(409, 'PARTNER_PASS_REDEEMED', 'The complimentary Partner Pass has already been redeemed. Use the same partner page for the ongoing Partner Rate.');
+        const availableSlots = await square.searchAvailability({ date: reservation.eventDate, durationHours: reservation.durationHours, locale: reservation.locale });
+        const slot = findAvailableSlot(availableSlots, reservation.startAt);
+        if (!slot) throw new AppError(409, 'SLOT_NO_LONGER_AVAILABLE', 'That arrival time is no longer available. Choose another time.');
+        const claimId = partnerClaimId();
+        await persistReservation(config.dataDir, {
+          recordType: 'PARTNER_REDEMPTION_CLAIM', claimId, partnerCode: partner.code,
+          recordedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + PAYMENT_TTL_MINUTES * 60_000).toISOString()
+        });
+        const reservationId = createReservationId();
+        const confirmationToken = createConfirmationToken();
+        let booking;
+        try {
+          const customer = await square.findOrCreateCustomer(reservation.customer, reservationId);
+          booking = await square.createBooking({
+            customerId: customer.id, slot,
+            customerNote: buildCustomerNote({ reservationId, reservation, pricing, partner }),
+            eventAddress: reservation.details.address
+          });
+          const order = await square.createOrder({
+            customer: reservation.customer, customerId: customer.id, bookingId: booking.id, reservationId,
+            eventAddress: reservation.details.address, packageDetails, modifiers: pricing.modifiers,
+            partnerDiscount: pricing.partnerDiscount
+          });
+          const completedOrder = await square.payZeroOrder(order);
+          const createdAt = new Date().toISOString();
+          await persistReservation(config.dataDir, {
+            reservationId, confirmationToken, createdAt, squareEnvironment: config.squareEnvironment,
+            squareBookingId: booking.id, bookingVersion: booking.version, squareOrderId: order.id,
+            squareCustomerId: customer.id, bookingStatus: booking.status, paymentStatus: 'COMPLETED',
+            paymentMethod: 'partnerPass', reservation, pricing, partnerPermissions: permissions,
+            partner: { code: partner.code, name: partner.name, benefitType: 'activation', sourceReferralId: partner.sourceReferralId, qrCampaignId: partner.qrCampaignId }
+          });
+          await persistReservation(config.dataDir, {
+            recordType: 'PARTNER_REDEMPTION_COMPLETED', claimId, reservationId, recordedAt: createdAt,
+            paymentStatus: 'COMPLETED', amountMoney: completedOrder.total_money || { amount: 0, currency: pricing.currency },
+            partnerCode: partner.code, partnerName: partner.name, activationLength: reservation.durationHours,
+            retailValueRedeemed: pricing.partnerDiscount.amount, activationDate: reservation.eventDate,
+            eventType: reservation.details.eventType, bookedAddons: [], sourceReferralId: partner.sourceReferralId,
+            qrCampaignId: partner.qrCampaignId
+          });
+          const confirmationUrl = new URL('/confirmation/', config.appBaseUrl);
+          confirmationUrl.searchParams.set('reservation', reservationId);
+          confirmationUrl.searchParams.set('token', confirmationToken);
+          return sendJson(response, 201, { reservationId, bookingId: booking.id, orderId: order.id, paymentStatus: 'COMPLETED', paymentMethod: 'partnerPass', confirmationUrl: confirmationUrl.toString(), pricing }, corsHeaders);
+        } catch (error) {
+          if (booking) {
+            try { await square.cancelBooking(booking); } catch (cancelError) { console.error('[boomboxcar-api] partner rollback', cancelError.code || cancelError.name, cancelError.message); }
+          }
+          await persistReservation(config.dataDir, { recordType: 'PARTNER_REDEMPTION_RELEASED', claimId, partnerCode: partner.code, recordedAt: new Date().toISOString() });
+          throw error;
+        }
       }
 
       if (config.nodeEnvironment !== 'production' && request.method === 'GET' && await serveStatic(url.pathname, response)) return;

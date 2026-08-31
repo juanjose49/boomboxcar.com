@@ -59,6 +59,86 @@ test('availability reports an unconfigured Sandbox without contacting Square', a
   });
 });
 
+test('private Partner Pass lookup returns safe invitation details and rejects invalid tokens', async () => {
+  const token = 'abcdefghijklmnopqrstuv';
+  const dataDir = await mkdtemp(path.join(os.tmpdir(), 'boomboxcar-partner-'));
+  try {
+    await withServer({
+      ...placeholderEnv, DATA_DIR: dataDir,
+      BOOMBOXCAR_PARTNERS: JSON.stringify([{
+        token, code: 'DTSS26', name: 'Downtown Silver Spring', venueAddress: {
+          addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
+          administrativeDistrictLevel1: 'MD', postalCode: '20910'
+        },
+        maxHours: 4, expiresOn: '2099-12-31', newCustomerOfferEndsOn: '2099-11-30', qrCampaignId: 'DTSS26-EVENT'
+      }])
+    }, async baseUrl => {
+      const response = await fetch(`${baseUrl}/api/partners/${token}`);
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.partner.name, 'Downtown Silver Spring');
+      assert.deepEqual(payload.partner.eligibleDurations, [2, 3, 4]);
+      assert.equal(payload.partner.futureDiscountPercent, 15);
+      assert.deepEqual(payload.partner.eventOffer, { campaignId: 'DTSS26-EVENT', discountPercent: 10, endsOn: '2099-11-30' });
+      assert.equal(payload.partner.formattedVenueAddress, '123 Test Street, Silver Spring, MD 20910');
+      assert.equal(JSON.stringify(payload).includes(token), false);
+      await persistReservation(dataDir, { recordType: 'PARTNER_REDEMPTION_COMPLETED', partnerCode: 'DTSS26' });
+      const redeemedPayload = await fetch(`${baseUrl}/api/partners/${token}`).then(result => result.json());
+      assert.equal(redeemedPayload.partner.activationAvailable, false);
+      assert.equal(redeemedPayload.partner.ongoingRateAvailable, true);
+      assert.equal(redeemedPayload.partner.futureDiscountPercent, 15);
+      const campaignPayload = await fetch(`${baseUrl}/api/campaigns/DTSS26-EVENT`).then(result => result.json());
+      assert.deepEqual(campaignPayload.campaign, { id: 'DTSS26-EVENT', discountPercent: 10, endsOn: '2099-11-30' });
+      const qrResponse = await fetch(`${baseUrl}/api/partners/${token}/qr.svg`);
+      assert.equal(qrResponse.status, 200);
+      assert.match(qrResponse.headers.get('content-type'), /image\/svg\+xml/);
+      assert.match(await qrResponse.text(), /<svg/);
+      const invalid = await fetch(`${baseUrl}/api/partners/invalid-invalid-invalid-x`);
+      assert.equal(invalid.status, 404);
+    });
+  } finally {
+    await rm(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('event QR eligibility accepts a new contact and rejects completed local customers', async () => {
+  const token = 'abcdefghijklmnopqrstuv';
+  const dataDir = await mkdtemp(path.join(os.tmpdir(), 'boomboxcar-campaign-'));
+  const configuredEnv = {
+    ...placeholderEnv, DATA_DIR: dataDir,
+    SQUARE_ACCESS_TOKEN: 'sandbox-token', SQUARE_APPLICATION_ID: 'sandbox-app',
+    SQUARE_LOCATION_ID: 'LOCATION-1', SQUARE_TEAM_MEMBER_IDS: 'TEAM-1',
+    SQUARE_SERVICE_VARIATION_1H: 'SERVICE-1H', SQUARE_SERVICE_VARIATION_2H: 'SERVICE-2H',
+    SQUARE_SERVICE_VARIATION_3H: 'SERVICE-3H', SQUARE_SERVICE_VARIATION_4H: 'SERVICE-4H',
+    SQUARE_SERVICE_VARIATION_8H: 'SERVICE-8H',
+    BOOMBOXCAR_PARTNERS: JSON.stringify([{
+      token, code: 'EVENT26', name: 'Event Partner', venueAddress: {
+        addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
+        administrativeDistrictLevel1: 'MD', postalCode: '20910'
+      },
+      newCustomerOfferEndsOn: '2099-12-31', qrCampaignId: 'EVENT26-QR', expiresOn: '2099-12-31'
+    }])
+  };
+  const fakeFetch = async () => new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+  try {
+    await withServer(configuredEnv, async baseUrl => {
+      const contact = { email: 'new@example.org', phone: '301-555-1212' };
+      const first = await fetch(`${baseUrl}/api/campaigns/EVENT26-QR/eligibility`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(contact)
+      }).then(response => response.json());
+      assert.equal(first.eligible, true);
+      await persistReservation(dataDir, { reservationId: 'BBC-2026-ABC123', reservation: { customer: contact } });
+      await persistReservation(dataDir, { recordType: 'PAYMENT_EVENT', reservationId: 'BBC-2026-ABC123', paymentStatus: 'COMPLETED' });
+      const second = await fetch(`${baseUrl}/api/campaigns/EVENT26-QR/eligibility`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(contact)
+      }).then(response => response.json());
+      assert.equal(second.eligible, false);
+    }, fakeFetch);
+  } finally {
+    await rm(dataDir, { recursive: true, force: true });
+  }
+});
+
 test('hosted checkout reservation creation is no longer exposed', async () => {
   await withServer(placeholderEnv, async baseUrl => {
     const response = await fetch(`${baseUrl}/api/reservations`, {

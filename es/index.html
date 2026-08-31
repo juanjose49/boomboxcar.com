@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://web.squarecdn.com" crossorigin />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="../index.css?v=20260823-value-proposition" />
+  <link rel="stylesheet" href="../index.css?v=20260830-event-qr-v2" />
 
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
@@ -208,6 +208,17 @@
     </section>
 
     <!-- Configurador de reserva -->
+    <section class="campaign-offer" id="campaignOffer" hidden aria-labelledby="campaignOfferTitle">
+      <p class="eyebrow">Oferta del QR del evento</p><h2 id="campaignOfferTitle">Clientes nuevos ahorran 10%</h2>
+      <p id="campaignOfferDetails"></p><p id="campaignOfferStatus" role="status">Ingresa tu correo y número móvil abajo y luego verifica la oferta antes de pagar.</p>
+      <button class="btn btn-secondary" id="campaignOfferVerify" type="button">Verificar mi oferta de 10%</button>
+    </section>
+
+    <section class="partner-pass" id="partnerPass" hidden aria-labelledby="partnerPassTitle">
+      <p class="eyebrow">Invitación privada para socios</p><h2 id="partnerPassTitle">BoomBoxCar Partner Pass</h2><p id="partnerPassLead"></p>
+      <ul><li>Hasta $599 aplicados a la duración elegible y los extras</li><li>Servicio estándar de BoomBoxCar incluido</li><li>Elige una activación más corta y usa el valor restante para extras</li><li>Paga solamente cualquier importe que exceda el valor del Partner Pass</li><li>Una activación, sujeta a disponibilidad y reglas de servicio del DMV</li></ul>
+    </section>
+
     <section class="booking" id="book" aria-labelledby="booking-title">
       <div class="booking-intro">
         <p class="eyebrow">Tu evento. Tu BoomBoxCar.</p>
@@ -269,6 +280,13 @@
               <label><span>Teléfono móvil</span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="Incluye el código de área" required /></label>
             </div>
           </fieldset>
+          <fieldset class="booking-step partner-terms" id="partnerTerms" hidden>
+            <legend><span>6</span> Requisitos de la activación</legend>
+            <label><input type="checkbox" name="partnerSignageAndQr" /> Permitir letreros y códigos QR rastreables de BoomBoxCar.</label>
+            <label><input type="checkbox" name="partnerPhotoVideo" /> Permitir que BoomBoxCar capture fotos y video.</label>
+            <label><input type="checkbox" name="partnerPublicIdentification" /> Permitir que BoomBoxCar identifique públicamente el evento como una activación.</label>
+            <label><input type="checkbox" name="partnerSafetyAndVenue" /> Confirmar permiso del lugar, acceso y espacio seguro, y requisitos normales de seguridad.</label>
+          </fieldset>
         </div>
 
         <aside class="booking-summary" aria-live="polite">
@@ -288,6 +306,7 @@
           <button class="apple-pay-button" id="applePayButton" type="button" aria-label="Reservar y pagar con Apple Pay" hidden></button>
           <div class="google-pay-button" id="googlePayButton" aria-label="Reservar y pagar con Google Pay" hidden></div>
           <button class="text-link card-payment-toggle" id="cardPaymentToggle" type="button" hidden>Pagar con tarjeta de crédito o débito</button>
+          <button class="btn btn-primary booking-submit" id="partnerReserveButton" type="button" hidden>Reservar activación sin costo</button>
           <div id="cardCheckout" hidden>
             <div class="card-payment-panel" id="cardPaymentPanel">
               <p class="card-payment-label">Tarjeta de crédito o débito</p>
@@ -472,7 +491,7 @@
     <small>© <span id="year"></span> BoomBoxCar. Todos los derechos reservados.</small>
   </footer>
 
-  <script src="../index.js?v=20260823-value-proposition" defer></script>
-  <script src="../booking.js?v=20260820-analytics" defer></script>
+  <script src="../index.js?v=20260830-event-qr-v2" defer></script>
+  <script src="../booking.js?v=20260830-venue-partner" defer></script>
 </body>
 </html>

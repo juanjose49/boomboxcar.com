@@ -301,6 +301,37 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     return created.customer;
   }
 
+  async function findCustomersByContact(customer) {
+    const searches = [
+      { email_address: { exact: customer.email } },
+      { phone_number: { exact: checkoutPhoneNumber(customer.phone) } }
+    ];
+    const results = await Promise.all(searches.map(filter => request('/v2/customers/search', {
+      method: 'POST',
+      body: { limit: 10, query: { filter } }
+    })));
+    return [...new Map(results.flatMap(result => result.customers || []).map(entry => [entry.id, entry])).values()];
+  }
+
+  async function customersHaveCompletedOrders(customerIds) {
+    if (!customerIds.length) return false;
+    const result = await request('/v2/orders/search', {
+      method: 'POST',
+      body: {
+        location_ids: [config.squareLocationId],
+        limit: 1,
+        return_entries: true,
+        query: {
+          filter: {
+            customer_filter: { customer_ids: customerIds.slice(0, 10) },
+            state_filter: { states: ['COMPLETED'] }
+          }
+        }
+      }
+    });
+    return Boolean(result.order_entries?.length || result.orders?.length);
+  }
+
   async function createBooking({ customerId, slot, customerNote, eventAddress }) {
     const appointmentSegments = (slot.appointmentSegments || []).map(segment => ({
       duration_minutes: segment.duration_minutes,
@@ -326,7 +357,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     return payload.booking;
   }
 
-  async function createOrder({ customer, customerId, bookingId, reservationId, eventAddress, packageDetails, modifiers, discount }) {
+  async function createOrder({ customer, customerId, bookingId, reservationId, eventAddress, packageDetails, modifiers, discount, partnerDiscount }) {
     const contactName = `${customer.givenName} ${customer.familyName}`.trim();
     const lineItem = {
       catalog_object_id: packageDetails.serviceVariationId,
@@ -345,7 +376,9 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
         quantity: String(modifier.quantity)
       }));
     }
-    const orderDiscount = squareOrderDiscount(discount, packageDetails.currency || 'USD');
+    const orderDiscount = squareOrderDiscount(discount || (partnerDiscount ? {
+      ...partnerDiscount, type: 'FIXED', name: `${partnerDiscount.name} ${partnerDiscount.code}`
+    } : null), packageDetails.currency || 'USD');
     const order = {
       location_id: config.squareLocationId,
       reference_id: reservationId,
@@ -392,6 +425,17 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
     return payload.payment;
   }
 
+  async function payZeroOrder(order) {
+    const payload = await request(`/v2/orders/${encodeURIComponent(order.id)}/pay`, {
+      method: 'POST',
+      body: { idempotency_key: randomUUID(), order_version: order.version, payment_ids: [] }
+    });
+    if (!payload.order?.id || payload.order.state !== 'COMPLETED') {
+      throw new AppError(502, 'ORDER_NOT_COMPLETED', 'Square did not complete the complimentary order.');
+    }
+    return payload.order;
+  }
+
   async function cancelBooking(booking) {
     const payload = await request(`/v2/bookings/${encodeURIComponent(booking.id)}/cancel`, {
       method: 'POST',
@@ -415,7 +459,8 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
   }
 
   return {
-    searchAvailability, getPackage, getPackages, findOrCreateCustomer, createBooking,
-    createOrder, createPayment, cancelBooking, retrieveOrder, deletePaymentLink
+    searchAvailability, getPackage, getPackages, findOrCreateCustomer, findCustomersByContact,
+    customersHaveCompletedOrders, createBooking,
+    createOrder, createPayment, payZeroOrder, cancelBooking, retrieveOrder, deletePaymentLink
   };
 }

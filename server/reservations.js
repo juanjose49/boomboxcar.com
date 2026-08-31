@@ -3,6 +3,8 @@ import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { PACKAGES } from './config.js';
 import { AppError } from './errors.js';
+import { normalizeAttribution } from './partners.js';
+import { formatEventAddress, normalizeEventAddress } from './addresses.js';
 
 function cleanString(value, max = 500) {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -14,52 +16,6 @@ function validEmail(value) {
 
 function validPhone(value) {
   return /^\+?[0-9 ()-]{9,20}$/.test(value);
-}
-
-const SERVICE_AREA_REGIONS = new Set(['DC', 'MD', 'VA']);
-
-function validAddressText(value) {
-  return /[\p{L}\p{N}]/u.test(value) && /^[\p{L}\p{N}\p{P}\p{Zs}]+$/u.test(value);
-}
-
-function normalizeEventAddress(value) {
-  let source = value;
-  if (typeof value === 'string') {
-    const parts = value.split(',').map(part => part.trim()).filter(Boolean);
-    const stateAndZip = parts.at(-1)?.match(/^([A-Za-z]{2})\s+(\d{5}(?:-\d{4})?)$/);
-    source = parts.length >= 3 && stateAndZip ? {
-      addressLine1: parts.slice(0, -2).join(', '),
-      locality: parts.at(-2),
-      administrativeDistrictLevel1: stateAndZip[1],
-      postalCode: stateAndZip[2]
-    } : {};
-  }
-  const address = {
-    addressLine1: cleanString(source?.addressLine1, 500),
-    addressLine2: cleanString(source?.addressLine2, 500),
-    locality: cleanString(source?.locality, 300),
-    administrativeDistrictLevel1: cleanString(source?.administrativeDistrictLevel1, 2).toUpperCase(),
-    postalCode: cleanString(source?.postalCode, 10)
-  };
-  if (!address.addressLine1 || !address.locality || !address.administrativeDistrictLevel1 || !address.postalCode) {
-    throw new AppError(400, 'INVALID_ADDRESS', 'Enter the street address, city, state, and ZIP code.');
-  }
-  if (![address.addressLine1, address.addressLine2, address.locality].filter(Boolean).every(validAddressText)) {
-    throw new AppError(400, 'INVALID_ADDRESS', 'The event address contains unsupported characters.');
-  }
-  if (!SERVICE_AREA_REGIONS.has(address.administrativeDistrictLevel1)) {
-    throw new AppError(400, 'OUTSIDE_SERVICE_AREA', 'Online booking is available in DC, Maryland, and Virginia. Contact booking@boomboxcar.com for custom pricing outside the DMV.');
-  }
-  if (!/^\d{5}(?:-\d{4})?$/.test(address.postalCode)) {
-    throw new AppError(400, 'INVALID_POSTAL_CODE', 'Enter a valid US ZIP code.');
-  }
-  return address;
-}
-
-function formatEventAddress(address) {
-  return [address.addressLine1, address.addressLine2, address.locality,
-    `${address.administrativeDistrictLevel1} ${address.postalCode}`]
-    .filter(Boolean).join(', ');
 }
 
 function normalizeCustomerName(givenName, familyName) {
@@ -132,7 +88,8 @@ export function validateReservation(input) {
     modifiers,
     couponCode: normalizeCouponCode(input.couponCode),
     customer,
-    details
+    details,
+    attribution: normalizeAttribution(input.attribution)
   };
 }
 
@@ -211,20 +168,44 @@ export function applyCoupon(pricing, coupon) {
   };
 }
 
-export function buildCustomerNote({ reservationId, reservation, pricing }) {
+export function applyNewCustomerOffer(pricing, campaign) {
+  const discounted = applyCoupon(pricing, {
+    code: campaign.id,
+    type: 'PERCENT',
+    value: campaign.discountPercent
+  });
+  return {
+    ...discounted,
+    discount: {
+      ...discounted.discount,
+      name: `${campaign.discountPercent}% New Customer Event Offer`,
+      campaignId: campaign.id,
+      benefitType: 'newCustomer'
+    }
+  };
+}
+
+export function buildCustomerNote({ reservationId, reservation, pricing, partner = null }) {
   const money = value => `$${value.toLocaleString('en-US')}`;
   const addonLines = pricing.modifiers.length
     ? pricing.modifiers.map(modifier => `- ${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}: ${modifier.included ? 'Included ($0)' : `+${money(modifier.price)}`}`)
     : ['- None'];
   return [
     `BOOMBOXCAR RESERVATION ${reservationId}`,
+    ...(partner ? [
+      `Partner: ${partner.name} (${partner.code})`,
+      pricing.partnerDiscount.benefitType === 'activation'
+        ? `Partner Pass value applied: ${money(pricing.partnerDiscount.amount)} of ${money(pricing.partnerDiscount.valueCap)}`
+        : `Partner Rate applied: ${pricing.partnerDiscount.percentage}% (-${money(pricing.partnerDiscount.amount)})`
+    ] : []),
     `Duration: ${reservation.durationHours} hour${reservation.durationHours === 1 ? '' : 's'} (${money(pricing.basePrice)})`,
     'Included with every booking: Professional-grade audio equipment, the inflatable BoomBox, two wireless microphones, licensed music and commercial insurance, daytime bubbles, nighttime RGB light panels, MC support and announcements, and on-board power with no outlets required.',
     'Optional add-ons: Shade awning and laser and haze effects are available for an additional charge.',
     'Staff scope: BoomBoxCar staff set up and operate the system, manage licensed music playback, and provide MC support and announcements. Dedicated DJ service is not included. The client provides general musical direction and the event message; BoomBoxCar staff retain control of playback and programming.',
     'Add-ons:',
     ...addonLines,
-    ...(pricing.discount ? [`Coupon ${pricing.discount.code}: -${money(pricing.discount.amount)}`] : []),
+    ...(pricing.discount ? [`${pricing.discount.name}: -${money(pricing.discount.amount)}`] : []),
+    ...(pricing.partnerDiscount ? [`${pricing.partnerDiscount.name}: -${money(pricing.partnerDiscount.amount)}`] : []),
     `Estimated total: ${money(pricing.total)}`,
     `Event address: ${formatEventAddress(reservation.details.address)}`,
     `Event type: ${reservation.details.eventType}`,

@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://web.squarecdn.com https://sandbox.web.squarecdn.com; frame-src 'self' https://web.squarecdn.com https://sandbox.web.squarecdn.com; connect-src 'self' https://google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.google.com https://www.googletagmanager.com https://pci-connect.squareup.com https://pci-connect.squareupsandbox.com https://web.squarecdn.com https://sandbox.web.squarecdn.com https://o160250.ingest.sentry.io; img-src 'self' data: https://google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.google.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://web.squarecdn.com https://sandbox.web.squarecdn.com; font-src 'self' https://square-fonts-production-f.squarecdn.com https://d1g145x70srn7h.cloudfront.net; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';" />
+  <script>
+    window.__boomboxcarPartnerEntry = location.hash.startsWith('#partner_pass=');
+  </script>
   <title>BoomBoxCar | Mobile Event Sound & Amplification in the DMV</title>
 
   <!-- Canonical & Robots -->
@@ -61,7 +64,7 @@
   <link rel="preconnect" href="https://web.squarecdn.com" crossorigin />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="index.css?v=20260823-value-proposition" />
+  <link rel="stylesheet" href="index.css?v=20260830-event-qr-v2" />
 
   <!-- Google Analytics (unchanged) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
@@ -69,7 +72,9 @@
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', 'G-FQ1TV8G46E');
+    gtag('config', 'G-FQ1TV8G46E', window.__boomboxcarPartnerEntry
+      ? { page_location: `${location.origin}/?partner_pass=1#book` }
+      : {});
   </script>
 
   <!-- Structured Data (LocalBusiness, Service, FAQPage) -->
@@ -205,6 +210,21 @@
       </div>
     </section>
 
+    <section class="campaign-offer" id="campaignOffer" hidden aria-labelledby="campaignOfferTitle">
+      <p class="eyebrow">Event QR offer</p>
+      <h2 id="campaignOfferTitle">New customers save 10%</h2>
+      <p id="campaignOfferDetails"></p>
+      <p id="campaignOfferStatus" role="status">Enter your email and mobile number below, then verify the offer before checkout.</p>
+      <button class="btn btn-secondary" id="campaignOfferVerify" type="button">Verify my 10% offer</button>
+    </section>
+
+    <section class="partner-pass" id="partnerPass" hidden aria-labelledby="partnerPassTitle">
+      <p class="eyebrow">Private partner invitation</p>
+      <h2 id="partnerPassTitle">BoomBoxCar Partner Pass</h2>
+      <p id="partnerPassLead"></p>
+      <ul><li>Up to $599 applied toward your eligible duration and add-ons</li><li>Standard BoomBoxCar service included</li><li>Choose a shorter activation and use the remaining value for add-ons</li><li>Pay only any amount above the Partner Pass value</li><li>One activation, subject to availability and DMV service-area requirements</li></ul>
+    </section>
+
     <!-- Booking builder -->
     <section class="booking" id="book" aria-labelledby="booking-title">
       <div class="booking-intro">
@@ -273,6 +293,13 @@
               <label><span>Mobile phone</span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="Include area code" required /></label>
             </div>
           </fieldset>
+          <fieldset class="booking-step partner-terms" id="partnerTerms" hidden>
+            <legend><span>6</span> Partner activation requirements</legend>
+            <label><input type="checkbox" name="partnerSignageAndQr" /> Allow BoomBoxCar signage and trackable QR codes onsite.</label>
+            <label><input type="checkbox" name="partnerPhotoVideo" /> Allow BoomBoxCar to capture photo and video content.</label>
+            <label><input type="checkbox" name="partnerPublicIdentification" /> Allow BoomBoxCar to identify this event publicly as a partner activation.</label>
+            <label><input type="checkbox" name="partnerSafetyAndVenue" /> Confirm venue permission, safe vehicle access/setup space, and normal event safety requirements.</label>
+          </fieldset>
         </div>
 
         <aside class="booking-summary" aria-live="polite">
@@ -292,6 +319,7 @@
           <button class="apple-pay-button" id="applePayButton" type="button" aria-label="Book and pay with Apple Pay" hidden></button>
           <div class="google-pay-button" id="googlePayButton" aria-label="Book and pay with Google Pay" hidden></div>
           <button class="text-link card-payment-toggle" id="cardPaymentToggle" type="button" hidden>Pay with credit or debit card</button>
+          <button class="btn btn-primary booking-submit" id="partnerReserveButton" type="button" hidden>Reserve complimentary activation</button>
           <div id="cardCheckout" hidden>
             <div class="card-payment-panel" id="cardPaymentPanel">
               <p class="card-payment-label">Credit or debit card</p>
@@ -482,7 +510,7 @@
     <small>© <span id="year"></span> BoomBoxCar. All rights reserved.</small>
   </footer>
 
-  <script src="index.js?v=20260823-value-proposition" defer></script>
-  <script src="booking.js?v=20260820-analytics" defer></script>
+  <script src="index.js?v=20260830-event-qr-v2" defer></script>
+  <script src="booking.js?v=20260830-venue-partner" defer></script>
 </body>
 </html>

@@ -40,7 +40,10 @@
     includedLabel: 'Incluido en cada reserva',
     includedItems: 'Equipo de audio profesional, BoomBox inflable, dos micrófonos inalámbricos, música con licencia y seguro comercial, burbujas de día, paneles de luz RGB de noche, apoyo de maestro de ceremonias y anuncios, y energía a bordo sin necesidad de tomacorrientes. El toldo y los efectos de láser y niebla son extras opcionales.',
     staffScope: 'El personal de BoomBoxCar instala y opera el sistema, gestiona la reproducción de música con licencia y brinda apoyo de maestro de ceremonias y anuncios. El servicio dedicado de DJ no está incluido. Tú proporcionas la dirección musical general y el mensaje del evento; el personal conserva el control de la reproducción y la programación.',
-    included: 'Incluido'
+    included: 'Incluido', campaignLabel: 'Oferta para clientes nuevos',
+    campaignReady: percent => `Oferta verificada: ${percent}% de descuento.`,
+    campaignNotEligible: 'Esta oferta es solamente para clientes sin una compra previa completada de BoomBoxCar.',
+    campaignNeedsVerify: 'Verifica la oferta para clientes nuevos antes de continuar.'
   } : {
     chooseDate: 'Choose a date and arrival time', chooseDuration: 'Choose a duration',
     chooseDurationFirst: 'Choose a duration first', chooseDurationForAddons: 'Choose a duration to see add-ons.',
@@ -75,7 +78,10 @@
     includedLabel: 'Included with every booking',
     includedItems: 'Professional-grade audio equipment, the inflatable BoomBox, two wireless microphones, licensed music and commercial insurance, daytime bubbles, nighttime RGB light panels, MC support and announcements, and on-board power with no outlets required. The shade awning and laser and haze effects are optional add-ons.',
     staffScope: 'BoomBoxCar staff set up and operate the system, manage licensed music playback, and provide MC support and announcements. Dedicated DJ service is not included. You provide general musical direction and the event message; staff retain control of playback and programming.',
-    included: 'Included'
+    included: 'Included', campaignLabel: 'New customer event offer',
+    campaignReady: percent => `Offer verified: ${percent}% off.`,
+    campaignNotEligible: 'This offer is only for customers without a previous completed BoomBoxCar purchase.',
+    campaignNeedsVerify: 'Verify the new customer offer before continuing.'
   };
 
   const dateInput = form.elements.eventDate;
@@ -101,6 +107,15 @@
   const bookingResult = document.getElementById('bookingResult');
   const modifierGroups = document.getElementById('modifierGroups');
   const modifierStatus = document.getElementById('modifierStatus');
+  const partnerPassPanel = document.getElementById('partnerPass');
+  const partnerPassLead = document.getElementById('partnerPassLead');
+  const partnerTerms = document.getElementById('partnerTerms');
+  const partnerReserveButton = document.getElementById('partnerReserveButton');
+  const campaignOfferPanel = document.getElementById('campaignOffer');
+  const campaignOfferTitle = document.getElementById('campaignOfferTitle');
+  const campaignOfferDetails = document.getElementById('campaignOfferDetails');
+  const campaignOfferStatus = document.getElementById('campaignOfferStatus');
+  const campaignOfferVerify = document.getElementById('campaignOfferVerify');
   const money = new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
   let backendReady = false;
   let availabilityController = null;
@@ -115,6 +130,33 @@
   let googlePayRequest = null;
   let walletConfig = null;
   let appliedCoupon = null;
+  let campaignOffer = null;
+  let appliedCampaignOffer = null;
+  let verifiedCampaignContact = '';
+  let partnerPass = null;
+  const pageParams = new URLSearchParams(window.location.search);
+  let fragmentPartnerToken = '';
+  if (window.location.hash.startsWith('#partner_pass=')) {
+    try { fragmentPartnerToken = decodeURIComponent(window.location.hash.slice('#partner_pass='.length)); } catch (_) {}
+    if (!/^[A-Za-z0-9_-]{22,128}$/.test(fragmentPartnerToken)) fragmentPartnerToken = '';
+  }
+  const partnerToken = fragmentPartnerToken || (pageParams.get('partner_pass') === '1'
+    ? (sessionStorage.getItem('boomboxcarPartnerPassToken.v1') || '')
+    : '');
+  if (fragmentPartnerToken) {
+    try { sessionStorage.setItem('boomboxcarPartnerPassToken.v1', fragmentPartnerToken); } catch (_) {}
+    history.replaceState(null, '', '/?partner_pass=1#book');
+  }
+  delete window.__boomboxcarPartnerEntry;
+  const incomingAttribution = {
+    ref: pageParams.get('ref') || '', qrCampaignId: pageParams.get('qr') || '',
+    utmSource: pageParams.get('utm_source') || '', utmMedium: pageParams.get('utm_medium') || '',
+    utmCampaign: pageParams.get('utm_campaign') || '', utmContent: pageParams.get('utm_content') || ''
+  };
+  let storedAttribution = {};
+  try { storedAttribution = JSON.parse(sessionStorage.getItem('boomboxcarAttribution.v1') || '{}'); } catch (_) {}
+  const attribution = Object.values(incomingAttribution).some(Boolean) ? incomingAttribution : Object.fromEntries(Object.keys(incomingAttribution).map(key => [key, storedAttribution[key] || '']));
+  if (Object.values(attribution).some(Boolean)) sessionStorage.setItem('boomboxcarAttribution.v1', JSON.stringify(attribution));
   let bookingDraftTimer = null;
   let bookingDraftExpiryTimer = null;
   let restoredTimeSelection = null;
@@ -539,8 +581,9 @@
     const basePrice = Number(duration.dataset.price);
     const modifiers = selectedModifiers();
     const subtotal = modifiers.reduce((sum, modifier) => sum + modifier.price * modifier.quantity, basePrice);
-    const discountAmount = couponDiscountAmount(subtotal);
-    const total = subtotal - discountAmount;
+    const discountAmount = offerDiscountAmount(subtotal);
+    const partnerDiscount = partnerDiscountAmount(subtotal);
+    const total = subtotal - discountAmount - partnerDiscount;
 
     if (appliedCoupon && couponStatus.dataset.state === 'success') {
       couponStatus.textContent = copy.couponApplied(money.format(discountAmount));
@@ -552,7 +595,7 @@
     const lines = [{ label: copy.base, price: basePrice }, ...modifiers.map(modifier => ({
       label: `${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}`,
       price: modifier.price * modifier.quantity
-    })), ...(appliedCoupon ? [{ label: copy.couponLabel(appliedCoupon.code), price: -discountAmount }] : [])];
+    })), ...(partnerPass ? [{ label: partnerPass.activationAvailable ? 'BoomBoxCar Partner Pass' : `${partnerPass.futureDiscountPercent}% Partner Rate`, price: -partnerDiscount }] : []), ...(appliedCoupon ? [{ label: copy.couponLabel(appliedCoupon.code), price: -discountAmount }] : []), ...(appliedCampaignOffer ? [{ label: copy.campaignLabel, price: -discountAmount }] : [])];
     linesOutput.replaceChildren(...lines.map(line => {
       const row = document.createElement('div');
       row.className = 'summary-line';
@@ -572,15 +615,37 @@
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
       }).format(date);
     } else dateOutput.textContent = copy.chooseDate;
+    updatePartnerPaymentUi(total);
     updateDigitalWalletRequest();
   }
 
-  function couponDiscountAmount(subtotal) {
-    if (!appliedCoupon) return 0;
+  function updatePartnerPaymentUi(total) {
+    if (!partnerPass || !partnerReserveButton) return;
+    const complimentary = partnerPass.activationAvailable && Math.round(total * 100) === 0;
+    partnerReserveButton.hidden = !complimentary;
+    if (complimentary) {
+      applePayButton.hidden = true; googlePayButton.hidden = true; cardPaymentToggle.hidden = true; cardCheckout.hidden = true;
+      handoffNote.textContent = isSpanish ? 'Confirma los requisitos para reservar esta activación.' : 'Confirm the activation requirements to reserve this complimentary activation.';
+    } else if (cardReady) {
+      cardCheckout.hidden = false;
+      handoffNote.textContent = copy.apiHandoff;
+    }
+  }
+
+  function partnerDiscountAmount(subtotal) {
+    if (!partnerPass) return 0;
+    return partnerPass.activationAvailable
+      ? Math.min(subtotal, partnerPass.valueCap)
+      : Math.round(subtotal * partnerPass.futureDiscountPercent) / 100;
+  }
+
+  function offerDiscountAmount(subtotal) {
+    const discount = appliedCampaignOffer || appliedCoupon;
+    if (!discount) return 0;
     const subtotalCents = Math.round(subtotal * 100);
-    const discountCents = appliedCoupon.type === 'PERCENT'
-      ? appliedCoupon.value === 100 ? subtotalCents - 1 : Math.round(subtotalCents * appliedCoupon.value / 100)
-      : Math.round(appliedCoupon.value * 100);
+    const discountCents = discount.type === 'PERCENT'
+      ? discount.value === 100 ? subtotalCents - 1 : Math.round(subtotalCents * discount.value / 100)
+      : Math.round(discount.value * 100);
     return Math.min(subtotalCents, Math.max(0, discountCents)) / 100;
   }
 
@@ -590,8 +655,9 @@
     const modifiers = selectedModifiers();
     const basePrice = Number(duration.dataset.price);
     const subtotal = modifiers.reduce((sum, modifier) => sum + modifier.price * modifier.quantity, basePrice);
-    const discountAmount = couponDiscountAmount(subtotal);
-    const total = subtotal - discountAmount;
+    const discountAmount = offerDiscountAmount(subtotal);
+    const partnerDiscount = partnerDiscountAmount(subtotal);
+    const total = subtotal - discountAmount - partnerDiscount;
     if (!Number.isFinite(total) || total < 0) return null;
     return {
       countryCode: 'US',
@@ -602,7 +668,9 @@
           label: `${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}`,
           amount: (modifier.price * modifier.quantity).toFixed(2)
         })),
-        ...(appliedCoupon ? [{ label: copy.couponLabel(appliedCoupon.code), amount: `-${discountAmount.toFixed(2)}` }] : [])
+        ...(partnerPass ? [{ label: partnerPass.activationAvailable ? 'BoomBoxCar Partner Pass' : `${partnerPass.futureDiscountPercent}% Partner Rate`, amount: `-${partnerDiscount.toFixed(2)}` }] : []),
+        ...(appliedCoupon ? [{ label: copy.couponLabel(appliedCoupon.code), amount: `-${discountAmount.toFixed(2)}` }] : []),
+        ...(appliedCampaignOffer ? [{ label: copy.campaignLabel, amount: `-${discountAmount.toFixed(2)}` }] : [])
       ],
       total: { label: 'BoomBoxCar', amount: total.toFixed(2) }
     };
@@ -745,7 +813,7 @@
     const modifiers = selectedModifiers();
     const basePrice = Number(duration.dataset.price);
     const subtotal = modifiers.reduce((sum, modifier) => sum + modifier.price * modifier.quantity, basePrice);
-    const discountAmount = couponDiscountAmount(subtotal);
+    const discountAmount = offerDiscountAmount(subtotal);
     return {
       locale: apiLocale,
       eventDate: dateInput.value,
@@ -755,8 +823,9 @@
       basePrice,
       modifiers,
       couponCode: appliedCoupon?.code || '',
-      discount: appliedCoupon ? { ...appliedCoupon, amount: discountAmount } : null,
-      total: subtotal - discountAmount,
+      discount: appliedCoupon ? { ...appliedCoupon, amount: discountAmount } : appliedCampaignOffer ? { ...appliedCampaignOffer, amount: discountAmount } : null,
+      campaignId: appliedCampaignOffer ? campaignOffer.id : '',
+      total: subtotal - discountAmount - partnerDiscountAmount(subtotal),
       address: {
         addressLine1: form.elements.addressLine1.value.trim(),
         addressLine2: form.elements.addressLine2.value.trim(),
@@ -773,7 +842,15 @@
         familyName: form.elements.familyName.value.trim(),
         email: form.elements.email.value.trim(),
         phone: form.elements.phone.value.trim()
-      }
+      },
+      partnerToken: partnerPass ? partnerToken : '',
+      partnerPermissions: partnerPass?.activationAvailable ? {
+        signageAndQr: form.elements.partnerSignageAndQr.checked,
+        photoVideo: form.elements.partnerPhotoVideo.checked,
+        publicIdentification: form.elements.partnerPublicIdentification.checked,
+        safetyAndVenue: form.elements.partnerSafetyAndVenue.checked
+      } : undefined,
+      attribution: partnerPass ? { ...attribution, sourceReferralId: partnerPass.code, qrCampaignId: attribution.qrCampaignId || `${partnerPass.code}-ACTIVATION` } : attribution
     };
   }
 
@@ -807,6 +884,10 @@
       payment_type: paymentType,
       duration_hours: draft.durationHours,
       addon_count: draft.modifiers.filter(modifier => modifier.price > 0).length,
+      qr_campaign_id: campaignOffer?.id || undefined,
+      new_customer_offer: Boolean(appliedCampaignOffer) || undefined,
+      partner_code: partnerPass?.code || undefined,
+      partner_benefit_type: partnerPass ? (partnerPass.activationAvailable ? 'activation' : 'future_rate') : undefined,
       language: draft.locale,
       items: analyticsItems(draft)
     };
@@ -830,7 +911,11 @@
       setting: draft.setting,
       attendance: draft.attendance,
       requests: draft.requests,
-      customer: draft.customer
+      customer: draft.customer,
+      partnerToken: draft.partnerToken,
+      partnerPermissions: draft.partnerPermissions,
+      campaignId: draft.campaignId,
+      attribution: draft.attribution
     };
   }
 
@@ -885,6 +970,18 @@
     return false;
   }
 
+  function campaignContactValue() {
+    return `${form.elements.email.value.trim().toLowerCase()}|${form.elements.phone.value.replace(/\D/g, '')}`;
+  }
+
+  function campaignIsReady() {
+    if (!campaignOffer || appliedCampaignOffer) return true;
+    campaignOfferStatus.textContent = copy.campaignNeedsVerify;
+    campaignOfferStatus.dataset.state = 'error';
+    campaignOfferVerify.focus();
+    return false;
+  }
+
   function showIncompleteForm() {
     bookingResult.textContent = copy.incompleteForm;
     bookingResult.dataset.state = 'error';
@@ -907,7 +1004,7 @@
       showIncompleteForm();
       return false;
     }
-    if (!couponIsReady()) {
+    if (!couponIsReady() || !campaignIsReady()) {
       showIncompleteForm();
       return false;
     }
@@ -982,6 +1079,137 @@
     }
   }
 
+  async function initializePartnerPass() {
+    if (!partnerToken) return;
+    try {
+      const response = await fetch(`${apiBase}/partners/${encodeURIComponent(partnerToken)}`, { headers: { Accept: 'application/json' } });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message || 'This Partner Pass is not available.');
+      partnerPass = payload.partner;
+      if (partnerPass.activationPending) throw new Error('The complimentary activation is currently being processed. Try this page again shortly.');
+      partnerPassPanel.hidden = false;
+      partnerPassLead.textContent = partnerPass.activationAvailable
+        ? `${partnerPass.name}: apply up to $${partnerPass.valueCap} toward an eligible ${partnerPass.maxHours === 2 ? '2-hour' : `2- to ${partnerPass.maxHours}-hour`} activation and add-ons.`
+        : `${partnerPass.name}: receive ${partnerPass.futureDiscountPercent}% off this booking and eligible add-ons.`;
+      const venueAddress = partnerPass.venueAddress;
+      for (const field of ['addressLine1', 'addressLine2', 'locality', 'administrativeDistrictLevel1', 'postalCode']) {
+        const control = form.elements[field];
+        control.value = venueAddress[field] || '';
+        if (control.tagName === 'SELECT') control.disabled = true;
+        else control.readOnly = true;
+      }
+      persistBookingDraft();
+      if (!partnerPass.activationAvailable) {
+        const items = [
+          `${partnerPass.futureDiscountPercent}% off eligible BoomBoxCar durations and add-ons`,
+          `Valid for events at ${partnerPass.formattedVenueAddress}`,
+          'Cannot be combined with coupons or other offers',
+          'Subject to availability and DMV service-area requirements'
+        ];
+        partnerPassPanel.querySelector('ul').replaceChildren(...items.map(value => {
+          const item = document.createElement('li'); item.textContent = value; return item;
+        }));
+      }
+      partnerTerms.hidden = !partnerPass.activationAvailable;
+      partnerTerms.querySelectorAll('input[type="checkbox"]').forEach(input => { input.required = partnerPass.activationAvailable; });
+      couponToggle.hidden = true; couponPanel.hidden = true; couponInput.value = ''; appliedCoupon = null;
+      form.querySelectorAll('input[name="duration"]').forEach(input => {
+        const eligible = !partnerPass.activationAvailable || partnerPass.eligibleDurations.includes(Number(input.value));
+        input.disabled = !eligible;
+        input.closest('.choice-card').hidden = !eligible;
+        if (partnerPass.activationAvailable) input.checked = Number(input.value) === 2;
+      });
+      if (typeof window.fireGA === 'function') window.fireGA('partner_pass_view', {
+        partner_code: partnerPass.code,
+        partner_benefit_type: partnerPass.activationAvailable ? 'activation' : 'future_rate',
+        max_hours: partnerPass.maxHours,
+        language: apiLocale
+      });
+      updateSummary();
+    } catch (error) {
+      bookingResult.textContent = error.message;
+      bookingResult.dataset.state = 'error'; bookingResult.hidden = false;
+      form.querySelectorAll('input,select,textarea,button').forEach(control => { control.disabled = true; });
+    }
+  }
+
+  async function initializeCampaignOffer() {
+    const campaignId = attribution.qrCampaignId;
+    if (!campaignId || partnerToken) return;
+    try {
+      const response = await fetch(`${apiBase}/campaigns/${encodeURIComponent(campaignId)}`, { headers: { Accept: 'application/json' } });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message || 'This event offer is not available.');
+      campaignOffer = payload.campaign;
+      campaignOfferTitle.textContent = isSpanish
+        ? `Clientes nuevos ahorran ${campaignOffer.discountPercent}%`
+        : `New customers save ${campaignOffer.discountPercent}%`;
+      campaignOfferVerify.textContent = isSpanish
+        ? `Verificar mi oferta de ${campaignOffer.discountPercent}%`
+        : `Verify my ${campaignOffer.discountPercent}% offer`;
+      const endDate = new Date(`${campaignOffer.endsOn}T23:59:59`);
+      const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / 86_400_000));
+      const formattedEnd = new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric', year: 'numeric' }).format(endDate);
+      campaignOfferDetails.textContent = isSpanish
+        ? `Reserva antes del ${formattedEnd}. Quedan ${daysRemaining} día${daysRemaining === 1 ? '' : 's'}. La elegibilidad se verifica con tu correo y número móvil.`
+        : `Book by ${formattedEnd}. ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining. Eligibility is verified using your email and mobile number.`;
+      campaignOfferPanel.hidden = false;
+      couponToggle.hidden = true;
+      couponPanel.hidden = true;
+      if (window.location.hash === '#campaignOffer') {
+        requestAnimationFrame(() => campaignOfferPanel.scrollIntoView({ block: 'start' }));
+      }
+      if (typeof window.fireGA === 'function') window.fireGA('event_qr_offer_view', {
+        qr_campaign_id: campaignOffer.id,
+        discount_percent: campaignOffer.discountPercent,
+        offer_ends_on: campaignOffer.endsOn,
+        language: apiLocale
+      });
+    } catch (error) {
+      campaignOfferPanel.hidden = false;
+      campaignOfferStatus.textContent = error.message;
+      campaignOfferStatus.dataset.state = 'error';
+      campaignOfferVerify.hidden = true;
+    }
+  }
+
+  async function verifyCampaignOffer() {
+    if (!campaignOffer) return;
+    const email = form.elements.email;
+    const phone = form.elements.phone;
+    if (!email.checkValidity()) { email.reportValidity(); email.focus(); return; }
+    if (!phone.checkValidity()) { phone.reportValidity(); phone.focus(); return; }
+    campaignOfferVerify.disabled = true;
+    campaignOfferStatus.textContent = isSpanish ? 'Verificando con Square…' : 'Verifying with Square…';
+    campaignOfferStatus.dataset.state = '';
+    try {
+      const response = await fetch(`${apiBase}/campaigns/${encodeURIComponent(campaignOffer.id)}/eligibility`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.value.trim(), phone: phone.value.trim() })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error?.message || copy.campaignNotEligible);
+      if (!payload.eligible) throw new Error(copy.campaignNotEligible);
+      appliedCampaignOffer = { type: 'PERCENT', value: campaignOffer.discountPercent, code: campaignOffer.id };
+      verifiedCampaignContact = campaignContactValue();
+      campaignOfferStatus.textContent = copy.campaignReady(campaignOffer.discountPercent);
+      campaignOfferStatus.dataset.state = 'success';
+      campaignOfferVerify.textContent = isSpanish ? 'Oferta aplicada' : 'Offer applied';
+      if (typeof window.fireGA === 'function') window.fireGA('event_qr_offer_verified', {
+        qr_campaign_id: campaignOffer.id, discount_percent: campaignOffer.discountPercent, language: apiLocale
+      });
+      updateSummary();
+      if (squarePayments) await resetDigitalWallet();
+    } catch (error) {
+      appliedCampaignOffer = null;
+      verifiedCampaignContact = '';
+      campaignOfferStatus.textContent = error.message || copy.campaignNotEligible;
+      campaignOfferStatus.dataset.state = 'error';
+    } finally {
+      campaignOfferVerify.disabled = false;
+    }
+  }
+
   form.addEventListener('input', event => {
     if (event.target.name === 'modifiers' || event.target.dataset.modifierQuantity) modifierStatus.dataset.state = '';
     if (bookingDraftFieldNames.has(event.target.name)) scheduleBookingDraftSave();
@@ -990,8 +1218,19 @@
       couponStatus.textContent = '';
       couponStatus.dataset.state = '';
     }
+    if (appliedCampaignOffer && (event.target === form.elements.email || event.target === form.elements.phone)
+      && campaignContactValue() !== verifiedCampaignContact) {
+      appliedCampaignOffer = null;
+      verifiedCampaignContact = '';
+      campaignOfferStatus.textContent = copy.campaignNeedsVerify;
+      campaignOfferStatus.dataset.state = 'error';
+      campaignOfferVerify.textContent = isSpanish
+        ? `Verificar mi oferta de ${campaignOffer.discountPercent}%`
+        : `Verify my ${campaignOffer.discountPercent}% offer`;
+    }
     validateNotice();
     updateSummary();
+    if (partnerPass && (event.target.name === 'modifiers' || event.target.dataset.modifierQuantity) && squarePayments) void resetDigitalWallet();
   });
   couponToggle?.addEventListener('click', () => {
     couponPanel.hidden = !couponPanel.hidden;
@@ -999,6 +1238,7 @@
     if (!couponPanel.hidden) couponInput.focus();
   });
   couponApplyButton?.addEventListener('click', applyCouponCode);
+  campaignOfferVerify?.addEventListener('click', verifyCampaignOffer);
   cardPaymentToggle?.addEventListener('click', showCardCheckout);
   couponInput?.addEventListener('keydown', event => {
     if (event.key === 'Enter') {
@@ -1186,7 +1426,31 @@
     });
   });
 
+  partnerReserveButton?.addEventListener('click', async () => {
+    if (!partnerPass || !validateBeforePayment()) return;
+    const draft = buildDraft();
+    if (Math.round(draft.total * 100) !== 0 || !draft.startAt) return;
+    partnerReserveButton.disabled = true;
+    bookingResult.textContent = isSpanish ? 'Reservando tu activación…' : 'Reserving your activation…';
+    bookingResult.dataset.state = ''; bookingResult.hidden = false;
+    if (typeof window.fireGA === 'function') window.fireGA('partner_pass_begin_checkout', { partner_code: partnerPass.code, duration_hours: draft.durationHours, event_type: draft.eventType });
+    try {
+      const response = await fetch(`${apiBase}/partners/${encodeURIComponent(partnerToken)}/reservations`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reservationPayload(draft))
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || copy.error);
+      const confirmationUrl = new URL(result.confirmationUrl);
+      if (confirmationUrl.origin !== window.location.origin || confirmationUrl.pathname !== '/confirmation/') throw new Error(copy.error);
+      sessionStorage.removeItem('boomboxcarPartnerPassToken.v1');
+      window.location.assign(confirmationUrl.href);
+    } catch (error) {
+      bookingResult.textContent = error.message || copy.error; bookingResult.dataset.state = 'error';
+      partnerReserveButton.disabled = false; loadAvailability({ preserveSelection: true });
+    }
+  });
+
   restoreBookingDraft();
   updateSummary();
-  initializeBackend();
+  void Promise.all([initializePartnerPass(), initializeCampaignOffer()]).then(initializeBackend);
 })();

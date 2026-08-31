@@ -126,6 +126,29 @@ test('Square existing customer is updated with the normalized first and last nam
   assert.equal(customer.family_name, 'San Emeterio');
 });
 
+test('Square new-customer eligibility searches email, phone, and completed orders', async () => {
+  const requests = [];
+  const fakeFetch = async (url, options) => {
+    const body = JSON.parse(options.body);
+    requests.push({ url, body });
+    if (url.endsWith('/v2/customers/search')) {
+      const id = body.query.filter.email_address ? 'EMAIL-CUSTOMER' : 'PHONE-CUSTOMER';
+      return new Response(JSON.stringify({ customers: [{ id }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({ order_entries: [{ order_id: 'ORDER-1' }] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  const service = createSquareService(loadConfig(env), fakeFetch);
+  const customers = await service.findCustomersByContact({ email: 'new@example.org', phone: '(301) 555-1212' });
+  assert.deepEqual(customers.map(customer => customer.id), ['EMAIL-CUSTOMER', 'PHONE-CUSTOMER']);
+  assert.equal(await service.customersHaveCompletedOrders(customers.map(customer => customer.id)), true);
+  assert.deepEqual(requests[0].body.query.filter, { email_address: { exact: 'new@example.org' } });
+  assert.deepEqual(requests[1].body.query.filter, { phone_number: { exact: '+13015551212' } });
+  assert.deepEqual(requests[2].body.query.filter, {
+    customer_filter: { customer_ids: ['EMAIL-CUSTOMER', 'PHONE-CUSTOMER'] },
+    state_filter: { states: ['COMPLETED'] }
+  });
+});
+
 test('Square Catalog resolves package-specific modifier names, prices, and rules', async () => {
   const requests = [];
   const variation = {
@@ -287,6 +310,22 @@ test('Square direct payment charges the server total against the created order',
   assert.equal(paymentRequest.body.buyer_email_address, 'buyer@example.com');
   assert.equal(paymentRequest.body.buyer_phone_number, '+13015550199');
   assert.equal(paymentRequest.body.autocomplete, true);
+});
+
+test('Square PayOrder settles a complimentary zero-total partner order', async () => {
+  let request;
+  const fakeFetch = async (url, options) => {
+    request = { url, body: JSON.parse(options.body) };
+    return new Response(JSON.stringify({ order: { id: 'ORDER-FREE', state: 'COMPLETED', total_money: { amount: 0, currency: 'USD' } } }), {
+      status: 200, headers: { 'Content-Type': 'application/json' }
+    });
+  };
+  const service = createSquareService(loadConfig(env), fakeFetch);
+  const order = await service.payZeroOrder({ id: 'ORDER-FREE', version: 2 });
+  assert.equal(order.state, 'COMPLETED');
+  assert.equal(request.url, 'https://connect.squareupsandbox.com/v2/orders/ORDER-FREE/pay');
+  assert.equal(request.body.order_version, 2);
+  assert.deepEqual(request.body.payment_ids, []);
 });
 
 test('Square receives a fixed discount for a 100 percent test coupon so one cent remains due', async () => {
