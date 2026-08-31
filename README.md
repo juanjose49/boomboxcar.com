@@ -118,7 +118,7 @@ Application URL: https://boomboxcar.com/api
 Startup file: server.js
 ```
 
-The application uses the environment variables listed in `.env.example`. Do not put the access token in Git or `public_html`. After the first deployment, and whenever `package-lock.json` changes, run cPanel's NPM Install action or run `npm install --omit=dev` in the application root before restarting the application.
+The application uses the environment variables listed in `.env.example`. Do not put the access token in Git or `public_html`. The deploy script checks whether `node_modules` is missing or `package-lock.json` changed. When either condition is true, it copies the release but intentionally does not restart Passenger. In cPanel Setup Node.js App, run **NPM Install** and then **Restart Application**. As a shell alternative, run `npm install --omit=dev` in the application root and then restart the application.
 
 ## First server deployment
 
@@ -140,4 +140,4 @@ git pull --ff-only origin main
 npm run deploy:cpanel
 ```
 
-The final command builds clean artifacts, replaces the previous public/API files, and touches `tmp/restart.txt` so cPanel Passenger reloads `server.js`.
+The final command builds clean artifacts and replaces the previous public/API files. When dependencies are already current, it touches `tmp/restart.txt` so cPanel Passenger reloads `server.js`. When dependencies are missing or the lockfile changed, follow the printed instruction to run cPanel's **NPM Install** action and then **Restart Application**. This ordering prevents the new server code from starting before required packages such as `qrcode` are installed.
