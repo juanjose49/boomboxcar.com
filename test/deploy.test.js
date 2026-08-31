@@ -10,6 +10,7 @@ test('cPanel deployment includes privacy assets and waits for required dependenc
   assert.match(script, /dist\/public\/privacy\/index\.html/);
   assert.match(script, /test -d "\$app_root\/node_modules"/);
   assert.match(script, /cmp -s .*package-lock\.json/);
+  assert.match(script, /npm ls --omit=dev --depth=0/);
   assert.match(script, /run NPM Install and then Restart Application/);
 
   const dependencyBranch = script.indexOf('if [ "$needs_npm_install" -eq 1 ]');

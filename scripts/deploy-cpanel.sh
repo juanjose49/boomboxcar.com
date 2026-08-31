@@ -30,6 +30,9 @@ rm -rf "$app_root/server"
 rm -f "$app_root/server.js" "$app_root/package.json" "$app_root/package-lock.json"
 cp -R "$repo_root/dist/app/server" "$app_root/server"
 cp "$repo_root/dist/app/server.js" "$repo_root/dist/app/package.json" "$repo_root/dist/app/package-lock.json" "$app_root/"
+if ! (cd "$app_root" && npm ls --omit=dev --depth=0 >/dev/null 2>&1); then
+  needs_npm_install=1
+fi
 
 rm -rf "$public_root/admin" "$public_root/es" "$public_root/partner" "$public_root/confirmation" "$public_root/privacy" "$public_root/images"
 rm -f "$public_root/index.html" "$public_root/index.css" "$public_root/index.js" "$public_root/booking.js" "$public_root/privacy-consent.js" "$public_root/privacy-consent.css" "$public_root/robots.txt" "$public_root/sitemap.xml"
