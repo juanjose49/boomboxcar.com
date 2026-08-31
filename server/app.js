@@ -189,7 +189,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
   const config = loadConfig(env);
   const square = createSquareService(config, fetchImpl);
   const allowRequest = createRateLimiter();
-  const partnerStore = createPartnerStore(config.dataDir, config.partners);
+  const partnerStore = createPartnerStore(config.dataDir);
   const couponStore = createCouponStore(config.dataDir);
 
   async function checkNewCustomerEligibility(contact, records) {

@@ -62,16 +62,14 @@ test('private Partner Pass lookup returns safe invitation details and rejects in
   const token = 'abcdefghijklmnopqrstuv';
   const dataDir = await mkdtemp(path.join(os.tmpdir(), 'boomboxcar-partner-'));
   try {
-    await withServer({
-      ...placeholderEnv, DATA_DIR: dataDir,
-      BOOMBOXCAR_PARTNERS: JSON.stringify([{
-        token, code: 'DTSS26', name: 'Downtown Silver Spring', venueAddress: {
-          addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
-          administrativeDistrictLevel1: 'MD', postalCode: '20910'
-        },
-        maxHours: 4, expiresOn: '2099-12-31', newCustomerOfferEndsOn: '2099-11-30', qrCampaignId: 'DTSS26-EVENT'
-      }])
-    }, async baseUrl => {
+    await writeFile(path.join(dataDir, 'partners.json'), `${JSON.stringify([{
+      token, code: 'DTSS26', name: 'Downtown Silver Spring', venueAddress: {
+        addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
+        administrativeDistrictLevel1: 'MD', postalCode: '20910'
+      },
+      maxHours: 4, expiresOn: '2099-12-31', newCustomerOfferEndsOn: '2099-11-30', qrCampaignId: 'DTSS26-EVENT'
+    }])}\n`);
+    await withServer({ ...placeholderEnv, DATA_DIR: dataDir }, async baseUrl => {
       const response = await fetch(`${baseUrl}/api/partners/${token}`);
       assert.equal(response.status, 200);
       const payload = await response.json();
@@ -103,7 +101,7 @@ test('private Partner Pass lookup returns safe invitation details and rejects in
 test('business admin requires Basic Authentication and persists partners and coupons', async () => {
   const dataDir = await mkdtemp(path.join(os.tmpdir(), 'boomboxcar-admin-'));
   const adminEnv = {
-    ...placeholderEnv, DATA_DIR: dataDir, BOOMBOXCAR_PARTNERS: '[]',
+    ...placeholderEnv, DATA_DIR: dataDir,
     BOOMBOXCAR_ADMIN_USERNAME: 'partner-admin', BOOMBOXCAR_ADMIN_PASSWORD: 'test-password-123'
   };
   const authorization = `Basic ${Buffer.from('partner-admin:test-password-123').toString('base64')}`;
@@ -193,17 +191,17 @@ test('event QR eligibility accepts a new contact and rejects completed local cus
     SQUARE_LOCATION_ID: 'LOCATION-1', SQUARE_TEAM_MEMBER_IDS: 'TEAM-1',
     SQUARE_SERVICE_VARIATION_1H: 'SERVICE-1H', SQUARE_SERVICE_VARIATION_2H: 'SERVICE-2H',
     SQUARE_SERVICE_VARIATION_3H: 'SERVICE-3H', SQUARE_SERVICE_VARIATION_4H: 'SERVICE-4H',
-    SQUARE_SERVICE_VARIATION_8H: 'SERVICE-8H',
-    BOOMBOXCAR_PARTNERS: JSON.stringify([{
+    SQUARE_SERVICE_VARIATION_8H: 'SERVICE-8H'
+  };
+  const fakeFetch = async () => new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+  try {
+    await writeFile(path.join(dataDir, 'partners.json'), `${JSON.stringify([{
       token, code: 'EVENT26', name: 'Event Partner', venueAddress: {
         addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
         administrativeDistrictLevel1: 'MD', postalCode: '20910'
       },
       newCustomerOfferEndsOn: '2099-12-31', qrCampaignId: 'EVENT26-QR', expiresOn: '2099-12-31'
-    }])
-  };
-  const fakeFetch = async () => new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
-  try {
+    }])}\n`);
     await withServer(configuredEnv, async baseUrl => {
       const contact = { email: 'new@example.org', phone: '301-555-1212' };
       const first = await fetch(`${baseUrl}/api/campaigns/EVENT26-QR/eligibility`, {

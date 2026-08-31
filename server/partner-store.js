@@ -5,9 +5,9 @@ import { createPartnerEntry, parsePartners, partnerConfigEntry } from './partner
 
 const FILE_NAME = 'partners.json';
 
-export function createPartnerStore(dataDir, seedPartners = new Map()) {
+export function createPartnerStore(dataDir) {
   const filePath = path.join(dataDir, FILE_NAME);
-  let partners = new Map(seedPartners);
+  let partners = new Map();
   let loaded = false;
   let mutationQueue = Promise.resolve();
 
