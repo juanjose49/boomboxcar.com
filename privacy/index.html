@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; connect-src 'self' https://google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.google.com https://www.googletagmanager.com; img-src 'self' data: https://google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.google.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self';" />
+  <title>Privacy &amp; Storage | BoomBoxCar</title>
+  <meta name="description" content="How BoomBoxCar uses booking information, browser storage, analytics, and payment providers." />
+  <link rel="canonical" href="https://boomboxcar.com/privacy/" />
+  <link rel="alternate" hreflang="en-US" href="https://boomboxcar.com/privacy/" />
+  <link rel="alternate" hreflang="es-US" href="https://boomboxcar.com/es/privacidad/" />
+  <link rel="icon" href="../images/favicon.png" type="image/png" sizes="64x64" />
+  <meta name="color-scheme" content="light dark" />
+  <script>
+    (() => {
+      let saved = null;
+      try { saved = localStorage.getItem('boomboxcar-theme'); } catch (_) {}
+      const theme = saved === 'dark' || saved === 'light' ? saved : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+    })();
+  </script>
+  <link rel="stylesheet" href="../index.css?v=20260830-event-qr-v2" />
+  <link rel="stylesheet" href="../privacy-consent.css?v=20260831" />
+  <script src="../privacy-consent.js?v=20260831" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="BoomBoxCar home">
+      <img src="../images/logos.jpeg" width="44" height="44" alt="" aria-hidden="true" />
+      <span>BoomBoxCar</span>
+    </a>
+    <div class="top-actions"><a class="top-link" href="/es/privacidad/">Español</a></div>
+  </header>
+
+  <main class="privacy-page">
+    <article>
+      <p class="eyebrow">BoomBoxCar</p>
+      <h1>Privacy &amp; storage</h1>
+      <p class="privacy-updated">Last updated August 31, 2026</p>
+
+      <p>This notice explains how BoomBoxCar uses information when you browse the website, open a Partner Pass or event QR link, submit an inquiry, or make a reservation.</p>
+
+      <h2>Information you provide</h2>
+      <p>When you request or book service, we may collect your name, email address, phone number, event address, date and time, event details, attendance, special requests, selected services, discounts, and referral information. We use this information to check availability, prepare and fulfill your booking, communicate with you, prevent misuse, and maintain business records.</p>
+
+      <h2>Payments</h2>
+      <p>Square securely processes online payments. BoomBoxCar receives payment status, order references, totals, and related booking information, but does not receive or store your complete card number. Square handles payment information under its own privacy terms.</p>
+
+      <h2>Necessary browser storage</h2>
+      <ul>
+        <li><strong>Partner Pass:</strong> session storage keeps a private pass active while you complete booking in the current browser tab. It is removed after a successful booking and normally ends when the tab session closes.</li>
+        <li><strong>Booking draft:</strong> local storage can retain an incomplete booking for approximately one hour so an accidental refresh does not erase your work.</li>
+        <li><strong>Theme:</strong> local storage remembers your light or dark display preference.</li>
+        <li><strong>Privacy choice:</strong> local storage remembers whether you allowed analytics so we can continue honoring that choice.</li>
+      </ul>
+      <p>These functions remain available when you choose Necessary only.</p>
+
+      <h2>Optional analytics and campaign measurement</h2>
+      <p>If you select Allow analytics, Google Analytics may use first-party cookies such as <code>_ga</code> and <code>_ga_&lt;container-id&gt;</code> to distinguish visitors and sessions. BoomBoxCar also uses session storage to retain referral, QR, and UTM campaign identifiers during the current tab session. We use this information to understand visits, booking activity, and whether partner or event campaigns generate interest.</p>
+      <p>We do not load Google Analytics or retain campaign attribution in session storage until analytics is allowed. Choosing Necessary only does not prevent booking. A referral or QR identifier included with a completed booking may still be recorded with that booking so we can administer the associated offer and understand its source.</p>
+
+      <h2>Your choices</h2>
+      <p>You may change your analytics choice at any time. Choosing Necessary only stops future Google Analytics collection on this site and removes the analytics cookies and session attribution that BoomBoxCar can access in your browser. You can also clear browser storage through your browser settings.</p>
+      <p><button type="button" class="privacy-settings-button" data-privacy-settings>Review privacy choices</button></p>
+
+      <h2>Sharing and retention</h2>
+      <p>We use service providers such as Square for booking and payment processing and Google Analytics only when permitted. We retain booking and transaction records as reasonably needed to provide service, resolve disputes, prevent fraud, and meet accounting or legal obligations. Browser storage follows the durations described above unless you clear it sooner.</p>
+
+      <h2>Your questions and requests</h2>
+      <p>You may ask about, correct, or request deletion of personal information, subject to records we must retain for legitimate business or legal purposes. Contact <a href="mailto:booking@boomboxcar.com">booking@boomboxcar.com</a>.</p>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <small>© 2026 BoomBoxCar. All rights reserved.</small>
+    <nav class="privacy-footer-links" aria-label="Privacy links">
+      <a href="/">Home</a>
+      <a href="#privacy-settings" data-privacy-settings>Privacy choices</a>
+    </nav>
+  </footer>
+</body>
+</html>

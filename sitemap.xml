@@ -59,4 +59,22 @@
       <image:caption>DJ movil, karaoke y entretenimiento para eventos en Silver Spring y el DMV.</image:caption>
     </image:image>
   </url>
+
+  <url>
+    <loc>https://boomboxcar.com/privacy/</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://boomboxcar.com/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="es-US" href="https://boomboxcar.com/es/privacidad/"/>
+  </url>
+
+  <url>
+    <loc>https://boomboxcar.com/es/privacidad/</loc>
+    <lastmod>2026-08-31</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+    <xhtml:link rel="alternate" hreflang="en-US" href="https://boomboxcar.com/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="es-US" href="https://boomboxcar.com/es/privacidad/"/>
+  </url>
 </urlset>

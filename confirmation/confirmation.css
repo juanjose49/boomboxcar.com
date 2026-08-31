@@ -166,6 +166,7 @@ a{color:var(--brand-dark)}
 .confirmation-footer{padding:22px 4px 0;border-top:1px solid var(--line);color:var(--muted)}
 .confirmation-footer strong{color:var(--ink);font-size:1.05rem}
 .confirmation-footer p{margin:.35em 0}
+.confirmation-privacy-footer{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;padding:0 18px 32px;color:var(--muted);font-size:.82rem}
 @media (min-width:760px){
   .confirmation-intro{grid-template-columns:minmax(0,1fr) auto}
   .confirmation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}

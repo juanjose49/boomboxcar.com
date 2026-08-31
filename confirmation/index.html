@@ -10,13 +10,6 @@
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#101214" media="(prefers-color-scheme: dark)" />
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-FQ1TV8G46E', { send_page_view: false });
-  </script>
   <script>
     (() => {
       let saved = null;
@@ -31,6 +24,8 @@
   <link rel="icon" href="../images/favicon.png" type="image/png" sizes="64x64" />
   <link rel="apple-touch-icon" href="../images/logol.jpeg" />
   <link rel="stylesheet" href="confirmation.css?v=20260815-confirmation-v1" />
+  <link rel="stylesheet" href="../privacy-consent.css?v=20260831" />
+  <script src="../privacy-consent.js?v=20260831" defer></script>
 </head>
 <body>
   <header class="confirmation-site-header">
@@ -140,6 +135,11 @@
       </footer>
     </article>
   </main>
+
+  <footer class="confirmation-privacy-footer">
+    <a href="/privacy/">Privacy &amp; storage</a>
+    <a href="#privacy-settings" data-privacy-settings>Privacy choices</a>
+  </footer>
 
   <script src="confirmation.js?v=20260820-analytics" defer></script>
 </body>

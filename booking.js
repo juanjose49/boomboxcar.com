@@ -153,10 +153,31 @@
     utmSource: pageParams.get('utm_source') || '', utmMedium: pageParams.get('utm_medium') || '',
     utmCampaign: pageParams.get('utm_campaign') || '', utmContent: pageParams.get('utm_content') || ''
   };
-  let storedAttribution = {};
-  try { storedAttribution = JSON.parse(sessionStorage.getItem('boomboxcarAttribution.v1') || '{}'); } catch (_) {}
-  const attribution = Object.values(incomingAttribution).some(Boolean) ? incomingAttribution : Object.fromEntries(Object.keys(incomingAttribution).map(key => [key, storedAttribution[key] || '']));
-  if (Object.values(attribution).some(Boolean)) sessionStorage.setItem('boomboxcarAttribution.v1', JSON.stringify(attribution));
+  const attributionKey = 'boomboxcarAttribution.v1';
+  const hasIncomingAttribution = Object.values(incomingAttribution).some(Boolean);
+  const emptyAttribution = () => Object.fromEntries(Object.keys(incomingAttribution).map(key => [key, '']));
+  const readStoredAttribution = () => {
+    try { return JSON.parse(sessionStorage.getItem(attributionKey) || '{}'); } catch (_) { return {}; }
+  };
+  const analyticsAllowed = () => window.BoomBoxCarPrivacy?.analyticsAllowed() === true;
+  let attribution = hasIncomingAttribution
+    ? incomingAttribution
+    : (analyticsAllowed() ? { ...emptyAttribution(), ...readStoredAttribution() } : emptyAttribution());
+
+  function syncAttributionStorage(event) {
+    const allowed = event?.detail?.analytics === 'granted' || analyticsAllowed();
+    if (!allowed) {
+      try { sessionStorage.removeItem(attributionKey); } catch (_) {}
+      return;
+    }
+    if (!hasIncomingAttribution) attribution = { ...attribution, ...readStoredAttribution() };
+    if (Object.values(attribution).some(Boolean)) {
+      try { sessionStorage.setItem(attributionKey, JSON.stringify(attribution)); } catch (_) {}
+    }
+  }
+
+  syncAttributionStorage();
+  window.addEventListener('boomboxcar:analytics-consent', syncAttributionStorage);
   let bookingDraftTimer = null;
   let bookingDraftExpiryTimer = null;
   let restoredTimeSelection = null;

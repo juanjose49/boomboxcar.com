@@ -58,21 +58,12 @@
   <meta name="twitter:image:alt" content="Montaje móvil de BoomBoxCar con toldo, bocinas e iluminación para eventos" />
 
   <!-- Performance -->
-  <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
-  <link rel="preconnect" href="https://www.google-analytics.com" crossorigin />
   <link rel="preconnect" href="https://web.squarecdn.com" crossorigin />
 
   <!-- Styles -->
   <link rel="stylesheet" href="../index.css?v=20260830-event-qr-v2" />
-
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);} 
-    gtag('js', new Date());
-    gtag('config', 'G-FQ1TV8G46E');
-  </script>
+  <link rel="stylesheet" href="../privacy-consent.css?v=20260831" />
+  <script src="../privacy-consent.js?v=20260831" defer></script>
 
   <!-- JSON-LD: Negocio local / Servicio / FAQ en español -->
   <script type="application/ld+json">
@@ -489,6 +480,10 @@
 
   <footer class="site-footer">
     <small>© <span id="year"></span> BoomBoxCar. Todos los derechos reservados.</small>
+    <nav class="privacy-footer-links" aria-label="Enlaces de privacidad">
+      <a href="/es/privacidad/">Privacidad y almacenamiento</a>
+      <a href="#privacy-settings" data-privacy-settings>Opciones de privacidad</a>
+    </nav>
   </footer>
 
   <script src="../index.js?v=20260830-event-qr-v2" defer></script>

@@ -59,23 +59,12 @@
   <meta name="twitter:image:alt" content="BoomBoxCar mobile entertainment setup with awning, speakers, and event lighting" />
 
   <!-- Performance -->
-  <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
-  <link rel="preconnect" href="https://www.google-analytics.com" crossorigin />
   <link rel="preconnect" href="https://web.squarecdn.com" crossorigin />
 
   <!-- Styles -->
   <link rel="stylesheet" href="index.css?v=20260830-event-qr-v2" />
-
-  <!-- Google Analytics (unchanged) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQ1TV8G46E"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-FQ1TV8G46E', window.__boomboxcarPartnerEntry
-      ? { page_location: `${location.origin}/?partner_pass=1#book` }
-      : {});
-  </script>
+  <link rel="stylesheet" href="privacy-consent.css?v=20260831" />
+  <script src="privacy-consent.js?v=20260831" defer></script>
 
   <!-- Structured Data (LocalBusiness, Service, FAQPage) -->
   <script type="application/ld+json">
@@ -508,6 +497,10 @@
 
   <footer class="site-footer">
     <small>© <span id="year"></span> BoomBoxCar. All rights reserved.</small>
+    <nav class="privacy-footer-links" aria-label="Privacy links">
+      <a href="/privacy/">Privacy &amp; storage</a>
+      <a href="#privacy-settings" data-privacy-settings>Privacy choices</a>
+    </nav>
   </footer>
 
   <script src="index.js?v=20260830-event-qr-v2" defer></script>
