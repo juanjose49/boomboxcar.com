@@ -177,7 +177,7 @@ test('partner configuration stays private and limits eligible durations', () => 
 test('partner configuration honors its minimum and maximum activation duration', () => {
   const partner = [...parsePartners(JSON.stringify([{
     token: 'abcdefghijklmnopqrstuv', code: 'THREE26', name: 'Three Hour Venue',
-    minHours: 3, maxHours: 4, valueCap: 599, venueAddress: validInput.address,
+    minHours: 3, maxHours: 4, venueAddress: validInput.address,
     expiresOn: '2099-12-31'
   }])).values()][0];
   assert.deepEqual(publicPartner(partner).eligibleDurations, [3, 4]);
@@ -187,7 +187,7 @@ test('partner configuration honors its minimum and maximum activation duration',
 test('partner configuration supports a one-hour minimum activation', () => {
   const partner = [...parsePartners(JSON.stringify([{
     token: 'abcdefghijklmnopqrstuv', code: 'ONEHOUR26', name: 'One Hour Venue',
-    minHours: 1, maxHours: 3, valueCap: 599, venueAddress: validInput.address,
+    minHours: 1, maxHours: 3, venueAddress: validInput.address,
     expiresOn: '2099-12-31'
   }])).values()][0];
   assert.deepEqual(publicPartner(partner).eligibleDurations, [1, 2, 3]);
@@ -230,17 +230,16 @@ test('redeemed partners receive the ongoing rate for the configured venue regard
   assert.equal(partnerRedemptionStatus([{ recordType: 'PARTNER_REDEMPTION_COMPLETED', partnerCode: 'TEST26' }], 'TEST26'), 'redeemed');
 });
 
-test('Partner Pass applies up to $599 across duration and add-ons, then leaves only the excess due', () => {
-  const pricing = calculatePricing(packageDetails, [{ id: 'LASER', quantity: 1 }]);
-  const partnerPricing = applyPartnerPass(pricing, { code: 'TEST26', maxHours: 2, valueCap: 599 }, 2);
-  assert.equal(partnerPricing.partnerDiscount.amount, 299);
-  assert.equal(partnerPricing.partnerDiscount.retailValue, 299);
+test('Partner Pass fully covers its selected duration and rejects paid add-ons', () => {
+  const pricing = calculatePricing(packageDetails, []);
+  const partnerPricing = applyPartnerPass(pricing, { code: 'TEST26', minHours: 1, maxHours: 2 }, 1);
+  assert.equal(partnerPricing.partnerDiscount.amount, 249);
+  assert.equal(partnerPricing.partnerDiscount.retailValue, 249);
   assert.equal(partnerPricing.total, 0);
-
-  const excessPricing = applyPartnerPass({ ...pricing, basePrice: 399, total: 674 }, { code: 'TEST26', maxHours: 2, valueCap: 599 }, 2);
-  assert.equal(excessPricing.partnerDiscount.amount, 599);
-  assert.equal(excessPricing.total, 75);
-  assert.throws(() => applyPartnerPass(pricing, { code: 'TEST26', maxHours: 2 }, 3), /covers up to 2 hours/i);
+  assert.equal(Object.hasOwn(partnerPricing.partnerDiscount, 'valueCap'), false);
+  const withPaidAddon = calculatePricing(packageDetails, [{ id: 'LASER', quantity: 1 }]);
+  assert.throws(() => applyPartnerPass(withPaidAddon, { code: 'TEST26', minHours: 1, maxHours: 2 }, 1), /Paid add-ons are not available/i);
+  assert.throws(() => applyPartnerPass(pricing, { code: 'TEST26', minHours: 1, maxHours: 2 }, 3), /covers 1 to 2 hours/i);
 });
 
 test('Partner Pass requires every onsite permission and enforces one active redemption', () => {

@@ -5,7 +5,6 @@ import { eventAddressesMatch, formatEventAddress, normalizeEventAddress } from '
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{22,128}$/;
 const CODE_PATTERN = /^[A-Z0-9_-]{3,40}$/;
 const RETAIL_VALUES = Object.freeze({ 1: 249, 2: 399, 3: 499, 4: 599 });
-const DEFAULT_VALUE_CAP = 599;
 const DEFAULT_FUTURE_DISCOUNT_PERCENT = 15;
 
 function clean(value, max = 100) {
@@ -18,7 +17,6 @@ function normalizePartnerEntry(entry) {
   const name = clean(entry?.name, 120);
   const minHours = Number(entry?.minHours ?? 2);
   const maxHours = Number(entry?.maxHours ?? 2);
-  const valueCap = Number(entry?.valueCap ?? DEFAULT_VALUE_CAP);
   const futureDiscountPercent = Number(entry?.futureDiscountPercent ?? DEFAULT_FUTURE_DISCOUNT_PERCENT);
   const venueAddress = normalizeEventAddress(entry?.venueAddress);
   const expiresOn = clean(entry?.expiresOn, 10);
@@ -32,10 +30,6 @@ function normalizePartnerEntry(entry) {
   if (![1, 2, 3, 4].includes(minHours) || ![1, 2, 3, 4].includes(maxHours) || minHours > maxHours) {
     throw new AppError(400, 'INVALID_PARTNER_HOURS', 'Activation hours must use a valid minimum and maximum from 1 to 4 hours.');
   }
-  if (!Number.isFinite(valueCap) || valueCap <= 0 || valueCap > DEFAULT_VALUE_CAP) throw new AppError(400, 'INVALID_PARTNER_VALUE', 'Partner value must be greater than 0 and no more than $599.');
-  if (valueCap < RETAIL_VALUES[maxHours]) {
-    throw new AppError(400, 'INVALID_PARTNER_VALUE', `Partner value must cover the configured ${maxHours}-hour activation.`);
-  }
   if (!Number.isFinite(futureDiscountPercent) || futureDiscountPercent <= 0 || futureDiscountPercent > 50) throw new AppError(400, 'INVALID_PARTNER_RATE', 'Future discount must be greater than 0 and no more than 50 percent.');
   if (expiresOn && !/^\d{4}-\d{2}-\d{2}$/.test(expiresOn)) throw new AppError(400, 'INVALID_PARTNER_EXPIRATION', 'Partner expiration must use YYYY-MM-DD.');
   if (!Number.isFinite(newCustomerDiscountPercent) || newCustomerDiscountPercent <= 0 || newCustomerDiscountPercent > 50) throw new AppError(400, 'INVALID_CAMPAIGN_RATE', 'New-customer discount must be greater than 0 and no more than 50 percent.');
@@ -45,7 +39,7 @@ function normalizePartnerEntry(entry) {
     throw new AppError(400, 'INVALID_PARTNER_ATTRIBUTION', 'Source and QR campaign identifiers may use letters, numbers, periods, colons, underscores, and hyphens.');
   }
   return Object.freeze({
-    token, code, name, minHours, maxHours, valueCap: Math.round(valueCap * 100) / 100,
+    token, code, name, minHours, maxHours,
     futureDiscountPercent: Math.round(futureDiscountPercent * 100) / 100,
     venueAddress: Object.freeze(venueAddress), expiresOn,
     newCustomerDiscountPercent: Math.round(newCustomerDiscountPercent * 100) / 100,
@@ -60,7 +54,7 @@ export function createPartnerEntry(input, token = randomBytes(24).toString('base
 export function partnerConfigEntry(partner) {
   return {
     token: partner.token, code: partner.code, name: partner.name, venueAddress: partner.venueAddress,
-    minHours: partner.minHours, maxHours: partner.maxHours, valueCap: partner.valueCap,
+    minHours: partner.minHours, maxHours: partner.maxHours,
     futureDiscountPercent: partner.futureDiscountPercent,
     newCustomerDiscountPercent: partner.newCustomerDiscountPercent,
     newCustomerOfferEndsOn: partner.newCustomerOfferEndsOn, expiresOn: partner.expiresOn,
@@ -101,7 +95,6 @@ export function publicPartner(partner, redemptionStatus = 'available') {
     name: partner.name,
     minHours: partner.minHours,
     maxHours: partner.maxHours,
-    valueCap: partner.valueCap,
     futureDiscountPercent: partner.futureDiscountPercent,
     activationAvailable: redemptionStatus === 'available',
     activationPending: redemptionStatus === 'claimed',
@@ -160,8 +153,10 @@ export function applyPartnerPass(pricing, partner, durationHours) {
       : `${minHours} to ${partner.maxHours} hours`;
     throw new AppError(400, 'PARTNER_DURATION_NOT_ELIGIBLE', `This Partner Pass covers ${durationDescription}.`);
   }
-  const valueCap = partner.valueCap ?? DEFAULT_VALUE_CAP;
-  const discountAmount = Math.min(pricing.total, valueCap);
+  if ((pricing.modifiers || []).some(modifier => !modifier.included && modifier.price > 0)) {
+    throw new AppError(400, 'PARTNER_ACTIVATION_ADDONS_NOT_ALLOWED', 'Paid add-ons are not available in the complimentary activation checkout.');
+  }
+  const discountAmount = pricing.total;
   return {
     ...pricing,
     subtotal: pricing.total,
@@ -169,7 +164,6 @@ export function applyPartnerPass(pricing, partner, durationHours) {
       code: partner.code,
       name: 'BoomBoxCar Partner Pass',
       amount: discountAmount,
-      valueCap,
       retailValue: discountAmount,
       packageRetailValue: RETAIL_VALUES[durationHours],
       benefitType: 'activation'

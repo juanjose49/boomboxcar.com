@@ -658,7 +658,7 @@
   function partnerDiscountAmount(subtotal) {
     if (!partnerPass) return 0;
     return partnerPass.activationAvailable
-      ? Math.min(subtotal, partnerPass.valueCap)
+      ? subtotal
       : Math.round(subtotal * partnerPass.futureDiscountPercent) / 100;
   }
 
@@ -1121,7 +1121,7 @@
       }
       partnerPassPanel.hidden = false;
       partnerPassLead.textContent = partnerPass.activationAvailable
-        ? `${partnerPass.name}: apply up to $${partnerPass.valueCap} toward an eligible ${partnerPass.maxHours === 2 ? '2-hour' : `2- to ${partnerPass.maxHours}-hour`} activation and add-ons.`
+        ? `${partnerPass.name}: use the private partner page to schedule the complimentary activation.`
         : `${partnerPass.name}: receive ${partnerPass.futureDiscountPercent}% off this booking and eligible add-ons.`;
       const venueAddress = partnerPass.venueAddress;
       for (const field of ['addressLine1', 'addressLine2', 'locality', 'administrativeDistrictLevel1', 'postalCode']) {

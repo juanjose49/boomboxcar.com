@@ -42,10 +42,9 @@
     editingCode = '';
     partnerForm.reset();
     partnerForm.elements.code.readOnly = false;
-    partnerForm.elements.valueCap.value = '599';
     partnerForm.elements.futureDiscountPercent.value = '15';
     partnerForm.elements.newCustomerDiscountPercent.value = '10';
-    partnerForm.elements.minHours.value = '2';
+    partnerForm.elements.minHours.value = '1';
     partnerForm.elements.maxHours.value = '2';
     partnerForm.elements.newCustomerOfferEndsOn.value = dateAfter(14);
     partnerForm.elements.expiresOn.value = dateAfter(365);
@@ -143,7 +142,7 @@
         locality: fields.locality.value.trim(), administrativeDistrictLevel1: fields.administrativeDistrictLevel1.value,
         postalCode: fields.postalCode.value.trim()
       },
-      minHours: Number(fields.minHours.value), maxHours: Number(fields.maxHours.value), valueCap: Number(fields.valueCap.value),
+      minHours: Number(fields.minHours.value), maxHours: Number(fields.maxHours.value),
       futureDiscountPercent: Number(fields.futureDiscountPercent.value),
       newCustomerDiscountPercent: Number(fields.newCustomerDiscountPercent.value),
       newCustomerOfferEndsOn: fields.newCustomerOfferEndsOn.value, expiresOn: fields.expiresOn.value,

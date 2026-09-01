@@ -108,7 +108,7 @@ test('business admin requires Basic Authentication and persists partners and cou
       addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
       administrativeDistrictLevel1: 'MD', postalCode: '20910'
     },
-    minHours: 2, maxHours: 4, valueCap: 599, futureDiscountPercent: 15,
+    minHours: 1, maxHours: 2, futureDiscountPercent: 15,
     newCustomerDiscountPercent: 10, newCustomerOfferEndsOn: '2099-11-30', expiresOn: '2099-12-31',
     sourceReferralId: 'VENUE26', qrCampaignId: 'VENUE26-EVENT', active: true
   };
@@ -132,6 +132,9 @@ test('business admin requires Basic Authentication and persists partners and cou
       const payload = await created.json();
       createdToken = payload.partner.token;
       assert.match(createdToken, /^[A-Za-z0-9_-]{22,128}$/);
+      assert.equal(payload.partner.minHours, 1);
+      assert.equal(payload.partner.maxHours, 2);
+      assert.equal(Object.hasOwn(payload.partner, 'valueCap'), false);
       assert.match(payload.partner.privateUrl, /\/partner\/\?pass=/);
       assert.match(payload.partner.qrImageUrl, /\/api\/admin\/partners\/VENUE26\/qr\.svg$/);
       assert.match(payload.partner.qrDestinationUrl, /\?ref=VENUE26&qr=VENUE26-EVENT/);

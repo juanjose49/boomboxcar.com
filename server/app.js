@@ -492,6 +492,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           validatePartnerVenue(partner, reservation.details.address);
           partnerStatus = partnerRedemptionStatus(await readReservationRecords(config.dataDir), partner.code);
           if (partnerStatus === 'claimed') throw new AppError(409, 'PARTNER_PASS_PROCESSING', 'The complimentary activation is currently being processed. Try again shortly.');
+          if (partnerStatus === 'available') throw new AppError(409, 'PARTNER_ACTIVATION_CHECKOUT_REQUIRED', 'Use the private partner page to schedule the complimentary activation.');
         }
         let campaignContact = null;
         if (campaign) {
@@ -505,9 +506,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
           calculatePricing(packageDetails, reservation.modifiers),
           coupon
         );
-        if (partner) pricing = partnerStatus === 'available'
-          ? applyPartnerPass(pricing, partner, reservation.durationHours)
-          : applyPartnerRate(pricing, partner);
+        if (partner) pricing = applyPartnerRate(pricing, partner);
         if (campaign) pricing = applyNewCustomerOffer(pricing, campaign);
         if (Math.round(pricing.total * 100) !== expectedTotalCents) {
           throw new AppError(409, 'PRICE_CHANGED', 'Square pricing changed. Review the updated total and try payment again.');

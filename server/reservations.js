@@ -233,7 +233,7 @@ export function buildCustomerNote({ reservationId, reservation, pricing, partner
     ...(partner ? [
       `Partner: ${partner.name} (${partner.code})`,
       pricing.partnerDiscount.benefitType === 'activation'
-        ? `Partner Pass value applied: ${money(pricing.partnerDiscount.amount)} of ${money(pricing.partnerDiscount.valueCap)}`
+        ? `Complimentary Partner Pass activation: ${money(pricing.partnerDiscount.amount)}`
         : `Partner Rate applied: ${pricing.partnerDiscount.percentage}% (-${money(pricing.partnerDiscount.amount)})`
     ] : []),
     `Duration: ${reservation.durationHours} hour${reservation.durationHours === 1 ? '' : 's'} (${money(pricing.basePrice)})`,
