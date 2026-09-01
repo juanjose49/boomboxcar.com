@@ -135,7 +135,7 @@
       document.getElementById('partnerTitle').textContent = partner.name;
       status.textContent = partner.activationAvailable ? 'Your complimentary BoomBoxCar activation' : 'BoomBoxCar Partner';
       venue.textContent = `Activation venue: ${partner.formattedVenueAddress}`;
-      benefit.textContent = 'Choose your activation duration and start time, then enter an email for confirmation.';
+      benefit.textContent = 'Choose your activation duration and start time, then enter the organizer or coordinator contact for confirmation.';
 
       if (partner.activationAvailable) {
         renderDurations();
@@ -177,7 +177,10 @@
           durationHours: Number(selectedDuration().value),
           eventDate: dateInput.value,
           startAt: timeInput.value,
+          givenName: form.elements.givenName.value.trim(),
+          familyName: form.elements.familyName.value.trim(),
           email: form.elements.email.value.trim(),
+          phone: form.elements.phone.value.trim(),
           partnerPermissions: { signageAndQr: true, photoVideo: true, publicIdentification: true, safetyAndVenue: true }
         })
       });

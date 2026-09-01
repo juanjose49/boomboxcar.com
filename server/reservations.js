@@ -99,11 +99,15 @@ export function validatePartnerActivationReservation(input, partner) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.eventDate || '')) throw new AppError(400, 'INVALID_DATE', 'Choose a valid event date.');
   if (!input.startAt || !Number.isFinite(Date.parse(input.startAt))) throw new AppError(400, 'INVALID_TIME', 'Choose an available arrival time.');
 
-  const email = cleanString(input.email, 254).toLowerCase();
-  if (!validEmail(email)) throw new AppError(400, 'INVALID_EMAIL', 'Enter a valid email address.');
-  const nameParts = cleanString(partner?.name, 120).split(/\s+/).filter(Boolean);
-  const givenName = nameParts.shift() || 'BoomBoxCar';
-  const familyName = nameParts.join(' ') || 'Partner';
+  const customerName = normalizeCustomerName(input.givenName, input.familyName);
+  const customer = {
+    ...customerName,
+    email: cleanString(input.email, 254).toLowerCase(),
+    phone: cleanString(input.phone, 24)
+  };
+  if (!customer.givenName || !customer.familyName) throw new AppError(400, 'INVALID_NAME', 'Organizer first and last name are required.');
+  if (!validEmail(customer.email)) throw new AppError(400, 'INVALID_EMAIL', 'Enter a valid email address.');
+  if (!validPhone(customer.phone)) throw new AppError(400, 'INVALID_PHONE', 'Enter a valid phone number.');
 
   return {
     locale: 'en',
@@ -112,7 +116,7 @@ export function validatePartnerActivationReservation(input, partner) {
     durationHours,
     modifiers: [],
     couponCode: '',
-    customer: { givenName, familyName, email, phone: '' },
+    customer,
     details: {
       address: normalizeEventAddress(partner.venueAddress),
       eventType: 'Partner activation',

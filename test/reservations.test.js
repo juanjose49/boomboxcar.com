@@ -196,21 +196,27 @@ test('partner configuration supports a one-hour minimum activation', () => {
   assert.equal(pricing.total, 0);
 });
 
-test('partner activation checkout derives venue details from configuration and only needs scheduling plus email', () => {
+test('partner activation checkout derives venue details and requires scheduling plus organizer contact', () => {
   const partner = {
     code: 'VENUE26', name: 'Test Venue', sourceReferralId: 'VENUE26',
     venueAddress: validInput.address
   };
   const reservation = validatePartnerActivationReservation({
     durationHours: 3, eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00.000Z',
-    email: 'events@example.org'
+    givenName: 'Alex', familyName: 'Coordinator', email: 'events@example.org', phone: '301-555-0123'
   }, partner);
   assert.equal(reservation.durationHours, 3);
+  assert.equal(reservation.customer.givenName, 'Alex');
+  assert.equal(reservation.customer.familyName, 'Coordinator');
   assert.equal(reservation.customer.email, 'events@example.org');
-  assert.equal(reservation.customer.phone, '');
+  assert.equal(reservation.customer.phone, '301-555-0123');
   assert.deepEqual(reservation.modifiers, []);
   assert.deepEqual(reservation.details.address, validInput.address);
   assert.equal(reservation.details.eventType, 'Partner activation');
+  assert.throws(() => validatePartnerActivationReservation({
+    durationHours: 3, eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00.000Z',
+    givenName: 'Alex', familyName: '', email: 'events@example.org', phone: '301-555-0123'
+  }, partner), /first and last name/i);
 });
 
 test('redeemed partners receive the ongoing rate for the configured venue regardless of customer email', () => {
