@@ -135,7 +135,7 @@
       document.getElementById('partnerTitle').textContent = partner.name;
       status.textContent = partner.activationAvailable ? 'Your complimentary BoomBoxCar activation' : 'BoomBoxCar Partner';
       venue.textContent = `Activation venue: ${partner.formattedVenueAddress}`;
-      benefit.textContent = `Select an eligible duration with up to $${partner.valueCap} in retail value. The complete standard service shown here is included at no charge.`;
+      benefit.textContent = 'Choose your activation duration and start time, then enter an email for confirmation.';
 
       if (partner.activationAvailable) {
         renderDurations();
