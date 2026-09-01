@@ -133,7 +133,17 @@
       document.title = `${partner.name} | BoomBoxCar Partner Pass`;
       document.getElementById('partnerTitle').textContent = partner.name;
       status.textContent = partner.activationAvailable ? 'Your complimentary BoomBoxCar activation' : 'BoomBoxCar Partner';
-      venue.textContent = `Activation venue: ${partner.formattedVenueAddress}`;
+      const address = partner.venueAddress;
+      const addressLines = [
+        address.addressLine1,
+        address.addressLine2,
+        [address.locality, address.administrativeDistrictLevel1].filter(Boolean).join(', ') + (address.postalCode ? ` ${address.postalCode}` : '')
+      ].filter(Boolean);
+      venue.replaceChildren(...addressLines.map(line => {
+        const span = document.createElement('span');
+        span.textContent = line;
+        return span;
+      }));
 
       if (partner.activationAvailable) {
         renderDurations();
