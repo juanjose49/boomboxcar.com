@@ -121,8 +121,9 @@ export function validatePartnerActivationReservation(input, partner) {
       address: normalizeEventAddress(partner.venueAddress),
       eventType: 'Partner activation',
       setting: 'Partner venue',
-      attendance: 1,
-      requests: ''
+      attendance: 100,
+      attendanceLabel: '100+',
+      requests: cleanString(input.requests, 1500)
     },
     attribution: normalizeAttribution({
       sourceReferralId: partner.sourceReferralId,
@@ -248,7 +249,7 @@ export function buildCustomerNote({ reservationId, reservation, pricing, partner
     `Event address: ${formatEventAddress(reservation.details.address)}`,
     `Event type: ${reservation.details.eventType}`,
     `Setting: ${reservation.details.setting}`,
-    `Expected attendance: ${reservation.details.attendance}`,
+    `Expected attendance: ${reservation.details.attendanceLabel || reservation.details.attendance}`,
     `Special requests: ${reservation.details.requests || 'None'}`,
     `Event contact: ${reservation.customer.givenName} ${reservation.customer.familyName}`,
     `Contact email: ${reservation.customer.email}`,

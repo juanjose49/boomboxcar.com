@@ -188,6 +188,7 @@
           familyName: form.elements.familyName.value.trim(),
           email: form.elements.email.value.trim(),
           phone: form.elements.phone.value.trim(),
+          requests: form.elements.requests.value.trim(),
           partnerPermissions: { signageAndQr: true, photoVideo: true, publicIdentification: true, safetyAndVenue: true }
         })
       });

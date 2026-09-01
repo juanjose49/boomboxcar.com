@@ -302,7 +302,7 @@ main > .contact{order:10}
 }
 
 /* Booking builder */
-.partner-pass{max-width:1100px;margin:2rem auto 0;padding:clamp(1.25rem,4vw,2.5rem);border:1px solid rgba(255,255,255,.24);border-radius:24px;background:linear-gradient(135deg,rgba(89,43,151,.92),rgba(20,20,31,.96))}
+.partner-pass{max-width:1100px;margin:2rem auto 0;padding:clamp(1.25rem,4vw,2.5rem);padding-bottom:clamp(1.25rem,2.5vw,1.75rem);border:1px solid rgba(255,255,255,.24);border-radius:24px;background:linear-gradient(135deg,rgba(89,43,151,.92),rgba(20,20,31,.96))}
 .partner-pass ul{margin:1rem 0 0;padding-left:1.25rem}
 .campaign-offer{max-width:1100px;margin:2rem auto 0;padding:clamp(1.25rem,4vw,2.5rem);scroll-margin-top:92px;border:1px solid rgba(255,109,20,.55);border-radius:24px;background:linear-gradient(135deg,rgba(255,109,20,.16),var(--card))}
 .campaign-offer h2{margin:.25rem 0 .75rem}.campaign-offer [role="status"]{font-weight:700}.campaign-offer [data-state="success"]{color:#63d497}.campaign-offer [data-state="error"]{color:#ff9f94}
@@ -339,6 +339,10 @@ main > .contact{order:10}
 .partner-venue-wide{grid-column:1/-1}
 .partner-schedule-grid input,.partner-schedule-grid select,.partner-contact-grid input,.partner-venue-grid input{width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--ring);border-radius:10px;color:var(--input-ink);background:var(--input-bg);font:inherit}
 .partner-venue-grid input:disabled{opacity:1;color:var(--muted);background:var(--soft);cursor:not-allowed}
+.partner-optional-label{color:var(--muted);font-size:.9em;font-weight:700}
+.partner-notes-field{display:grid;gap:6px;font-weight:800}
+.partner-notes-field textarea{width:100%;min-height:110px;padding:10px 12px;border:1px solid var(--ring);border-radius:10px;color:var(--input-ink);background:var(--input-bg);font:inherit;resize:vertical}
+.partner-notes-field textarea:focus{outline:3px solid rgba(255,106,0,.25);border-color:var(--brand)}
 .partner-checkout-summary{display:grid;gap:10px;padding:20px;border-radius:15px;color:#fff;background:#17151b}
 .partner-checkout-summary>div{display:flex;justify-content:space-between;gap:20px}
 .partner-checkout-summary span{color:#c8c1ce}
@@ -424,6 +428,8 @@ main > .contact{order:10}
   }
 }
 .field-grid textarea{resize:vertical}
+.field-grid .partner-locked-control>span::after{content:attr(data-locked-label);display:inline-block;margin-left:.5rem;padding:.12rem .42rem;border:1px solid rgba(255,255,255,.22);border-radius:999px;color:#d8d1df;background:rgba(255,255,255,.09);font-size:.68rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;vertical-align:middle}
+.field-grid [data-partner-locked="true"]:disabled{opacity:1;border-color:#706878;color:#c9c2d0;background:#29262e;cursor:not-allowed;-webkit-text-fill-color:#c9c2d0}
 .field-grid input:focus,.field-grid select:focus,.field-grid textarea:focus{
   outline:3px solid rgba(255,106,0,.32);
   border-color:var(--brand);

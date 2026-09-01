@@ -199,7 +199,7 @@
     addDetails(document.getElementById('event-details'), [
       [c.dateTime, eventDate], [c.duration, c.hours(reservation.durationHours)],
       [c.address, formatAddress(reservation.details.address)], [c.eventType, reservation.details.eventType],
-      [c.setting, reservation.details.setting], [c.attendance, String(reservation.details.attendance)]
+      [c.setting, reservation.details.setting], [c.attendance, String(reservation.details.attendanceLabel || reservation.details.attendance)]
     ]);
     addDetails(document.getElementById('contact-details'), [
       [c.name, name], [c.email, reservation.customer.email], [c.phone, reservation.customer.phone]

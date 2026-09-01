@@ -61,7 +61,7 @@
   <link rel="preconnect" href="https://web.squarecdn.com" crossorigin />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="../index.css?v=20260901-booking-controls-1" />
+  <link rel="stylesheet" href="../index.css?v=20260901-partner-lock-1" />
   <link rel="stylesheet" href="../privacy-consent.css?v=20260831" />
   <script src="../privacy-consent.js?v=20260831" defer></script>
 
@@ -254,7 +254,7 @@
               <label><span>Ciudad</span><input name="locality" type="text" autocomplete="address-level2" maxlength="300" required /></label>
               <label><span>Estado</span><select name="administrativeDistrictLevel1" autocomplete="address-level1" required><option value="">Elige uno</option><option value="DC">Distrito de Columbia</option><option value="MD">Maryland</option><option value="VA">Virginia</option></select></label>
               <label><span>Código postal</span><input name="postalCode" type="text" autocomplete="postal-code" inputmode="numeric" maxlength="10" pattern="[0-9]{5}(-[0-9]{4})?" placeholder="20910" required /></label>
-              <p class="field-note field-wide">Las reservas en línea cubren DC, Maryland y Virginia. Para precios personalizados fuera del DMV, escribe a <a href="mailto:booking@boomboxcar.com">booking@boomboxcar.com</a>.</p>
+              <p class="field-note field-wide" id="eventAddressHelp">Las reservas en línea cubren DC, Maryland y Virginia. Para precios personalizados fuera del DMV, escribe a <a href="mailto:booking@boomboxcar.com">booking@boomboxcar.com</a>.</p>
               <label><span>Tipo de evento</span><select name="eventType" required><option value="">Elige uno</option><option>Cumpleaños</option><option>Evento comunitario</option><option>Evento escolar</option><option>Mercado o pop-up</option><option>Fiesta privada</option><option>Activación de marca</option><option>Otro</option></select></label>
               <label><span>Entorno</span><select name="setting" required><option value="Outdoor" selected>Exterior</option><option value="Indoor/Outdoor">Interior/Exterior</option></select></label>
               <label><span>Asistencia esperada</span><input name="attendance" type="number" min="1" inputmode="numeric" placeholder="Número aproximado de invitados" required /></label>
@@ -487,6 +487,6 @@
   </footer>
 
   <script src="../index.js?v=20260901-partner-campaign-3" defer></script>
-  <script src="../booking.js?v=20260901-partner-campaign-4" defer></script>
+  <script src="../booking.js?v=20260901-partner-wallet-1" defer></script>
 </body>
 </html>

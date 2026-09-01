@@ -92,6 +92,7 @@
   const totalOutput = document.getElementById('summaryTotal');
   const quoteNote = document.getElementById('quoteNote');
   const availabilityStatus = document.getElementById('availabilityStatus');
+  const eventAddressHelp = document.getElementById('eventAddressHelp');
   const submitButton = document.getElementById('bookingSubmit');
   const applePayButton = document.getElementById('applePayButton');
   const googlePayButton = document.getElementById('googlePayButton');
@@ -649,9 +650,6 @@
     if (complimentary) {
       applePayButton.hidden = true; googlePayButton.hidden = true; cardPaymentToggle.hidden = true; cardCheckout.hidden = true;
       handoffNote.textContent = isSpanish ? 'Confirma los requisitos para reservar esta activación.' : 'Confirm the activation requirements to reserve this complimentary activation.';
-    } else if (cardReady) {
-      cardCheckout.hidden = false;
-      handoffNote.textContent = copy.apiHandoff;
     }
   }
 
@@ -1127,9 +1125,14 @@
       for (const field of ['addressLine1', 'addressLine2', 'locality', 'administrativeDistrictLevel1', 'postalCode']) {
         const control = form.elements[field];
         control.value = venueAddress[field] || '';
-        if (control.tagName === 'SELECT') control.disabled = true;
-        else control.readOnly = true;
+        control.disabled = true;
+        control.dataset.partnerLocked = 'true';
+        control.closest('label')?.classList.add('partner-locked-control');
+        control.closest('label')?.setAttribute('data-locked-label', isSpanish ? 'Bloqueado' : 'Locked');
       }
+      eventAddressHelp.textContent = isSpanish
+        ? 'La dirección del evento está establecida por tu Partner Pass y no se puede editar.'
+        : 'The event address is set by your Partner Pass and cannot be edited.';
       persistBookingDraft();
       if (!partnerPass.activationAvailable) {
         const items = [

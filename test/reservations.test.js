@@ -203,7 +203,8 @@ test('partner activation checkout derives venue details and requires scheduling 
   };
   const reservation = validatePartnerActivationReservation({
     durationHours: 3, eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00.000Z',
-    givenName: 'Alex', familyName: 'Coordinator', email: 'events@example.org', phone: '301-555-0123'
+    givenName: 'Alex', familyName: 'Coordinator', email: 'events@example.org', phone: '301-555-0123',
+    requests: 'Use the loading entrance on Pine Street.'
   }, partner);
   assert.equal(reservation.durationHours, 3);
   assert.equal(reservation.customer.givenName, 'Alex');
@@ -213,6 +214,9 @@ test('partner activation checkout derives venue details and requires scheduling 
   assert.deepEqual(reservation.modifiers, []);
   assert.deepEqual(reservation.details.address, validInput.address);
   assert.equal(reservation.details.eventType, 'Partner activation');
+  assert.equal(reservation.details.attendance, 100);
+  assert.equal(reservation.details.attendanceLabel, '100+');
+  assert.equal(reservation.details.requests, 'Use the loading entrance on Pine Street.');
   assert.throws(() => validatePartnerActivationReservation({
     durationHours: 3, eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00.000Z',
     givenName: 'Alex', familyName: '', email: 'events@example.org', phone: '301-555-0123'
