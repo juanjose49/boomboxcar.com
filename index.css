@@ -111,11 +111,11 @@ a:hover{text-decoration:underline}
 /* Hero */
 main{display:flex;flex-direction:column}
 main > .experience-video{order:1}
-main > .campaign-offer{order:2}
 main > .value-proposition{order:3}
 main > .gallery-party{order:4}
-main > .partner-pass{order:4}
-main > .booking{order:5}
+main > .campaign-offer{order:5}
+main > .partner-pass{order:5}
+main > .booking{order:6}
 main > .features{order:6}
 main > .pricing{order:7}
 main > .events{order:8}
@@ -304,7 +304,7 @@ main > .contact{order:10}
 /* Booking builder */
 .partner-pass{max-width:1100px;margin:2rem auto;padding:clamp(1.25rem,4vw,2.5rem);border:1px solid rgba(255,255,255,.24);border-radius:24px;background:linear-gradient(135deg,rgba(89,43,151,.92),rgba(20,20,31,.96))}
 .partner-pass ul{margin:1rem 0 0;padding-left:1.25rem}
-.campaign-offer{max-width:1100px;margin:2rem auto 0;padding:clamp(1.25rem,4vw,2.5rem);scroll-margin-top:92px;border:1px solid rgba(255,109,20,.55);border-radius:24px;background:linear-gradient(135deg,rgba(255,109,20,.16),var(--card))}
+.campaign-offer{max-width:1100px;margin:2rem auto;padding:clamp(1.25rem,4vw,2.5rem);scroll-margin-top:92px;border:1px solid rgba(255,109,20,.55);border-radius:24px;background:linear-gradient(135deg,rgba(255,109,20,.16),var(--card))}
 .campaign-offer h2{margin:.25rem 0 .75rem}.campaign-offer [role="status"]{font-weight:700}.campaign-offer [data-state="success"]{color:#63d497}.campaign-offer [data-state="error"]{color:#ff9f94}
 .partner-terms label{display:grid;grid-template-columns:auto 1fr;gap:.65rem;align-items:start;margin:.8rem 0}
 .partner-terms input{margin-top:.2rem}
