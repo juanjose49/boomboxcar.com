@@ -4,7 +4,14 @@
   const form = document.getElementById('activationForm');
   const status = document.getElementById('status');
   const content = document.getElementById('partnerContent');
-  const venue = document.getElementById('partnerVenue');
+  const venueFields = {
+    addressLine1: document.getElementById('partnerVenueAddressLine1'),
+    addressLine2: document.getElementById('partnerVenueAddressLine2'),
+    locality: document.getElementById('partnerVenueCity'),
+    administrativeDistrictLevel1: document.getElementById('partnerVenueState'),
+    postalCode: document.getElementById('partnerVenuePostalCode')
+  };
+  const venueAddressLine2Field = document.getElementById('partnerVenueAddressLine2Field');
   const durations = document.getElementById('partnerDurations');
   const durationHelp = document.getElementById('durationHelp');
   const dateInput = document.getElementById('partnerDate');
@@ -134,16 +141,8 @@
       document.getElementById('partnerTitle').textContent = partner.name;
       status.textContent = partner.activationAvailable ? 'Your complimentary BoomBoxCar activation' : 'BoomBoxCar Partner';
       const address = partner.venueAddress;
-      const addressLines = [
-        address.addressLine1,
-        address.addressLine2,
-        [address.locality, address.administrativeDistrictLevel1].filter(Boolean).join(', ') + (address.postalCode ? ` ${address.postalCode}` : '')
-      ].filter(Boolean);
-      venue.replaceChildren(...addressLines.map(line => {
-        const span = document.createElement('span');
-        span.textContent = line;
-        return span;
-      }));
+      Object.entries(venueFields).forEach(([field, input]) => { input.value = address[field] || ''; });
+      venueAddressLine2Field.hidden = !address.addressLine2;
 
       if (partner.activationAvailable) {
         renderDurations();

@@ -319,14 +319,10 @@ main > .contact{order:10}
 .partner-checkout-hero h1{max-width:680px;margin:.15rem 0;font-size:clamp(2.15rem,7vw,4.8rem);line-height:1}
 .partner-checkout-hero p:last-child{margin-bottom:0;color:#e0d7e8}
 .partner-activation-overview,.partner-activation-form,.partner-rate-panel{padding:clamp(24px,5vw,48px)}
-.partner-activation-overview{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(240px,.85fr);align-items:start;gap:26px;border-bottom:1px solid var(--ring)}
+.partner-activation-overview{border-bottom:1px solid var(--ring)}
 .partner-activation-overview h2{margin:.2rem 0 .7rem}
 .partner-activation-details{display:grid;gap:14px}
 .partner-included-list{display:grid;gap:8px;margin:0;padding:20px 20px 20px 40px;border-radius:14px;background:var(--soft)}
-.partner-venue-card{align-self:stretch;padding:20px;border-radius:14px;border-left:4px solid var(--brand);background:var(--soft)}
-.partner-venue-card h2{font-size:1.1rem}
-.partner-venue{display:grid;gap:4px;margin:14px 0 0;color:var(--ink);font-style:normal;font-weight:750;line-height:1.45}
-.partner-venue span{display:block}
 .partner-activation-form{display:grid;gap:22px}
 .partner-activation-form fieldset{min-width:0;margin:0;padding:20px;border:1px solid var(--ring);border-radius:15px}
 .partner-activation-form legend{padding:0 7px;font-size:1.05rem;font-weight:900}
@@ -337,9 +333,12 @@ main > .contact{order:10}
 .partner-duration-card small{color:var(--muted)}
 .partner-duration-card input:checked+span{border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,106,0,.13);background:var(--surface)}
 .partner-duration-card input:focus-visible+span{outline:3px solid rgba(255,106,0,.3);outline-offset:2px}
-.partner-schedule-grid,.partner-contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.partner-schedule-grid label,.partner-contact-grid label{display:grid;gap:6px;font-weight:800}
-.partner-schedule-grid input,.partner-schedule-grid select,.partner-contact-grid input{width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--ring);border-radius:10px;color:var(--input-ink);background:var(--input-bg);font:inherit}
+.partner-schedule-grid,.partner-contact-grid,.partner-venue-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.partner-venue-grid{grid-template-columns:2fr 1fr 1fr}
+.partner-schedule-grid label,.partner-contact-grid label,.partner-venue-grid label{display:grid;gap:6px;font-weight:800}
+.partner-venue-wide{grid-column:1/-1}
+.partner-schedule-grid input,.partner-schedule-grid select,.partner-contact-grid input,.partner-venue-grid input{width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--ring);border-radius:10px;color:var(--input-ink);background:var(--input-bg);font:inherit}
+.partner-venue-grid input:disabled{opacity:1;color:var(--muted);background:var(--soft);cursor:not-allowed}
 .partner-checkout-summary{display:grid;gap:10px;padding:20px;border-radius:15px;color:#fff;background:#17151b}
 .partner-checkout-summary>div{display:flex;justify-content:space-between;gap:20px}
 .partner-checkout-summary span{color:#c8c1ce}
@@ -355,8 +354,8 @@ main > .contact{order:10}
   .partner-checkout{border:0;border-radius:0}
   .partner-checkout-header{align-items:flex-start}
   .partner-private-label{max-width:120px;text-align:right}
-  .partner-activation-overview{grid-template-columns:1fr}
-  .partner-duration-grid,.partner-schedule-grid,.partner-contact-grid{grid-template-columns:1fr}
+  .partner-duration-grid,.partner-schedule-grid,.partner-contact-grid,.partner-venue-grid{grid-template-columns:1fr}
+  .partner-venue-wide{grid-column:auto}
 }
 .booking{
   scroll-margin-top:72px;
