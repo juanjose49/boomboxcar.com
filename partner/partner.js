@@ -4,7 +4,6 @@
   const form = document.getElementById('activationForm');
   const status = document.getElementById('status');
   const content = document.getElementById('partnerContent');
-  const benefit = document.getElementById('partnerBenefit');
   const venue = document.getElementById('partnerVenue');
   const durations = document.getElementById('partnerDurations');
   const durationHelp = document.getElementById('durationHelp');
@@ -135,7 +134,6 @@
       document.getElementById('partnerTitle').textContent = partner.name;
       status.textContent = partner.activationAvailable ? 'Your complimentary BoomBoxCar activation' : 'BoomBoxCar Partner';
       venue.textContent = `Activation venue: ${partner.formattedVenueAddress}`;
-      benefit.textContent = 'Choose your activation duration and start time, then enter the organizer or coordinator contact for confirmation.';
 
       if (partner.activationAvailable) {
         renderDurations();
