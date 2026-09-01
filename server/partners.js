@@ -4,7 +4,7 @@ import { eventAddressesMatch, formatEventAddress, normalizeEventAddress } from '
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{22,128}$/;
 const CODE_PATTERN = /^[A-Z0-9_-]{3,40}$/;
-const RETAIL_VALUES = Object.freeze({ 2: 399, 3: 499, 4: 599 });
+const RETAIL_VALUES = Object.freeze({ 1: 249, 2: 399, 3: 499, 4: 599 });
 const DEFAULT_VALUE_CAP = 599;
 const DEFAULT_FUTURE_DISCOUNT_PERCENT = 15;
 
@@ -29,8 +29,8 @@ function normalizePartnerEntry(entry) {
   if (!TOKEN_PATTERN.test(token)) throw new AppError(400, 'INVALID_PARTNER_TOKEN', 'Partner token is invalid.');
   if (!CODE_PATTERN.test(code)) throw new AppError(400, 'INVALID_PARTNER_CODE', 'Partner code must be 3 to 40 letters, numbers, underscores, or hyphens.');
   if (!name) throw new AppError(400, 'INVALID_PARTNER_NAME', 'Partner name is required.');
-  if (![2, 3, 4].includes(minHours) || ![2, 3, 4].includes(maxHours) || minHours > maxHours) {
-    throw new AppError(400, 'INVALID_PARTNER_HOURS', 'Activation hours must use a valid minimum and maximum from 2 to 4 hours.');
+  if (![1, 2, 3, 4].includes(minHours) || ![1, 2, 3, 4].includes(maxHours) || minHours > maxHours) {
+    throw new AppError(400, 'INVALID_PARTNER_HOURS', 'Activation hours must use a valid minimum and maximum from 1 to 4 hours.');
   }
   if (!Number.isFinite(valueCap) || valueCap <= 0 || valueCap > DEFAULT_VALUE_CAP) throw new AppError(400, 'INVALID_PARTNER_VALUE', 'Partner value must be greater than 0 and no more than $599.');
   if (valueCap < RETAIL_VALUES[maxHours]) {
@@ -113,7 +113,7 @@ export function publicPartner(partner, redemptionStatus = 'available') {
       discountPercent: partner.newCustomerDiscountPercent,
       endsOn: partner.newCustomerOfferEndsOn
     } : null,
-    eligibleDurations: [2, 3, 4].filter(hours => hours >= partner.minHours && hours <= partner.maxHours),
+    eligibleDurations: [1, 2, 3, 4].filter(hours => hours >= partner.minHours && hours <= partner.maxHours),
     retailValues: Object.fromEntries(Object.entries(RETAIL_VALUES).filter(([hours]) => Number(hours) >= partner.minHours && Number(hours) <= partner.maxHours)),
     expiresOn: partner.expiresOn || null
   };
@@ -154,9 +154,9 @@ export function campaignBookingUrl(baseUrl, campaign) {
 
 export function applyPartnerPass(pricing, partner, durationHours) {
   const minHours = partner.minHours ?? 2;
-  if (![2, 3, 4].includes(durationHours) || durationHours < minHours || durationHours > partner.maxHours) {
+  if (![1, 2, 3, 4].includes(durationHours) || durationHours < minHours || durationHours > partner.maxHours) {
     const durationDescription = minHours === partner.maxHours
-      ? `up to ${partner.maxHours} hours`
+      ? `up to ${partner.maxHours} ${partner.maxHours === 1 ? 'hour' : 'hours'}`
       : `${minHours} to ${partner.maxHours} hours`;
     throw new AppError(400, 'PARTNER_DURATION_NOT_ELIGIBLE', `This Partner Pass covers ${durationDescription}.`);
   }

@@ -184,6 +184,18 @@ test('partner configuration honors its minimum and maximum activation duration',
   assert.throws(() => applyPartnerPass({ total: 399 }, partner, 2), /covers 3 to 4 hours/i);
 });
 
+test('partner configuration supports a one-hour minimum activation', () => {
+  const partner = [...parsePartners(JSON.stringify([{
+    token: 'abcdefghijklmnopqrstuv', code: 'ONEHOUR26', name: 'One Hour Venue',
+    minHours: 1, maxHours: 3, valueCap: 599, venueAddress: validInput.address,
+    expiresOn: '2099-12-31'
+  }])).values()][0];
+  assert.deepEqual(publicPartner(partner).eligibleDurations, [1, 2, 3]);
+  const pricing = applyPartnerPass({ total: 249 }, partner, 1);
+  assert.equal(pricing.partnerDiscount.packageRetailValue, 249);
+  assert.equal(pricing.total, 0);
+});
+
 test('partner activation checkout derives venue details from configuration and only needs scheduling plus email', () => {
   const partner = {
     code: 'VENUE26', name: 'Test Venue', sourceReferralId: 'VENUE26',

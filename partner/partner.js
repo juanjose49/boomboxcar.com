@@ -48,7 +48,7 @@
     if (!input) return;
     const hours = Number(input.value);
     const retailValue = Number(partner.retailValues[hours] || 0);
-    summaryDuration.textContent = `${hours} hours · $${retailValue} retail value`;
+    summaryDuration.textContent = `${hours} ${hours === 1 ? 'hour' : 'hours'} · $${retailValue} retail value`;
     summaryDiscount.textContent = `-$${retailValue}`;
   }
 
@@ -104,7 +104,7 @@
       const text = document.createElement('span');
       const title = document.createElement('strong');
       const price = document.createElement('small');
-      title.textContent = `${hours} hours`;
+      title.textContent = `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
       price.textContent = `$${partner.retailValues[hours]} value · $0`;
       text.append(title, price); label.append(input, text);
       return label;

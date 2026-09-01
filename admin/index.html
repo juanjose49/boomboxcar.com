@@ -42,8 +42,8 @@
             <label><span>City</span><input name="locality" maxlength="300" required /></label>
             <label><span>State</span><select name="administrativeDistrictLevel1" required><option value="">Choose one</option><option value="DC">District of Columbia</option><option value="MD">Maryland</option><option value="VA">Virginia</option></select></label>
             <label><span>ZIP code</span><input name="postalCode" maxlength="10" pattern="[0-9]{5}(-[0-9]{4})?" required /></label>
-            <label><span>Minimum activation</span><select name="minHours"><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option></select></label>
-            <label><span>Maximum activation</span><select name="maxHours"><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option></select></label>
+            <label><span>Minimum activation</span><select name="minHours"><option value="1">1 hour</option><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option></select></label>
+            <label><span>Maximum activation</span><select name="maxHours"><option value="1">1 hour</option><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option></select></label>
             <label><span>Activation value cap</span><input name="valueCap" type="number" min="1" max="599" step="0.01" value="599" required /></label>
             <label><span>Future partner discount</span><div class="input-suffix"><input name="futureDiscountPercent" type="number" min="0.01" max="50" step="0.01" value="15" required /><span>%</span></div></label>
             <label><span>Public QR new-customer discount</span><div class="input-suffix"><input name="newCustomerDiscountPercent" type="number" min="0.01" max="50" step="0.01" value="10" required /><span>%</span></div></label>
