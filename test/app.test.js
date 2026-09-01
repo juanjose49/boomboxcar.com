@@ -172,6 +172,34 @@ test('business admin requires Basic Authentication and persists partners and cou
       });
       assert.equal(updatedCoupon.status, 200);
       assert.deepEqual((await updatedCoupon.json()).coupon, { code: 'SAVE10', type: 'FIXED', value: 25, active: false });
+
+      const reservationId = 'BBC-2099-ABC123';
+      await persistReservation(dataDir, {
+        reservationId, confirmationToken: 'abcdefghijklmnopqrstuvwxyzABCDEF', createdAt: '2099-08-20T18:00:00Z',
+        squareBookingId: 'BOOKING-1', squareOrderId: 'ORDER-1', bookingStatus: 'ACCEPTED', paymentStatus: 'PROCESSING',
+        paymentMethod: 'card',
+        reservation: {
+          locale: 'en', eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00Z', durationHours: 2,
+          customer: { givenName: 'Admin', familyName: 'Customer', email: 'admin@example.com', phone: '240-555-0100' },
+          details: { eventType: 'Community event', setting: 'Outdoor', attendance: 80, requests: '', address: {
+            addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring', administrativeDistrictLevel1: 'MD', postalCode: '20910'
+          } }
+        },
+        pricing: { basePrice: 399, modifiers: [], total: 399, currency: 'USD' }
+      });
+      await persistReservation(dataDir, {
+        recordType: 'PAYMENT_EVENT', reservationId, eventCreatedAt: '2099-08-20T18:01:00Z',
+        paymentStatus: 'COMPLETED', amountMoney: { amount: 34900, currency: 'USD' }, receiptUrl: 'https://squareup.com/receipt/preview/ADMIN'
+      });
+      const unauthorizedBookings = await fetch(`${baseUrl}/api/admin/bookings`);
+      assert.equal(unauthorizedBookings.status, 401);
+      const bookingPayload = await fetch(`${baseUrl}/api/admin/bookings`, { headers: { Authorization: authorization } }).then(response => response.json());
+      assert.equal(bookingPayload.bookings.length, 1);
+      assert.equal(bookingPayload.bookings[0].reservationId, reservationId);
+      assert.equal(bookingPayload.bookings[0].paymentStatus, 'COMPLETED');
+      assert.equal(bookingPayload.bookings[0].pricing.total, 349);
+      assert.match(bookingPayload.bookings[0].confirmationUrl, /\/confirmation\/\?reservation=BBC-2099-ABC123&token=/);
+      assert.equal(Object.hasOwn(bookingPayload.bookings[0], 'confirmationToken'), false);
     });
 
     const stored = JSON.parse(await readFile(path.join(dataDir, 'partners.json'), 'utf8'));

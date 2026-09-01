@@ -4,6 +4,8 @@
   const loginStatus = document.getElementById('loginStatus');
   const adminContent = document.getElementById('adminContent');
   const signOut = document.getElementById('signOut');
+  const bookingList = document.getElementById('bookingList');
+  const bookingsStatus = document.getElementById('bookingsStatus');
   const partnerList = document.getElementById('partnerList');
   const partnerForm = document.getElementById('partnerForm');
   const saveStatus = document.getElementById('saveStatus');
@@ -13,6 +15,7 @@
   const couponForm = document.getElementById('couponForm');
   const couponStatus = document.getElementById('couponStatus');
   let authorization = '';
+  let bookings = [];
   let partners = [];
   let editingCode = '';
   let coupons = [];
@@ -26,6 +29,112 @@
   function setStatus(element, message, state = '') {
     element.textContent = message;
     element.dataset.state = state;
+  }
+
+  function formatMoney(value, currency = 'USD') {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(Number(value) || 0);
+  }
+
+  function formatDateTime(value) {
+    if (!value || Number.isNaN(Date.parse(value))) return 'Not available';
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
+    }).format(new Date(value));
+  }
+
+  function detail(label, value) {
+    const wrapper = document.createElement('div');
+    const term = document.createElement('dt');
+    const description = document.createElement('dd');
+    term.textContent = label;
+    description.textContent = value || 'Not available';
+    wrapper.append(term, description);
+    return wrapper;
+  }
+
+  function renderBookings() {
+    bookingList.replaceChildren(...bookings.map(booking => {
+      const reservation = booking.reservation;
+      const customer = reservation.customer;
+      const pricing = booking.pricing;
+      const card = document.createElement('article');
+      card.className = 'booking-card';
+
+      const header = document.createElement('header');
+      header.className = 'booking-card-header';
+      const titleGroup = document.createElement('div');
+      const title = document.createElement('h3');
+      const subtitle = document.createElement('p');
+      title.textContent = `${customer.givenName} ${customer.familyName}`.trim() || booking.reservationId;
+      subtitle.textContent = `${reservation.details.eventType} · ${reservation.durationHours} hour${reservation.durationHours === 1 ? '' : 's'}`;
+      titleGroup.append(title, subtitle);
+      const status = document.createElement('span');
+      status.className = 'booking-status';
+      status.dataset.state = String(booking.paymentStatus).toLowerCase().replace('payment_', '');
+      status.textContent = String(booking.paymentStatus).replaceAll('_', ' ').toLowerCase();
+      header.append(titleGroup, status);
+
+      const details = document.createElement('dl');
+      details.className = 'booking-details';
+      details.append(
+        detail('Event date', formatDateTime(reservation.startAt)),
+        detail('Total', formatMoney(pricing.total, pricing.currency)),
+        detail('Reservation', booking.reservationId),
+        detail('Booking type', booking.partner ? `${booking.partner.name} partner` : booking.campaign ? 'New customer campaign' : 'Direct booking'),
+        detail('Email', customer.email),
+        detail('Phone', customer.phone),
+        detail('Square booking', booking.squareBookingId),
+        detail('Created', formatDateTime(booking.createdAt))
+      );
+
+      card.append(header, details);
+      const actions = document.createElement('div');
+      actions.className = 'booking-actions';
+      if (booking.confirmationUrl && booking.paymentStatus === 'COMPLETED') {
+        const confirmation = document.createElement('a');
+        confirmation.className = 'button primary';
+        confirmation.href = booking.confirmationUrl;
+        confirmation.target = '_blank';
+        confirmation.rel = 'noopener noreferrer';
+        confirmation.textContent = 'Open confirmation';
+        actions.append(confirmation);
+      }
+      if (booking.receiptUrl) {
+        const receipt = document.createElement('a');
+        receipt.className = 'button secondary';
+        receipt.href = booking.receiptUrl;
+        receipt.target = '_blank';
+        receipt.rel = 'noopener noreferrer';
+        receipt.textContent = 'Square receipt';
+        actions.append(receipt);
+      }
+      if (actions.childElementCount) card.append(actions);
+      return card;
+    }));
+    if (!bookings.length) {
+      const empty = document.createElement('p');
+      empty.className = 'field-note';
+      empty.textContent = 'No booking records yet.';
+      bookingList.append(empty);
+    }
+  }
+
+  async function loadBookings() {
+    setStatus(bookingsStatus, 'Loading bookings…');
+    const payload = await api('/admin/bookings');
+    bookings = payload.bookings;
+    renderBookings();
+    setStatus(bookingsStatus, `${bookings.length} booking${bookings.length === 1 ? '' : 's'}.`, 'success');
+  }
+
+  function selectView(viewId, focusTab = false) {
+    document.querySelectorAll('[data-admin-view]').forEach(tab => {
+      const selected = tab.dataset.adminView === viewId;
+      tab.setAttribute('aria-selected', String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      if (selected && focusTab) tab.focus();
+    });
+    document.querySelectorAll('.admin-view').forEach(view => { view.hidden = view.id !== viewId; });
   }
 
   async function api(path, options = {}) {
@@ -220,7 +329,7 @@
   }
 
   async function loadAdministration() {
-    await Promise.all([loadPartners(), loadCoupons()]);
+    await Promise.all([loadBookings(), loadPartners(), loadCoupons()]);
   }
 
   loginForm.addEventListener('submit', async event => {
@@ -235,6 +344,7 @@
       loginPanel.hidden = true;
       adminContent.hidden = false;
       signOut.hidden = false;
+      selectView('bookingsView');
       resetForm();
       resetCouponForm();
     } catch (error) {
@@ -299,6 +409,23 @@
 
   document.getElementById('newPartner').addEventListener('click', resetForm);
   document.getElementById('newCoupon').addEventListener('click', resetCouponForm);
+  document.getElementById('refreshBookings').addEventListener('click', async event => {
+    event.currentTarget.disabled = true;
+    try { await loadBookings(); }
+    catch (error) { setStatus(bookingsStatus, error.message, 'error'); }
+    finally { event.currentTarget.disabled = false; }
+  });
+  const tabs = [...document.querySelectorAll('[data-admin-view]')];
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => selectView(tab.dataset.adminView));
+    tab.addEventListener('keydown', event => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+        : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      selectView(tabs[nextIndex].dataset.adminView, true);
+    });
+  });
   document.getElementById('resetPartner').addEventListener('click', () => {
     const partner = partners.find(item => item.code === editingCode);
     if (partner) editPartner(partner); else resetForm();
@@ -311,6 +438,7 @@
     if (qrObjectUrl) URL.revokeObjectURL(qrObjectUrl);
     qrObjectUrl = '';
     authorization = '';
+    bookings = [];
     partners = [];
     coupons = [];
     editingCode = '';

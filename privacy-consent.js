@@ -31,6 +31,9 @@
 
   function analyticsConfig() {
     if (location.pathname.startsWith('/confirmation/')) return { send_page_view: false };
+    if (location.pathname.startsWith('/partner/')) {
+      return { page_location: `${location.origin}/partner/`, page_path: '/partner/' };
+    }
     if (partnerEntry) {
       return { page_location: `${location.origin}/?partner_pass=1#book` };
     }

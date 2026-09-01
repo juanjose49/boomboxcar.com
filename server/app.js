@@ -104,6 +104,58 @@ function adminPartnerView(partner, redemptionStatus, baseUrl) {
   };
 }
 
+function adminBookingViews(records, baseUrl) {
+  const bookings = new Map();
+  for (const record of records) {
+    if (!record?.reservationId) continue;
+    if (record.reservation && record.pricing) {
+      bookings.set(record.reservationId, {
+        ...record,
+        paymentStatus: record.paymentStatus || 'UNKNOWN',
+        bookingStatus: record.bookingStatus || 'UNKNOWN',
+        amountMoney: null,
+        receiptUrl: null,
+        confirmedAt: null
+      });
+      continue;
+    }
+    const booking = bookings.get(record.reservationId);
+    if (!booking) continue;
+    if (record.paymentStatus) booking.paymentStatus = record.paymentStatus;
+    if (record.bookingStatus) booking.bookingStatus = record.bookingStatus;
+    if (record.amountMoney) booking.amountMoney = record.amountMoney;
+    if (record.receiptUrl) booking.receiptUrl = record.receiptUrl;
+    if (record.paymentStatus === 'COMPLETED') {
+      booking.confirmedAt = record.eventCreatedAt || record.recordedAt || record.receivedAt || booking.createdAt;
+    }
+  }
+
+  return [...bookings.values()].map(booking => {
+    const confirmationUrl = new URL('/confirmation/', baseUrl);
+    confirmationUrl.searchParams.set('reservation', booking.reservationId);
+    confirmationUrl.searchParams.set('token', booking.confirmationToken);
+    return {
+      reservationId: booking.reservationId,
+      createdAt: booking.createdAt,
+      confirmedAt: booking.confirmedAt || (booking.paymentStatus === 'COMPLETED' ? booking.createdAt : null),
+      paymentStatus: booking.paymentStatus,
+      bookingStatus: booking.bookingStatus,
+      paymentMethod: booking.paymentMethod,
+      squareBookingId: booking.squareBookingId,
+      squareOrderId: booking.squareOrderId,
+      receiptUrl: booking.receiptUrl,
+      confirmationUrl: booking.confirmationToken ? confirmationUrl.toString() : null,
+      reservation: booking.reservation,
+      pricing: pricingWithPaidAmount(booking.pricing, booking.amountMoney),
+      partner: booking.partner || null,
+      campaign: booking.campaign || null
+    };
+  }).sort((left, right) => {
+    const byEvent = String(right.reservation?.startAt || '').localeCompare(String(left.reservation?.startAt || ''));
+    return byEvent || String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
+  });
+}
+
 async function readBody(request) {
   let body = '';
   for await (const chunk of request) {
@@ -236,6 +288,13 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
       }
       if (request.method === 'GET' && pathname === '/config') {
         return sendJson(response, 200, publicConfig(config), corsHeaders);
+      }
+      if (pathname === '/admin/bookings' && request.method === 'GET') {
+        if (!allowRequest(`${ip}:admin`, 120)) throw new AppError(429, 'RATE_LIMITED', 'Too many administrator requests.');
+        if (!requireAdmin(request, response, config, corsHeaders)) return;
+        return sendJson(response, 200, {
+          bookings: adminBookingViews(await readReservationRecords(config.dataDir), config.appBaseUrl)
+        }, corsHeaders);
       }
       if (pathname === '/admin/partners' && request.method === 'GET') {
         if (!allowRequest(`${ip}:admin`, 120)) throw new AppError(429, 'RATE_LIMITED', 'Too many administrator requests.');

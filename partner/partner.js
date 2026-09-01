@@ -26,11 +26,31 @@
   let partner = null;
   let minimumNoticeHours = 18;
   let availabilityController = null;
+  let partnerViewTracked = false;
 
   if (!/^[A-Za-z0-9_-]{22,128}$/.test(token)) {
     status.textContent = 'This partner link is not valid. Contact booking@boomboxcar.com for help.';
     return;
   }
+
+  function fireGA(eventName, eventParams = {}) {
+    try {
+      if (typeof gtag === 'function') gtag('event', eventName, { transport_type: 'beacon', ...eventParams });
+      else if (window.dataLayer) window.dataLayer.push({ event: eventName, ...eventParams });
+    } catch (_) {}
+  }
+
+  function trackPartnerView() {
+    if (partnerViewTracked || !partner || window.BoomBoxCarPrivacy?.analyticsAllowed() !== true) return;
+    partnerViewTracked = true;
+    fireGA('partner_pass_view', {
+      partner_code: partner.code,
+      activation_available: partner.activationAvailable,
+      ongoing_rate_available: partner.ongoingRateAvailable
+    });
+  }
+
+  window.addEventListener('boomboxcar:analytics-consent', trackPartnerView);
 
   function selectedDuration() {
     return form.querySelector('input[name="duration"]:checked');
@@ -140,6 +160,7 @@
       document.title = `${partner.name} | BoomBoxCar Partner Pass`;
       document.getElementById('partnerTitle').textContent = partner.name;
       status.textContent = partner.activationAvailable ? 'Your complimentary BoomBoxCar activation' : 'BoomBoxCar Partner';
+      trackPartnerView();
       const address = partner.venueAddress;
       Object.entries(venueFields).forEach(([field, input]) => { input.value = address[field] || ''; });
       venueAddressLine2Field.hidden = !address.addressLine2;
@@ -176,6 +197,11 @@
     bookingResult.hidden = false;
     bookingResult.dataset.state = '';
     bookingResult.textContent = 'Confirming your complimentary activation…';
+    fireGA('partner_activation_submit', {
+      partner_code: partner.code,
+      duration_hours: Number(selectedDuration().value),
+      event_date: dateInput.value
+    });
     try {
       const response = await fetch(`/api/partners/${encodeURIComponent(token)}/reservations`, {
         method: 'POST',
@@ -196,6 +222,13 @@
       if (!response.ok) throw new Error(payload.error?.message || 'The activation could not be confirmed.');
       const confirmationUrl = new URL(payload.confirmationUrl);
       if (confirmationUrl.origin !== location.origin || confirmationUrl.pathname !== '/confirmation/') throw new Error('The confirmation link was invalid.');
+      fireGA('partner_activation_confirmed', {
+        partner_code: partner.code,
+        duration_hours: Number(selectedDuration().value),
+        transaction_id: payload.orderId || payload.reservationId,
+        value: 0,
+        currency: payload.pricing?.currency || 'USD'
+      });
       location.assign(confirmationUrl.href);
     } catch (error) {
       bookingResult.textContent = error.message;

@@ -3,10 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; connect-src 'self' https://google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.google.com https://www.googletagmanager.com; img-src 'self' data: https://google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.google.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self';" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>BoomBoxCar Partner Pass</title>
   <link rel="icon" href="/images/favicon.png" type="image/png" sizes="64x64" />
   <link rel="stylesheet" href="/index.css?v=20260901-partner-checkout-8" />
+  <link rel="stylesheet" href="/privacy-consent.css?v=20260901-partner" />
+  <script src="/privacy-consent.js?v=20260901-partner" defer></script>
 </head>
 <body>
   <main class="partner-checkout-main">
@@ -98,10 +101,10 @@
           <p id="partnerRateCopy"></p>
         </section>
 
-        <p class="partner-private-note">Keep this private page for your organization. It remains your access point for the activation and future Partner Rate reservations.</p>
+        <p class="partner-private-note">Keep this private page for your organization. It remains your access point for the activation and future Partner Rate reservations. <a href="#privacy-settings" data-privacy-settings>Privacy choices</a></p>
       </div>
     </section>
   </main>
-  <script src="/partner/partner.js?v=20260901-partner-checkout-11" defer></script>
+  <script src="/partner/partner.js?v=20260901-analytics" defer></script>
 </body>
 </html>

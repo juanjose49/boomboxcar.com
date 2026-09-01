@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <title>Business Admin | BoomBoxCar</title>
-  <link rel="stylesheet" href="/admin/admin.css?v=20260831-coupons" />
+  <link rel="stylesheet" href="/admin/admin.css?v=20260901-bookings-tabs" />
 </head>
 <body>
   <main class="admin-shell">
@@ -26,6 +26,22 @@
     </section>
 
     <div id="adminContent" hidden>
+      <nav class="admin-tabs" aria-label="Administration views" role="tablist">
+        <button class="admin-tab" id="bookingsTab" type="button" role="tab" aria-controls="bookingsView" aria-selected="true" data-admin-view="bookingsView">Bookings</button>
+        <button class="admin-tab" id="partnersTab" type="button" role="tab" aria-controls="partnersView" aria-selected="false" data-admin-view="partnersView" tabindex="-1">Partners</button>
+        <button class="admin-tab" id="couponsTab" type="button" role="tab" aria-controls="couponsView" aria-selected="false" data-admin-view="couponsView" tabindex="-1">Coupons</button>
+      </nav>
+
+      <section id="bookingsView" class="admin-view" role="tabpanel" aria-labelledby="bookingsTab">
+        <div class="panel bookings-panel">
+          <div class="section-heading"><div><p class="eyebrow">Confirmations</p><h2>All bookings</h2></div><button id="refreshBookings" class="button secondary" type="button">Refresh</button></div>
+          <p class="field-note">Completed, processing, failed, and expired booking records are shown here. Open a completed confirmation to view or download it.</p>
+          <p id="bookingsStatus" class="status" role="status"></p>
+          <div id="bookingList" class="booking-list"></div>
+        </div>
+      </section>
+
+      <section id="partnersView" class="admin-view" role="tabpanel" aria-labelledby="partnersTab" hidden>
       <div class="admin-layout">
         <aside class="panel partner-list-panel">
           <div class="section-heading"><h2>Partners</h2><button id="newPartner" class="button secondary" type="button">New partner</button></div>
@@ -70,8 +86,10 @@
           </section>
         </section>
       </div>
+      </section>
 
-      <div class="admin-layout coupon-layout">
+      <section id="couponsView" class="admin-view" role="tabpanel" aria-labelledby="couponsTab" hidden>
+      <div class="admin-layout">
         <aside class="panel">
           <div class="section-heading"><h2>Coupons</h2><button id="newCoupon" class="button secondary" type="button">New coupon</button></div>
           <div id="couponList" class="partner-list"></div>
@@ -89,8 +107,9 @@
           <p id="couponStatus" class="status" role="status"></p>
         </section>
       </div>
+      </section>
     </div>
   </main>
-  <script src="/admin/admin.js?v=20260901-partner-duration" defer></script>
+  <script src="/admin/admin.js?v=20260901-bookings-tabs" defer></script>
 </body>
 </html>
