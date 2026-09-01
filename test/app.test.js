@@ -87,9 +87,7 @@ test('private Partner Pass lookup returns safe invitation details and rejects in
       const campaignPayload = await fetch(`${baseUrl}/api/campaigns/DTSS26-EVENT`).then(result => result.json());
       assert.deepEqual(campaignPayload.campaign, { id: 'DTSS26-EVENT', discountPercent: 10, endsOn: '2099-11-30' });
       const qrResponse = await fetch(`${baseUrl}/api/partners/${token}/qr.svg`);
-      assert.equal(qrResponse.status, 200);
-      assert.match(qrResponse.headers.get('content-type'), /image\/svg\+xml/);
-      assert.match(await qrResponse.text(), /<svg/);
+      assert.equal(qrResponse.status, 404);
       const invalid = await fetch(`${baseUrl}/api/partners/invalid-invalid-invalid-x`);
       assert.equal(invalid.status, 404);
     });
@@ -110,7 +108,7 @@ test('business admin requires Basic Authentication and persists partners and cou
       addressLine1: '123 Test Street', addressLine2: '', locality: 'Silver Spring',
       administrativeDistrictLevel1: 'MD', postalCode: '20910'
     },
-    maxHours: 4, valueCap: 599, futureDiscountPercent: 15,
+    minHours: 2, maxHours: 4, valueCap: 599, futureDiscountPercent: 15,
     newCustomerDiscountPercent: 10, newCustomerOfferEndsOn: '2099-11-30', expiresOn: '2099-12-31',
     sourceReferralId: 'VENUE26', qrCampaignId: 'VENUE26-EVENT', active: true
   };
@@ -135,8 +133,18 @@ test('business admin requires Basic Authentication and persists partners and cou
       createdToken = payload.partner.token;
       assert.match(createdToken, /^[A-Za-z0-9_-]{22,128}$/);
       assert.match(payload.partner.privateUrl, /\/partner\/\?pass=/);
-      assert.match(payload.partner.qrImageUrl, /\/api\/partners\/.+\/qr\.svg$/);
+      assert.match(payload.partner.qrImageUrl, /\/api\/admin\/partners\/VENUE26\/qr\.svg$/);
+      assert.match(payload.partner.qrDestinationUrl, /\?ref=VENUE26&qr=VENUE26-EVENT/);
+      assert.equal(payload.partner.qrDestinationUrl.includes('#'), false);
       assert.equal(JSON.stringify(payload).includes('test-password-123'), false);
+
+      const adminQrPath = new URL(payload.partner.qrImageUrl).pathname;
+      const publicQr = await fetch(`${baseUrl}${adminQrPath}`);
+      assert.equal(publicQr.status, 401);
+      const adminQr = await fetch(`${baseUrl}${adminQrPath}`, { headers: { Authorization: authorization } });
+      assert.equal(adminQr.status, 200);
+      assert.match(adminQr.headers.get('content-type'), /image\/svg\+xml/);
+      assert.match(await adminQr.text(), /<svg/);
 
       const publicPartner = await fetch(`${baseUrl}/api/partners/${createdToken}`);
       assert.equal(publicPartner.status, 200);

@@ -17,6 +17,7 @@
   let editingCode = '';
   let coupons = [];
   let editingCouponCode = '';
+  let qrObjectUrl = '';
 
   function dateAfter(days) {
     return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
@@ -44,6 +45,7 @@
     partnerForm.elements.valueCap.value = '599';
     partnerForm.elements.futureDiscountPercent.value = '15';
     partnerForm.elements.newCustomerDiscountPercent.value = '10';
+    partnerForm.elements.minHours.value = '2';
     partnerForm.elements.maxHours.value = '2';
     partnerForm.elements.newCustomerOfferEndsOn.value = dateAfter(14);
     partnerForm.elements.expiresOn.value = dateAfter(365);
@@ -77,16 +79,42 @@
     }
   }
 
-  function showShare(partner) {
+  async function showShare(partner) {
     document.getElementById('privateUrl').value = partner.privateUrl;
-    document.getElementById('qrImageUrl').value = partner.qrImageUrl;
+    document.getElementById('qrDestinationUrl').value = partner.qrDestinationUrl;
+    document.getElementById('qrUsageCopy').textContent = `Place this QR on BoomBoxCar signage during ${partner.name}'s activation. Customers land at the top of the public site, see an estimated ${partner.newCustomerDiscountPercent}% new-customer discount, and can verify it by email before booking through ${partner.newCustomerOfferEndsOn}. Visits and completed bookings retain campaign ${partner.qrCampaignId}. The private partner link is not encoded in this QR.`;
     const preview = document.getElementById('qrPreview');
-    preview.src = partner.active ? partner.qrImageUrl : '';
-    preview.hidden = !partner.active;
     const download = document.getElementById('downloadQr');
-    download.href = partner.qrImageUrl;
-    download.hidden = !partner.active;
+    const qrStatus = document.getElementById('qrStatus');
+    if (qrObjectUrl) URL.revokeObjectURL(qrObjectUrl);
+    qrObjectUrl = '';
+    preview.removeAttribute('src');
+    preview.hidden = true;
+    download.removeAttribute('href');
+    download.hidden = true;
     sharePanel.hidden = false;
+    if (!partner.active) {
+      setStatus(qrStatus, 'Activate this partner before downloading the customer QR.', 'error');
+      return;
+    }
+    setStatus(qrStatus, 'Generating the authenticated customer QR…');
+    try {
+      const qrUrl = new URL(partner.qrImageUrl);
+      if (qrUrl.origin !== location.origin) throw new Error('The QR endpoint is invalid.');
+      const response = await fetch(qrUrl.pathname, { headers: { Accept: 'image/svg+xml', Authorization: authorization } });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error?.message || 'The customer QR could not be generated.');
+      }
+      qrObjectUrl = URL.createObjectURL(await response.blob());
+      preview.src = qrObjectUrl;
+      preview.hidden = false;
+      download.href = qrObjectUrl;
+      download.hidden = false;
+      setStatus(qrStatus, 'Ready to download for BoomBoxCar event signage.', 'success');
+    } catch (error) {
+      setStatus(qrStatus, error.message, 'error');
+    }
   }
 
   function editPartner(partner) {
@@ -100,7 +128,7 @@
     document.getElementById('editorMode').textContent = 'Edit partner';
     redemptionStatus.textContent = partner.redemptionStatus;
     redemptionStatus.hidden = false;
-    showShare(partner);
+    void showShare(partner);
     setStatus(saveStatus, '');
     renderList();
   }
@@ -115,7 +143,7 @@
         locality: fields.locality.value.trim(), administrativeDistrictLevel1: fields.administrativeDistrictLevel1.value,
         postalCode: fields.postalCode.value.trim()
       },
-      maxHours: Number(fields.maxHours.value), valueCap: Number(fields.valueCap.value),
+      minHours: Number(fields.minHours.value), maxHours: Number(fields.maxHours.value), valueCap: Number(fields.valueCap.value),
       futureDiscountPercent: Number(fields.futureDiscountPercent.value),
       newCustomerDiscountPercent: Number(fields.newCustomerDiscountPercent.value),
       newCustomerOfferEndsOn: fields.newCustomerOfferEndsOn.value, expiresOn: fields.expiresOn.value,
@@ -281,6 +309,8 @@
     if (coupon) editCoupon(coupon); else resetCouponForm();
   });
   signOut.addEventListener('click', () => {
+    if (qrObjectUrl) URL.revokeObjectURL(qrObjectUrl);
+    qrObjectUrl = '';
     authorization = '';
     partners = [];
     coupons = [];

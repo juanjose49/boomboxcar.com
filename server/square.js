@@ -272,6 +272,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
       }
     });
     const existingCustomer = search.customers?.[0];
+    const phoneNumber = checkoutPhoneNumber(customer.phone);
     if (existingCustomer) {
       const updated = await request(`/v2/customers/${encodeURIComponent(existingCustomer.id)}`, {
         method: 'PUT',
@@ -279,7 +280,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
           given_name: customer.givenName,
           family_name: customer.familyName,
           email_address: customer.email,
-          phone_number: checkoutPhoneNumber(customer.phone),
+          ...(phoneNumber ? { phone_number: phoneNumber } : {}),
           version: existingCustomer.version
         }
       });
@@ -293,12 +294,20 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
         given_name: customer.givenName,
         family_name: customer.familyName,
         email_address: customer.email,
-        phone_number: checkoutPhoneNumber(customer.phone),
+        ...(phoneNumber ? { phone_number: phoneNumber } : {}),
         reference_id: reservationId,
         note: 'Created by BoomBoxCar.com booking application.'
       }
     });
     return created.customer;
+  }
+
+  async function findCustomersByEmail(email) {
+    const result = await request('/v2/customers/search', {
+      method: 'POST',
+      body: { limit: 10, query: { filter: { email_address: { exact: email } } } }
+    });
+    return result.customers || [];
   }
 
   async function findCustomersByContact(customer) {
@@ -364,7 +373,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
       quantity: '1',
       note: [
         `Event contact: ${contactName}`,
-        `Phone: ${customer.phone}`,
+        ...(customer.phone ? [`Phone: ${customer.phone}`] : []),
         `Event address: ${formattedAppointmentAddress(eventAddress)}`,
         `Square booking: ${bookingId}`
       ].join('\n').slice(0, 2000)
@@ -459,7 +468,7 @@ export function createSquareService(config, fetchImpl = globalThis.fetch) {
   }
 
   return {
-    searchAvailability, getPackage, getPackages, findOrCreateCustomer, findCustomersByContact,
+    searchAvailability, getPackage, getPackages, findOrCreateCustomer, findCustomersByContact, findCustomersByEmail,
     customersHaveCompletedOrders, createBooking,
     createOrder, createPayment, payZeroOrder, cancelBooking, retrieveOrder, deletePaymentLink
   };

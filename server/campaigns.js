@@ -16,6 +16,12 @@ export function normalizeOfferContact(input) {
   return { email, phone, phoneDigits: phoneDigits.length === 10 ? `1${phoneDigits}` : phoneDigits };
 }
 
+export function normalizeOfferEmail(value) {
+  const email = clean(value, 254).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new AppError(400, 'INVALID_EMAIL', 'Enter a valid email address.');
+  return email;
+}
+
 export function offerContactKey(contact) {
   return createHash('sha256').update(`${contact.email}\n${contact.phoneDigits}`).digest('base64url');
 }
@@ -28,6 +34,15 @@ export function localCustomerHasCompletedBooking(records, contact) {
     const normalizedDigits = digits.length === 10 ? `1${digits}` : digits;
     return String(customer.email || '').toLowerCase() === contact.email || normalizedDigits === contact.phoneDigits;
   }).map(record => record.reservationId));
+  return records.some(record => reservationIds.has(record.reservationId)
+    && record.paymentStatus === 'COMPLETED'
+    && ['PAYMENT_EVENT', 'PAYMENT_RECONCILIATION', 'PARTNER_REDEMPTION_COMPLETED'].includes(record.recordType));
+}
+
+export function localCustomerEmailHasCompletedBooking(records, email) {
+  const reservationIds = new Set(records.filter(record =>
+    String(record.reservation?.customer?.email || '').toLowerCase() === email
+  ).map(record => record.reservationId));
   return records.some(record => reservationIds.has(record.reservationId)
     && record.paymentStatus === 'COMPLETED'
     && ['PAYMENT_EVENT', 'PAYMENT_RECONCILIATION', 'PARTNER_REDEMPTION_COMPLETED'].includes(record.recordType));

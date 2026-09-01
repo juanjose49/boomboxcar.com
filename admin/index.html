@@ -42,6 +42,7 @@
             <label><span>City</span><input name="locality" maxlength="300" required /></label>
             <label><span>State</span><select name="administrativeDistrictLevel1" required><option value="">Choose one</option><option value="DC">District of Columbia</option><option value="MD">Maryland</option><option value="VA">Virginia</option></select></label>
             <label><span>ZIP code</span><input name="postalCode" maxlength="10" pattern="[0-9]{5}(-[0-9]{4})?" required /></label>
+            <label><span>Minimum activation</span><select name="minHours"><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option></select></label>
             <label><span>Maximum activation</span><select name="maxHours"><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option></select></label>
             <label><span>Activation value cap</span><input name="valueCap" type="number" min="1" max="599" step="0.01" value="599" required /></label>
             <label><span>Future partner discount</span><div class="input-suffix"><input name="futureDiscountPercent" type="number" min="0.01" max="50" step="0.01" value="15" required /><span>%</span></div></label>
@@ -56,12 +57,17 @@
           <p id="saveStatus" class="status" role="status"></p>
 
           <section id="sharePanel" class="share-panel" hidden>
-            <h3>Ready to share</h3>
+            <h3>Partner access and event campaign</h3>
             <label><span>Private partner page</span><div class="copy-row"><input id="privateUrl" readonly /><button class="button secondary copy-button" type="button" data-copy="privateUrl">Copy</button></div></label>
-            <p class="field-note">Send this private link to the venue for its activation and future Partner Rate bookings.</p>
-            <label><span>Public event QR image</span><div class="copy-row"><input id="qrImageUrl" readonly /><button class="button secondary copy-button" type="button" data-copy="qrImageUrl">Copy</button></div></label>
+            <p class="field-note">Send this private link only to authorized venue staff. It opens the simplified complimentary activation checkout and remains the venue's access point for future Partner Rate bookings.</p>
+            <div class="admin-qr-section">
+              <h4>Customer acquisition QR for event signage</h4>
+              <p id="qrUsageCopy" class="field-note"></p>
+              <label><span>Customer booking destination</span><div class="copy-row"><input id="qrDestinationUrl" readonly /><button class="button secondary copy-button" type="button" data-copy="qrDestinationUrl">Copy</button></div></label>
+            </div>
             <img id="qrPreview" class="qr-preview" width="220" height="220" alt="Trackable public event QR code" />
-            <a id="downloadQr" class="button secondary" download="boomboxcar-event-qr.svg">Download QR</a>
+            <a id="downloadQr" class="button secondary" download="boomboxcar-customer-acquisition-qr.svg">Download customer QR</a>
+            <p id="qrStatus" class="status" role="status"></p>
           </section>
         </section>
       </div>

@@ -16,8 +16,8 @@ const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
 function syncExperienceOrder() {
   const main = document.querySelector('main');
   if (!main) return;
-  const experienceOrder = ['.experience-video', '.value-proposition', '.gallery-party'];
-  const remainingOrder = ['.campaign-offer', '.partner-pass', '.booking', '.features', '.pricing', '.events', '.faqs', '.contact'];
+  const experienceOrder = ['.experience-video', '.campaign-offer', '.value-proposition', '.gallery-party'];
+  const remainingOrder = ['.partner-pass', '.booking', '.features', '.pricing', '.events', '.faqs', '.contact'];
   [...experienceOrder, ...remainingOrder].forEach(selector => {
     const section = main.querySelector(`:scope > ${selector}`);
     if (section) main.append(section);

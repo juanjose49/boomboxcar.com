@@ -38,6 +38,8 @@ input[readonly] { color: #cad1df; }
 .status[data-state="error"] { color: #ff9d9d; }
 .status[data-state="success"] { color: #8ef0bd; }
 .share-panel { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #303b55; }
+.admin-qr-section { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #303b55; }
+.admin-qr-section h4 { margin: 0 0 .55rem; font-size: 1.05rem; }
 .copy-row input { flex: 1; }
 .field-note { color: #aeb9cc; font-size: .88rem; }
 .qr-preview { display: block; margin: 1rem 0; padding: .5rem; background: #fff; border-radius: 12px; }

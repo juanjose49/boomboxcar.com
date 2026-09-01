@@ -2,35 +2,84 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="robots" content="noindex,nofollow" />
-  <title>BoomBoxCar Partner</title>
-  <link rel="stylesheet" href="/index.css?v=20260830-event-qr-v2" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <title>BoomBoxCar Partner Pass</title>
+  <link rel="icon" href="/images/favicon.png" type="image/png" sizes="64x64" />
+  <link rel="stylesheet" href="/index.css?v=20260901-partner-checkout-3" />
 </head>
 <body>
-  <main class="partner-portal-main">
-    <section class="partner-pass partner-portal" aria-labelledby="partnerTitle">
-      <p class="eyebrow">Private partner page</p>
-      <h1 id="partnerTitle">BoomBoxCar Partner</h1>
-      <p id="status">Validating your partner link…</p>
+  <main class="partner-checkout-main">
+    <section class="partner-checkout" aria-labelledby="partnerTitle">
+      <header class="partner-checkout-header">
+        <a href="/" class="partner-checkout-brand"><img src="/images/logos.jpeg" width="44" height="44" alt="" /><span>BoomBoxCar</span></a>
+        <span class="partner-private-label">Private partner page</span>
+      </header>
+
+      <div class="partner-checkout-hero">
+        <p class="eyebrow">BoomBoxCar Partner Pass</p>
+        <h1 id="partnerTitle">Complimentary activation</h1>
+        <p id="status" role="status">Validating your private partner link…</p>
+      </div>
+
       <div id="partnerContent" hidden>
-        <p class="partner-benefit" id="partnerBenefit"></p>
-        <p id="partnerVenue"></p>
-        <button class="btn btn-primary" id="bookPartner" type="button">Book with your partner benefit</button>
-        <div class="partner-share">
-          <h2>Your private partner link</h2>
-          <p>Use this link for your complimentary activation and future Partner Rate bookings. Share it only with authorized partner staff.</p>
-          <div class="partner-link-row"><input id="partnerLink" type="text" readonly aria-label="Partner link" /><button class="btn btn-secondary" id="copyPartnerLink" type="button">Copy link</button></div>
-          <div id="eventQrSection">
-            <h2>Public event QR code</h2>
-            <p id="eventQrOffer"></p>
-            <img id="partnerQr" width="256" height="256" alt="Public BoomBoxCar event QR code" />
-            <a class="btn btn-secondary" id="downloadPartnerQr" download="boomboxcar-event-qr.svg">Download event QR code</a>
+        <section class="partner-activation-overview" aria-labelledby="activationOverviewTitle">
+          <div>
+            <p class="partner-value">$0 eligible base service</p>
+            <h2 id="activationOverviewTitle">What your activation includes</h2>
+            <p id="partnerBenefit"></p>
           </div>
-        </div>
+          <ul class="partner-included-list">
+            <li>Professional sound and two wireless microphones</li>
+            <li>Licensed music and MC support</li>
+            <li>Daytime bubbles and nighttime RGB lighting</li>
+            <li>Onboard power and commercial insurance</li>
+          </ul>
+          <p class="partner-venue" id="partnerVenue"></p>
+        </section>
+
+        <form id="activationForm" class="partner-activation-form" novalidate>
+          <fieldset>
+            <legend>Choose your complimentary duration</legend>
+            <p id="durationHelp" class="field-note"></p>
+            <div id="partnerDurations" class="partner-duration-grid"></div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Schedule the activation</legend>
+            <div class="partner-schedule-grid">
+              <label><span>Date</span><input id="partnerDate" name="eventDate" type="date" required /></label>
+              <label><span>Start time</span><select id="partnerTime" name="eventTime" required disabled><option value="">Choose a date</option></select></label>
+            </div>
+            <p id="availabilityStatus" class="availability-status" role="status"></p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Where should we send confirmation?</legend>
+            <label class="partner-email-field"><span>Email</span><input name="email" type="email" autocomplete="email" required placeholder="events@example.com" /></label>
+          </fieldset>
+
+          <section class="partner-checkout-summary" aria-labelledby="partnerSummaryTitle">
+            <div><span id="partnerSummaryTitle">Your activation</span><strong id="partnerSummaryDuration">Choose a duration</strong></div>
+            <div><span>Partner Pass</span><strong id="partnerSummaryDiscount">Included</strong></div>
+            <div class="partner-summary-total"><span>Total due</span><strong>$0</strong></div>
+          </section>
+
+          <p class="partner-activation-terms">By confirming this complimentary activation, the partner permits BoomBoxCar signage and a trackable customer QR onsite, photo and video capture, and public identification of the event as a BoomBoxCar partner activation. The partner also confirms venue permission, safe vehicle access and setup space, and normal event safety requirements.</p>
+          <button id="confirmActivation" class="btn btn-primary partner-confirm-button" type="submit">Confirm complimentary activation</button>
+          <p id="bookingResult" class="booking-result" role="status" hidden></p>
+        </form>
+
+        <section id="partnerRatePanel" class="partner-rate-panel" hidden>
+          <h2>Your complimentary activation has been used</h2>
+          <p id="partnerRateCopy"></p>
+          <button class="btn btn-primary" id="bookPartnerRate" type="button">Book with your Partner Rate</button>
+        </section>
+
+        <p class="partner-private-note">Keep this private page for your organization. It remains your access point for the activation and future Partner Rate reservations.</p>
       </div>
     </section>
   </main>
-  <script src="/partner/partner.js?v=20260830-venue-partner" defer></script>
+  <script src="/partner/partner.js?v=20260901-partner-checkout-3" defer></script>
 </body>
 </html>

@@ -132,6 +132,7 @@
   let appliedCoupon = null;
   let campaignOffer = null;
   let appliedCampaignOffer = null;
+  let campaignEligibilityStatus = '';
   let verifiedCampaignContact = '';
   let partnerPass = null;
   const pageParams = new URLSearchParams(window.location.search);
@@ -613,10 +614,11 @@
     packageOutput.textContent = `${hours} ${hours === 1 ? copy.hour : copy.hours}`;
     totalOutput.textContent = money.format(total);
     quoteNote.hidden = true;
+    const campaignEstimateActive = campaignOffer && campaignEligibilityStatus !== 'ineligible';
     const lines = [{ label: copy.base, price: basePrice }, ...modifiers.map(modifier => ({
       label: `${modifier.name}${modifier.quantity > 1 ? ` × ${modifier.quantity}` : ''}`,
       price: modifier.price * modifier.quantity
-    })), ...(partnerPass ? [{ label: partnerPass.activationAvailable ? 'BoomBoxCar Partner Pass' : `${partnerPass.futureDiscountPercent}% Partner Rate`, price: -partnerDiscount }] : []), ...(appliedCoupon ? [{ label: copy.couponLabel(appliedCoupon.code), price: -discountAmount }] : []), ...(appliedCampaignOffer ? [{ label: copy.campaignLabel, price: -discountAmount }] : [])];
+    })), ...(partnerPass ? [{ label: partnerPass.activationAvailable ? 'BoomBoxCar Partner Pass' : `${partnerPass.futureDiscountPercent}% Partner Rate`, price: -partnerDiscount }] : []), ...(appliedCoupon ? [{ label: copy.couponLabel(appliedCoupon.code), price: -discountAmount }] : []), ...(campaignEstimateActive ? [{ label: appliedCampaignOffer ? copy.campaignLabel : `${copy.campaignLabel} (${isSpanish ? 'pendiente de verificación' : 'pending verification'})`, price: -discountAmount }] : [])];
     linesOutput.replaceChildren(...lines.map(line => {
       const row = document.createElement('div');
       row.className = 'summary-line';
@@ -661,7 +663,10 @@
   }
 
   function offerDiscountAmount(subtotal) {
-    const discount = appliedCampaignOffer || appliedCoupon;
+    const provisionalCampaignOffer = campaignOffer && campaignEligibilityStatus !== 'ineligible'
+      ? { type: 'PERCENT', value: campaignOffer.discountPercent }
+      : null;
+    const discount = appliedCampaignOffer || provisionalCampaignOffer || appliedCoupon;
     if (!discount) return 0;
     const subtotalCents = Math.round(subtotal * 100);
     const discountCents = discount.type === 'PERCENT'
@@ -992,11 +997,11 @@
   }
 
   function campaignContactValue() {
-    return `${form.elements.email.value.trim().toLowerCase()}|${form.elements.phone.value.replace(/\D/g, '')}`;
+    return form.elements.email.value.trim().toLowerCase();
   }
 
   function campaignIsReady() {
-    if (!campaignOffer || appliedCampaignOffer) return true;
+    if (!campaignOffer || appliedCampaignOffer || campaignEligibilityStatus === 'ineligible') return true;
     campaignOfferStatus.textContent = copy.campaignNeedsVerify;
     campaignOfferStatus.dataset.state = 'error';
     campaignOfferVerify.focus();
@@ -1108,6 +1113,12 @@
       if (!response.ok) throw new Error(payload.error?.message || 'This Partner Pass is not available.');
       partnerPass = payload.partner;
       if (partnerPass.activationPending) throw new Error('The complimentary activation is currently being processed. Try this page again shortly.');
+      if (partnerPass.activationAvailable) {
+        const partnerPage = new URL('/partner/', window.location.origin);
+        partnerPage.searchParams.set('pass', partnerToken);
+        window.location.replace(partnerPage.href);
+        return;
+      }
       partnerPassPanel.hidden = false;
       partnerPassLead.textContent = partnerPass.activationAvailable
         ? `${partnerPass.name}: apply up to $${partnerPass.valueCap} toward an eligible ${partnerPass.maxHours === 2 ? '2-hour' : `2- to ${partnerPass.maxHours}-hour`} activation and add-ons.`
@@ -1162,6 +1173,7 @@
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || 'This event offer is not available.');
       campaignOffer = payload.campaign;
+      campaignEligibilityStatus = 'pending';
       campaignOfferTitle.textContent = isSpanish
         ? `Clientes nuevos ahorran ${campaignOffer.discountPercent}%`
         : `New customers save ${campaignOffer.discountPercent}%`;
@@ -1172,14 +1184,15 @@
       const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / 86_400_000));
       const formattedEnd = new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric', year: 'numeric' }).format(endDate);
       campaignOfferDetails.textContent = isSpanish
-        ? `Reserva antes del ${formattedEnd}. Quedan ${daysRemaining} día${daysRemaining === 1 ? '' : 's'}. La elegibilidad se verifica con tu correo y número móvil.`
-        : `Book by ${formattedEnd}. ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining. Eligibility is verified using your email and mobile number.`;
+        ? `Reserva antes del ${formattedEnd}. Quedan ${daysRemaining} día${daysRemaining === 1 ? '' : 's'}. El estimado incluye ${campaignOffer.discountPercent}% de descuento mientras verificamos tu correo.`
+        : `Book by ${formattedEnd}. ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining. Your estimate includes ${campaignOffer.discountPercent}% off while we verify your email.`;
       campaignOfferPanel.hidden = false;
       couponToggle.hidden = true;
       couponPanel.hidden = true;
-      if (window.location.hash === '#campaignOffer') {
-        requestAnimationFrame(() => campaignOfferPanel.scrollIntoView({ block: 'start' }));
-      }
+      campaignOfferStatus.textContent = isSpanish
+        ? `El descuento estimado está pendiente. Ingresa tu correo abajo y verifica la oferta antes de pagar.`
+        : `The estimated discount is pending. Enter your email below and verify the offer before checkout.`;
+      updateSummary();
       if (typeof window.fireGA === 'function') window.fireGA('event_qr_offer_view', {
         qr_campaign_id: campaignOffer.id,
         discount_percent: campaignOffer.discountPercent,
@@ -1197,21 +1210,32 @@
   async function verifyCampaignOffer() {
     if (!campaignOffer) return;
     const email = form.elements.email;
-    const phone = form.elements.phone;
     if (!email.checkValidity()) { email.reportValidity(); email.focus(); return; }
-    if (!phone.checkValidity()) { phone.reportValidity(); phone.focus(); return; }
     campaignOfferVerify.disabled = true;
     campaignOfferStatus.textContent = isSpanish ? 'Verificando con Square…' : 'Verifying with Square…';
     campaignOfferStatus.dataset.state = '';
     try {
       const response = await fetch(`${apiBase}/campaigns/${encodeURIComponent(campaignOffer.id)}/eligibility`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.value.trim(), phone: phone.value.trim() })
+        body: JSON.stringify({ email: email.value.trim() })
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error?.message || copy.campaignNotEligible);
-      if (!payload.eligible) throw new Error(copy.campaignNotEligible);
+      if (!payload.eligible) {
+        appliedCampaignOffer = null;
+        campaignEligibilityStatus = 'ineligible';
+        verifiedCampaignContact = campaignContactValue();
+        campaignOfferStatus.textContent = isSpanish
+          ? 'Este correo pertenece a un cliente existente. Se muestra el precio normal y puedes continuar con la reserva.'
+          : 'This email belongs to an existing customer. Standard pricing is now shown and you may continue booking.';
+        campaignOfferStatus.dataset.state = 'error';
+        campaignOfferVerify.textContent = isSpanish ? 'Precio de cliente existente' : 'Existing customer pricing';
+        updateSummary();
+        if (squarePayments) await resetDigitalWallet();
+        return;
+      }
       appliedCampaignOffer = { type: 'PERCENT', value: campaignOffer.discountPercent, code: campaignOffer.id };
+      campaignEligibilityStatus = 'eligible';
       verifiedCampaignContact = campaignContactValue();
       campaignOfferStatus.textContent = copy.campaignReady(campaignOffer.discountPercent);
       campaignOfferStatus.dataset.state = 'success';
@@ -1223,6 +1247,7 @@
       if (squarePayments) await resetDigitalWallet();
     } catch (error) {
       appliedCampaignOffer = null;
+      campaignEligibilityStatus = 'pending';
       verifiedCampaignContact = '';
       campaignOfferStatus.textContent = error.message || copy.campaignNotEligible;
       campaignOfferStatus.dataset.state = 'error';
@@ -1239,9 +1264,9 @@
       couponStatus.textContent = '';
       couponStatus.dataset.state = '';
     }
-    if (appliedCampaignOffer && (event.target === form.elements.email || event.target === form.elements.phone)
-      && campaignContactValue() !== verifiedCampaignContact) {
+    if (campaignOffer && event.target === form.elements.email && campaignContactValue() !== verifiedCampaignContact) {
       appliedCampaignOffer = null;
+      campaignEligibilityStatus = 'pending';
       verifiedCampaignContact = '';
       campaignOfferStatus.textContent = copy.campaignNeedsVerify;
       campaignOfferStatus.dataset.state = 'error';

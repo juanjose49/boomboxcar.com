@@ -93,6 +93,40 @@ export function validateReservation(input) {
   };
 }
 
+export function validatePartnerActivationReservation(input, partner) {
+  const durationHours = Number(input.durationHours);
+  if (!PACKAGES[durationHours]) throw new AppError(400, 'INVALID_DURATION', 'Choose a valid duration.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.eventDate || '')) throw new AppError(400, 'INVALID_DATE', 'Choose a valid event date.');
+  if (!input.startAt || !Number.isFinite(Date.parse(input.startAt))) throw new AppError(400, 'INVALID_TIME', 'Choose an available arrival time.');
+
+  const email = cleanString(input.email, 254).toLowerCase();
+  if (!validEmail(email)) throw new AppError(400, 'INVALID_EMAIL', 'Enter a valid email address.');
+  const nameParts = cleanString(partner?.name, 120).split(/\s+/).filter(Boolean);
+  const givenName = nameParts.shift() || 'BoomBoxCar';
+  const familyName = nameParts.join(' ') || 'Partner';
+
+  return {
+    locale: 'en',
+    eventDate: input.eventDate,
+    startAt: new Date(input.startAt).toISOString(),
+    durationHours,
+    modifiers: [],
+    couponCode: '',
+    customer: { givenName, familyName, email, phone: '' },
+    details: {
+      address: normalizeEventAddress(partner.venueAddress),
+      eventType: 'Partner activation',
+      setting: 'Partner venue',
+      attendance: 1,
+      requests: ''
+    },
+    attribution: normalizeAttribution({
+      sourceReferralId: partner.sourceReferralId,
+      qrCampaignId: `${partner.code}-ACTIVATION`
+    })
+  };
+}
+
 export function createReservationId(now = new Date()) {
   return `BBC-${now.getUTCFullYear()}-${randomBytes(3).toString('hex').toUpperCase()}`;
 }
@@ -214,7 +248,7 @@ export function buildCustomerNote({ reservationId, reservation, pricing, partner
     `Special requests: ${reservation.details.requests || 'None'}`,
     `Event contact: ${reservation.customer.givenName} ${reservation.customer.familyName}`,
     `Contact email: ${reservation.customer.email}`,
-    `Contact phone: ${reservation.customer.phone}`
+    ...(reservation.customer.phone ? [`Contact phone: ${reservation.customer.phone}`] : [])
   ].join('\n');
 }
 

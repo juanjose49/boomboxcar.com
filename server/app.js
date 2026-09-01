@@ -17,6 +17,7 @@ import {
   normalizeModifierSelections,
   persistReservation,
   readReservationRecords,
+  validatePartnerActivationReservation,
   validateReservation
 } from './reservations.js';
 import { paymentEventRecord, verifySquareWebhook } from './webhooks.js';
@@ -29,8 +30,8 @@ import { createPartnerStore } from './partner-store.js';
 import { createCouponStore } from './coupon-store.js';
 import { couponConfigEntry, resolveCoupon } from './coupons.js';
 import {
-  localCustomerHasCompletedBooking, newCustomerOfferClaimId, newCustomerOfferStatus,
-  normalizeOfferContact, offerContactKey
+  localCustomerEmailHasCompletedBooking, localCustomerHasCompletedBooking, newCustomerOfferClaimId, newCustomerOfferStatus,
+  normalizeOfferContact, normalizeOfferEmail, offerContactKey
 } from './campaigns.js';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -92,12 +93,14 @@ function requireAdmin(request, response, config, corsHeaders) {
 function adminPartnerView(partner, redemptionStatus, baseUrl) {
   const privateUrl = new URL('/partner/', baseUrl);
   privateUrl.searchParams.set('pass', partner.token);
-  const qrImageUrl = new URL(`/api/partners/${encodeURIComponent(partner.token)}/qr.svg`, baseUrl);
+  const qrImageUrl = new URL(`/api/admin/partners/${encodeURIComponent(partner.code)}/qr.svg`, baseUrl);
+  const qrDestinationUrl = campaignBookingUrl(baseUrl, { id: partner.qrCampaignId, sourceReferralId: partner.sourceReferralId });
   return {
     ...partnerConfigEntry(partner),
     redemptionStatus,
     privateUrl: privateUrl.toString(),
-    qrImageUrl: qrImageUrl.toString()
+    qrImageUrl: qrImageUrl.toString(),
+    qrDestinationUrl
   };
 }
 
@@ -202,6 +205,13 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
     return { eligible: !hasCompletedOrders, contactKey };
   }
 
+  async function checkNewCustomerEmailEligibility(email, records) {
+    if (localCustomerEmailHasCompletedBooking(records, email)) return { eligible: false };
+    const customers = await square.findCustomersByEmail(email);
+    const hasCompletedOrders = await square.customersHaveCompletedOrders(customers.map(customer => customer.id));
+    return { eligible: !hasCompletedOrders };
+  }
+
   return async function app(request, response) {
     const origin = request.headers.origin;
     const corsHeaders = origin === config.allowedOrigin ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {};
@@ -243,6 +253,16 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         return sendJson(response, 201, {
           partner: adminPartnerView(partner, 'available', config.appBaseUrl)
         }, corsHeaders);
+      }
+      const adminPartnerQrMatch = pathname.match(/^\/admin\/partners\/([A-Z0-9_-]{3,40})\/qr\.svg$/i);
+      if (adminPartnerQrMatch && request.method === 'GET') {
+        if (!allowRequest(`${ip}:admin-qr`, 60)) throw new AppError(429, 'RATE_LIMITED', 'Too many administrator QR requests.');
+        if (!requireAdmin(request, response, config, corsHeaders)) return;
+        const partner = (await partnerStore.list()).find(entry => entry.code === adminPartnerQrMatch[1].toUpperCase());
+        if (!partner) throw new AppError(404, 'PARTNER_NOT_FOUND', 'Partner not found.');
+        const campaign = resolveCampaign(await partnerStore.all(), partner.qrCampaignId);
+        const svg = await QRCode.toString(campaignBookingUrl(config.appBaseUrl, campaign), { type: 'svg', margin: 2, width: 512, errorCorrectionLevel: 'M' });
+        return sendSvg(response, 200, svg);
       }
       if (pathname === '/admin/coupons' && request.method === 'GET') {
         if (!allowRequest(`${ip}:admin`, 120)) throw new AppError(429, 'RATE_LIMITED', 'Too many administrator requests.');
@@ -292,15 +312,6 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         const records = await readReservationRecords(config.dataDir);
         return sendJson(response, 200, { partner: publicPartner(partner, partnerRedemptionStatus(records, partner.code)) }, corsHeaders);
       }
-      const partnerQrMatch = pathname.match(/^\/partners\/([A-Za-z0-9_-]{22,128})\/qr\.svg$/);
-      if (request.method === 'GET' && partnerQrMatch) {
-        if (!allowRequest(`${ip}:partner-qr`, 30)) throw new AppError(429, 'RATE_LIMITED', 'Too many QR requests.');
-        const partners = await partnerStore.all();
-        const partner = resolvePartner(partners, partnerQrMatch[1]);
-        const campaign = resolveCampaign(partners, partner.qrCampaignId);
-        const svg = await QRCode.toString(campaignBookingUrl(config.appBaseUrl, campaign), { type: 'svg', margin: 2, width: 512, errorCorrectionLevel: 'M' });
-        return sendSvg(response, 200, svg);
-      }
       const campaignMatch = pathname.match(/^\/campaigns\/([A-Za-z0-9_.:-]{3,100})$/);
       if (request.method === 'GET' && campaignMatch) {
         if (!allowRequest(`${ip}:campaign`, 60)) throw new AppError(429, 'RATE_LIMITED', 'Too many campaign requests.');
@@ -311,8 +322,8 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         if (!allowRequest(`${ip}:campaign-eligibility`, 12)) throw new AppError(429, 'RATE_LIMITED', 'Too many eligibility checks.');
         if (!config.squareConfigured) throw new AppError(503, 'SQUARE_NOT_CONFIGURED', 'Square is not configured yet.');
         const campaign = resolveCampaign(await partnerStore.all(), campaignEligibilityMatch[1]);
-        const contact = normalizeOfferContact(await readJson(request));
-        const result = await checkNewCustomerEligibility(contact, await readReservationRecords(config.dataDir));
+        const email = normalizeOfferEmail((await readJson(request)).email);
+        const result = await checkNewCustomerEmailEligibility(email, await readReservationRecords(config.dataDir));
         return sendJson(response, 200, {
           eligible: result.eligible,
           campaign: publicCampaign(campaign),
@@ -686,7 +697,7 @@ export function createApp({ env = process.env, fetchImpl = globalThis.fetch } = 
         const partner = resolvePartner(await partnerStore.all(), partnerReservationMatch[1]);
         const input = await readJson(request);
         const permissions = normalizePartnerPermissions(input.partnerPermissions);
-        const reservation = validateReservation({ ...input, couponCode: '' });
+        const reservation = validatePartnerActivationReservation(input, partner);
         validatePartnerVenue(partner, reservation.details.address);
         const packageDetails = await square.getPackage(reservation.durationHours);
         const pricing = applyPartnerPass(calculatePricing(packageDetails, reservation.modifiers), partner, reservation.durationHours);

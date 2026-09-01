@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyCoupon, buildCustomerNote, calculatePricing, createConfirmationToken, findAvailableSlot, validateReservation } from '../server/reservations.js';
+import { applyCoupon, buildCustomerNote, calculatePricing, createConfirmationToken, findAvailableSlot, validatePartnerActivationReservation, validateReservation } from '../server/reservations.js';
 import { applyPartnerPass, applyPartnerRate, campaignBookingUrl, normalizePartnerPermissions, parsePartners, partnerAlreadyRedeemed, partnerRedemptionStatus, publicPartner, resolveCampaign, resolvePartner, validatePartnerVenue } from '../server/partners.js';
 
 const validInput = {
@@ -171,7 +171,34 @@ test('partner configuration stays private and limits eligible durations', () => 
   assert.deepEqual(publicPartner(partner).eventOffer, { campaignId: 'DTSS26-A1', discountPercent: 10, endsOn: '2099-11-30' });
   assert.equal(JSON.stringify(publicPartner(partner)).includes(token), false);
   const campaign = resolveCampaign(partners, 'DTSS26-A1', new Date('2099-01-01T00:00:00Z'));
-  assert.equal(campaignBookingUrl('https://boomboxcar.com', campaign), 'https://boomboxcar.com/?ref=DTSS26&qr=DTSS26-A1&utm_source=event_qr&utm_medium=offline&utm_campaign=DTSS26-A1#campaignOffer');
+  assert.equal(campaignBookingUrl('https://boomboxcar.com', campaign), 'https://boomboxcar.com/?ref=DTSS26&qr=DTSS26-A1&utm_source=event_qr&utm_medium=offline&utm_campaign=DTSS26-A1');
+});
+
+test('partner configuration honors its minimum and maximum activation duration', () => {
+  const partner = [...parsePartners(JSON.stringify([{
+    token: 'abcdefghijklmnopqrstuv', code: 'THREE26', name: 'Three Hour Venue',
+    minHours: 3, maxHours: 4, valueCap: 599, venueAddress: validInput.address,
+    expiresOn: '2099-12-31'
+  }])).values()][0];
+  assert.deepEqual(publicPartner(partner).eligibleDurations, [3, 4]);
+  assert.throws(() => applyPartnerPass({ total: 399 }, partner, 2), /covers 3 to 4 hours/i);
+});
+
+test('partner activation checkout derives venue details from configuration and only needs scheduling plus email', () => {
+  const partner = {
+    code: 'VENUE26', name: 'Test Venue', sourceReferralId: 'VENUE26',
+    venueAddress: validInput.address
+  };
+  const reservation = validatePartnerActivationReservation({
+    durationHours: 3, eventDate: '2099-08-20', startAt: '2099-08-20T19:00:00.000Z',
+    email: 'events@example.org'
+  }, partner);
+  assert.equal(reservation.durationHours, 3);
+  assert.equal(reservation.customer.email, 'events@example.org');
+  assert.equal(reservation.customer.phone, '');
+  assert.deepEqual(reservation.modifiers, []);
+  assert.deepEqual(reservation.details.address, validInput.address);
+  assert.equal(reservation.details.eventType, 'Partner activation');
 });
 
 test('redeemed partners receive the ongoing rate for the configured venue regardless of customer email', () => {

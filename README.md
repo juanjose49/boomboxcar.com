@@ -41,13 +41,13 @@ GET  /api/modifiers?durationHours=1
 POST /api/availability
 POST /api/coupons/validate
 GET  /api/partners/:token
-GET  /api/partners/:token/qr.svg
 POST /api/partners/:token/reservations
 GET  /api/campaigns/:campaignId
 POST /api/campaigns/:campaignId/eligibility
 GET  /api/admin/partners
 POST /api/admin/partners
 PUT  /api/admin/partners/:code
+GET  /api/admin/partners/:code/qr.svg
 GET  /api/admin/coupons
 POST /api/admin/coupons
 PUT  /api/admin/coupons/:code
@@ -74,13 +74,13 @@ Reservation records are appended to `data/reservations.jsonl` with owner-only pe
 
 ## Partner onboarding
 
-Each partner has one permanent private page tied to its venue address. Before the complimentary activation is redeemed, the page applies up to the configured value cap across an eligible 2-, 3-, or 4-hour service and add-ons. The partner pays only the amount above that cap. After the activation, the same page automatically applies the configured partner rate, normally 15 percent, to future eligible services and add-ons. Different customers may use the page, but every discounted event must take place at the configured partner venue.
+Each partner has one permanent private page tied to its venue address. Before the complimentary activation is redeemed, that page provides a focused checkout with only the configured duration range, event date, available start time, and contact email. Every offered duration is fully complimentary and includes the standard BoomBoxCar service. After the activation, the same page sends the partner into the normal booking builder with the configured partner rate, normally 15 percent, applied to future eligible services and add-ons. Different customers may use the page, but every discounted event must take place at the configured partner venue.
 
 The preferred management interface is `https://boomboxcar.com/admin/`. Configure `BOOMBOXCAR_ADMIN_USERNAME` and a long random `BOOMBOXCAR_ADMIN_PASSWORD` of at least 12 characters in cPanel, restart the application, and sign in over HTTPS. The page manages partners and coupons, activates or deactivates either benefit, and standardizes the private partner link and downloadable public event QR. Credentials are sent using HTTP Basic Authentication, retained only in the open page's memory, and verified by the server for every admin API request. The admin page is marked `noindex`, but authentication on the API is the actual security boundary.
 
-Dashboard changes are saved atomically to `data/partners.json` and `data/coupons.json` with owner-only permissions. These private files survive normal deployments because the deploy script does not remove `data`. Partners and coupons have no environment-variable fallback and must be managed through the dashboard. After creating a partner, open the generated private link once to verify the partner name, offer, and venue address. Send that link to the partner for its activation and later Partner Rate reservations. The booking form prefills and locks the venue address, and the server independently verifies it before applying either benefit.
+Dashboard changes are saved atomically to `data/partners.json` and `data/coupons.json` with owner-only permissions. These private files survive normal deployments because the deploy script does not remove `data`. Partners and coupons have no environment-variable fallback and must be managed through the dashboard. After creating a partner, open the generated private link once to verify the partner name, duration range, offer, and venue address. Send that link to the partner for its activation and later Partner Rate reservations. The server supplies and independently verifies the configured venue address before applying either benefit.
 
-The partner page also generates a separate public event QR code for BoomBoxCar signage. It opens the normal booking page with `ref`, `qr`, and UTM attribution, shows a dated 10 percent new-customer offer, and records GA4 campaign events. The customer verifies the offer with their email and mobile number before checkout. The server searches Square customers by both fields, searches completed Square orders, checks completed BoomBoxCar reservation records, and repeats the eligibility check before creating the discounted order. The offer cannot be combined with a coupon or Partner Pass.
+The admin dashboard also generates a separate customer-acquisition QR code for BoomBoxCar event signage. This QR is not shown on the partner's private page and does not contain the private partner token. It opens the normal booking page at the top with `ref`, `qr`, and UTM attribution, shows a dated 10 percent new-customer offer, includes the provisional discount in the estimate, and records GA4 campaign events. The customer enters an email to receive an early eligibility result. The server searches matching Square customers, completed Square orders, and completed BoomBoxCar reservation records. Before creating the discounted order, it repeats the authoritative eligibility check using the completed public booking contact details. Confirmed existing customers can continue at standard pricing. The offer cannot be combined with a coupon or Partner Pass.
 
 Enter the suite, unit, or clubhouse in the second address field when it is part of the event address. Set the public event offer deadline and any non-default discount, value-cap, referral, or QR campaign values in the admin form. The private token stays server-side and is not included in the public event QR. The page is not linked from the public site, is marked `noindex`, and requires the private token plus the configured venue address before either partner benefit is accepted.
 
