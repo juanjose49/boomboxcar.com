@@ -410,6 +410,10 @@ main > .contact{order:10}
   background:var(--input-bg);
   font:inherit;
 }
+.field-grid-date input,.field-grid-date select{
+  box-sizing:border-box;
+  height:48px;
+}
 @supports (-webkit-touch-callout:none){
   .field-grid input[type="date"]{
     display:block;
@@ -522,7 +526,7 @@ main > .contact{order:10}
   .booking-builder{grid-template-columns:minmax(0,1fr) 330px;gap:22px}
   .booking-summary{position:sticky;top:92px}
   .field-grid-date{grid-template-columns:minmax(240px,.8fr) minmax(320px,1.2fr)}
-  .field-grid-date input,.field-grid-date select{min-height:58px;padding:.85rem 1rem;font-size:1.05rem}
+  .field-grid-date input,.field-grid-date select{height:58px;min-height:58px;padding:.85rem 1rem;font-size:1.05rem}
 }
 
 @media (min-width:1180px){
