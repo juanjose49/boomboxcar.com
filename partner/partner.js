@@ -17,7 +17,6 @@
   const bookingResult = document.getElementById('bookingResult');
   const ratePanel = document.getElementById('partnerRatePanel');
   const rateCopy = document.getElementById('partnerRateCopy');
-  const rateButton = document.getElementById('bookPartnerRate');
   let partner = null;
   let minimumNoticeHours = 18;
   let availabilityController = null;
@@ -126,6 +125,12 @@
       if (!partnerResponse.ok) throw new Error(partnerPayload.error?.message || 'This partner page is not available.');
       partner = partnerPayload.partner;
       if (Number.isFinite(Number(configPayload.minimumNoticeHours))) minimumNoticeHours = Number(configPayload.minimumNoticeHours);
+      if (partner.ongoingRateAvailable) {
+        const destination = new URL('/', location.origin);
+        destination.hash = `partner_pass=${encodeURIComponent(token)}`;
+        location.replace(destination.href);
+        return;
+      }
       document.title = `${partner.name} | BoomBoxCar Partner Pass`;
       document.getElementById('partnerTitle').textContent = partner.name;
       status.textContent = partner.activationAvailable ? 'Your complimentary BoomBoxCar activation' : 'BoomBoxCar Partner';
@@ -140,14 +145,8 @@
         await loadAvailability();
       } else {
         form.hidden = true;
-        if (partner.ongoingRateAvailable) {
-          rateCopy.textContent = `Use this private page to receive ${partner.futureDiscountPercent}% off eligible future bookings and add-ons at ${partner.formattedVenueAddress}.`;
-          ratePanel.hidden = false;
-        } else {
-          rateCopy.textContent = 'Your activation is currently being processed. Return to this page shortly.';
-          ratePanel.hidden = false;
-          rateButton.hidden = true;
-        }
+        rateCopy.textContent = 'Your activation is currently being processed. Return to this page shortly.';
+        ratePanel.hidden = false;
       }
       content.hidden = false;
     } catch (error) {
@@ -193,12 +192,6 @@
       submitButton.disabled = false;
       void loadAvailability();
     }
-  });
-
-  rateButton.addEventListener('click', () => {
-    const destination = new URL('/', location.origin);
-    destination.hash = `partner_pass=${encodeURIComponent(token)}`;
-    location.assign(destination.href);
   });
 
   void initialize();
