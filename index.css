@@ -321,7 +321,6 @@ main > .contact{order:10}
 .partner-activation-overview,.partner-activation-form,.partner-rate-panel{padding:clamp(24px,5vw,48px)}
 .partner-activation-overview{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(240px,.85fr);gap:26px;border-bottom:1px solid var(--ring)}
 .partner-activation-overview h2{margin:.2rem 0 .7rem}
-.partner-value{margin:0;color:var(--brand);font-size:.82rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
 .partner-included-list{display:grid;gap:8px;margin:0;padding:20px 20px 20px 40px;border-radius:14px;background:var(--soft)}
 .partner-venue{grid-column:1/-1;margin:0;padding:12px 14px;border-left:4px solid var(--brand);background:var(--soft);font-weight:750}
 .partner-activation-form{display:grid;gap:22px}
